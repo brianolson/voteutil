@@ -1,0 +1,164 @@
+<html><head><title>Election Methods in C</title>
+<style>
+p.i { padding-left: 1cm; }
+p.f { font-family: "Courier", monospace; }
+</style></head><body bgcolor="#ffffff" text="#000000">
+<h1>Election Methods in C</h1>
+<h2>Command Line Utility</h2>
+<p><a href="countvotes.c">countvotes</a> takes url formatted votes, one per line, on the standard input and runs Histogram, VRR, IRNR, IRV, Raw Rating Summation and STV on them, producing HTML results on the standard output.</p>
+
+<h3>usage:</h3>
+<pre>countvotes [--dump][--debug][--preindexed]
+	[--full-html|--no-full-html|--no-html-head]
+	[--disable-all][--enable-all]
+	[--enable|--disable hist|irnr|vrr|raw|irv|stv]
+	input-file-name|
+	--pg "PostgreSQL connect string" --query "SQL;"</pre>
+ 
+<dl>
+<dt>--dump
+<dd>Repeat votes to standard out. Text may not be identical as they are reconstructed from an internal representation.
+
+<dt>--debug
+<dd>Print some additional information as it runs
+
+<dt>--preindexed
+<dd>All choice names must be integers that can be parsed with strtol()
+
+<dt>--full-html
+<dd>Emit a generic &lt;html&gt;&lt;head&gt;&lt;title&gt;&lt;/head&gt;&lt;body&gt; sequences, and close with &lt;/body&gt;&lt;/html&gt;<br><i>this is the default</i>
+
+<dt>--no-full-html
+<dt>--no-html-head
+<dd>Emit only the vote result HTML which should be included in a full HTML document. These options are synonyms.
+
+<dt>--disable-all
+<dd>Disable all voting methods. You should probably follow this with --enable
+
+<dt>--enable-all
+<dd>Enable all voting methods.
+
+<dt>--enable <i>method</i>
+<dd>Enable a voting method. Can be used multiple times.
+
+<dt>--disable <i>method</i>
+<dd>Disable a voting method. Can be used multiple times.
+
+<dt>--pg "PostgreSQL connect string"
+<dd>Specify PostgreSQL database to connect to.
+Probably at least "user=<i>foo</i> dbname=<i>bar</i>" should be specified, possibly "host" and "port".
+See the documentation for PQconnectdb() for details.
+
+<dt>--query "SQL;"
+<dd>The SQL query should return one column which contains strings of url formatted vote data.
+
+</dl>
+
+<h2>Election Method Implementations</h2>
+<table>
+<tr><td>Virtual Round Robin (Condorcet)</td><td><a href="VRR.c">VRR.c</a></td><td><a href="VRR.h">VRR.h</a></td><td></td></tr>
+<tr><td>Instant Runoff Normalized Ratings</td><td><a href="IRNR.c">IRNR.c</a></td><td><a href="IRNR.h">IRNR.h</a></td><td></td></tr>
+<tr><td>Instant Runoff Voting</td><td><a href="IRV.c">IRV.c</a></td><td><a href="IRV.h">IRV.h</a></td><td></td></tr>
+<tr><td>Single Transferrable Vote</td><td><a href="STV.c">STV.c</a></td><td><a href="STV.h">STV.h</a></td><td></td></tr>
+<tr><td>Raw Rating Summation</td><td><a href="RawRating.c">RawRating.c</a></td><td><a href="RawRating.h">RawRating.h</a></td><td></td></tr>
+<tr><td>Histogram</td><td><a href="Histogram.c">Histogram.c</a></td><td><a href="Histogram.h">Histogram.h</a></td><td></td></tr>
+</table>
+<p>All election methods implement a common interface, taking votes and returning results through functions of the same signature.
+They are built around an object metaphor, taking a pointer to their struct type as first argument.</p>
+<p>The STV functions are shown below for example. In each other implementation replace "STV" with "IRV", "IRNR", etc.</p>
+<p class="f">STV* newSTV();</p>
+<p class="i">Allocate and initialize an instance.</p>
+<p class="f">int STV_voteRating( STV* it, int numVotes, const NameVote* votes );<br>
+int STV_voteStoredIndexVoteNode( STV* it, StoredIndexVoteNode* votes );</p>
+<p class="i">These two methods equivalently record the vote stored in the passed in arguments.
+The StoredIndexVoteNode form consumes the argument passed in which should not be referenced after calling this function.
+The implementation will either free() or store it.
+The NameVote method does not alter the argument passed in and makes a copy if necessary.
+Consult the implementation source if malloc() efficiency around stored votes is critical.<br>
+Zero is returned on success and some other value on error. Most implementations have no failure mode for voting.</p>
+<p class="f">int STV_getWinners( STV* it, int wlen, NameVote** winnersP );</p>
+<p class="i">Get election results as sorted name,value pairs.
+Normally a full ranking will be returned and it is left to display software to recognize and present any special handling for ties.
+If *winnersP is NULL, store into it a pointer to internally allocated memory with the complete list.
+If *winnresP is not NULL, copy into it up to as many elements as wlen indicates.
+It is an error for winnersP to be NULL.
+Return the number of name,value pairs returned through winnersP. -1 on error.</p>
+<p class="f">void STV_htmlSummary( STV* it, FILE* fout );</p>
+<p class="i">Print HTML text to fout.
+Includes an HTML table of winners and any other relevant info (e.g. Virtual Round Robin table or Histograms).</p>
+<p class="f">void STV_print( STV* it, FILE* fout );</p>
+<p class="i">Print plain text represntation to fout.</p>
+<p class="f">void STV_setSharedNameIndex( type* it, NameIndex* ni );</p>
+<p class="i">Clobber internal NameIndex (free() as needed) and replace with passed in argument.
+It's possible for different instances to share one NameIndex,
+but this replacement should only be done once or free() could be called on the same NameIndex pointer multiple times and corrupt memory.</p>
+<p class="f">void clearSTV( STV* it );</p>
+<p class="i">Reset internal counters and stored votes.
+May then use instance for new election count.</p>
+<p class="f">deleteSTV( STV* it )</p>
+<p class="i">Free everything internally, and then the instance itself.</p>
+<p class="f">VirtualVotingSystem* newVirtualSTV()</p>
+<p class="i">Create a function pointer based object which can be used runtime interchangeably with other implementations.
+See <a href="NamedVotingSystem.h">NamedVotingSystem.h</a> or the <a href="#vvs">VirtualVotingSystem</a> section below.</p>
+<p class="f">STV_deleteVVS( VirtualVotingSystem* vvs )</p>
+<p class="i">Clear internals, delete instance. Equivalent to vvs->close( vvs );</p>
+
+<h2>Utility Code</h2>
+
+<p><a href="NamedVotingSystem.c">NamedVotingSystem.c</a> (<a href="NamedVotingSystem.h">.h</a>)</p>
+<h3>Struct types for passing votes and receiving results</h3>
+<pre>
+struct NameVoteStruct {
+	const char* name;
+	float rating;
+};
+typedef struct NameVoteStruct NameVote;
+
+struct IndexVoteStruct {
+	int index;
+	float rating;
+};
+typedef struct IndexVoteStruct IndexVote;
+
+struct StoredIndexVoteNode {
+	struct StoredIndexVoteNode* next;
+	int numVotes;
+	IndexVote vote[];
+
+};
+typedef struct StoredIndexVoteNode StoredIndexVoteNode;
+</pre>
+<h4>StoredIndexVoteNode funcions:</h4>
+<p class="f">StoredIndexVoteNode* newStoredIndexVoteNode(int count);</p>
+<p class="i">Allocates a node big enough to hold <tt>count</tt> name-index,rating pairs.</p>
+<p class="f">StoredIndexVoteNode* dupStoredIndexVoteNode( const StoredIndexVoteNode* );</p>
+<h3>NameIndex</h3>
+<p>The "NameIndex" struct is for keeping the string data of candidate names once and storing by integer index elsewhere.</p>
+<p class="f">void initNameIndex( NameIndex* ni );</p>
+<p class="i">Zero out all the values</p>
+<p class="f">void clearNameIndex( NameIndex* ni );</p>
+<p class="i">Free any memory, then zero out values.</p>
+<p class="f">int nameIndex( NameIndex* ni, const char* name );</p>
+<p class="i">Translate a string to integer index. creates new index if first appearance of name.</p>
+<p class="f">const char* indexName( NameIndex* ni, int index );</p>
+<p class="i">Retrieve name for some index</p>
+<h3>VirtualVotingSystem</h3>
+<a name="vvs"></a>
+<p>"VirtualVotingSystem" struct contains function pointers for creating runtime typed objects out of the election method implementations.</p>
+<pre>
+typedef struct VirtualVotingSystem VirtualVotingSystem;
+struct VirtualVotingSystem {
+	int (*voteRating)( void* it, int numVotes, const NameVote* votes );
+	/*! assumed to retain or free() votes passed in. because it may free(), votes must not be accessed after call.  */
+	int (*voteStoredIndexVoteNode)( void* it, StoredIndexVoteNode* votes );
+	int (*getWinners)( void* it, int numVotes, NameVote** winnersP );
+	void (*htmlSummary)( void* it, FILE* fout );
+	void (*print)( void* it, FILE* fout );
+	void (*setSharedNameIndex)( void* it, NameIndex* ni );
+	void (*close)( VirtualVotingSystem* it );// delete
+	
+	void* it;
+};
+</pre>
+
+</body></html>

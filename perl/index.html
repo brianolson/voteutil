@@ -1,0 +1,38 @@
+<html><head><title>Election Methods in perl</title>
+<style>
+p.i { padding-left: 1cm; }
+p.f { font-family: "Courier", monospace; }
+</style></head><body bgcolor="#ffffff" text="#000000">
+<h1>Election Methods in perl</h1>
+<h2>Command Line Utility</h2>
+<p><a href="votep.pl">votep.pl</a> takes url formatted votes, one per line, on the standard input and runs VRR, IRNR, IRV and Histogram on them, producing HTML results on the standard output.</p>
+<h2>Election Method Implementations</h2>
+<table>
+<tr><td>Virtual Round Robin (Condorcet)</td><td><a href="VRR.pm">VRR.pm</a></td></tr>
+<tr><td>Instant Runoff Normalized Ratings</td><td><a href="IRNR.pm">IRNR.pm</a></td></tr>
+<tr><td>Instant Runoff Voting</td><td><a href="IRV.pm">IRV.pm</a></td></tr>
+<tr><td>Histogram</td><td><a href="Histogram.pm">Histogram.pm</a></td></tr>
+</table>
+<p>All election methods implement a common interface, taking votes and returning results through functions of the same signature.
+They are built as perl objects.</p>
+<p class="f">$obj->voteNameValues($);</p>
+<p class="i">Takes reference to array of alternating names and values like [ "a", 3, "B", 5 ]. Values are ratings, higher better.</p>
+<p class="f">$obj->voteNameValueHash($);</p>
+<p class="i">Takes reference to hash of name=>value entries like { "a" => 3, "B" => 5 }. Values are ratings, higher better.</p>
+<p class="f">$obj->voteOrderedNames($);</p>
+<p class="i">Takes reference to array of names ordered with highest ranked first like [ "B", "a" ].</p>
+<p class="f">$obj->get_results();</p>
+<p class="i">Returns array of alternating names and values, sortedy by winningest first.</p>
+<p class="f">$obj->htmlSummary();</p>
+<p class="i">Return a string with HTML text representing the results of this election and any other information.</p>
+<p class="f">$obj->name();</p>
+<p class="i">Return a string with the name of the election method.</p>
+<h2>Utility Code</h2>
+<p><a href="Vote.pm">Vote.pm</a> contains some common code for parsing strings with vote information</p>
+<p class="f">gtEqVotesToNameValues($);</p>
+<p class="i">"a > b = c > d" becomes [ "a", 4, "b", 3, "c", 3, "d", 1 ]</p>
+<p class="f">gtEqVotesToNameValueHash($);</p>
+<p class="i">"a > b = c > d" becomes { "a" => 4, "b" => 3, "c" => 3, "d" => 1 }</p>
+<p class="f">urlVotesToNameValueHash($)</p>
+<p class="i">"a=9&amp;b=2&amp;c=1&amp;d=3" becomes { "a" => 9, "b" => 2, "c" => 1, "d" => 3 }</p>
+</body></html>

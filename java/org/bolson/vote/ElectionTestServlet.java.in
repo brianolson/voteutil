@@ -1,0 +1,430 @@
+package org.bolson.vote;
+import java.lang.reflect.Constructor;
+import java.io.*;
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.util.Hashtable;
+import java.util.Enumeration;
+
+/**
+	Servlet for creating an "Election Calculator" for theortical elections or for running small elections which data has been collected for.
+*/
+public class ElectionTestServlet extends HttpServlet {
+	public static String numArrayToHtmlTable( Object o ) {
+		StringBuffer toret = new StringBuffer();
+		if ( o instanceof int[] ) {
+			int[] va = (int[])o;
+			for ( int i = 0; i < va.length; i++ ) {
+				toret.append( "<TD>" );
+				if ( va[i] != VotingSystem.NO_VOTE ) {
+					toret.append( va[i] );
+				}
+				toret.append( "</TD>" );
+			}
+		} else if ( o instanceof float[] ) {
+			float[] va = (float[])o;
+			for ( int i = 0; i < va.length; i++ ) {
+				toret.append( "<TD>" );
+				if ( ! Float.isNaN( va[i] ) ) {
+					toret.append( va[i] );
+				}
+				toret.append( "</TD>" );
+			}
+		} else if ( o instanceof double[] ) {
+			double[] va = (double[])o;
+			for ( int i = 0; i < va.length; i++ ) {
+				toret.append( "<TD>" );
+				if ( ! Double.isNaN( va[i] ) ) {
+					toret.append( va[i] );
+				}
+				toret.append( "</TD>" );
+			}
+		}
+		return toret.toString();
+	}
+	
+	VotingSystemFactory[] votingSystemOptions = null;
+	public void init() {
+		try {
+			votingSystemOptions = (VotingSystemFactory[])VotingSystemFactory.standardVotingSystemList.clone();
+		} catch ( Exception e ) {
+			e.printStackTrace();
+		}
+	}
+	public boolean[] getOnOffForReq( HttpServletRequest request ) {
+		if ( votingSystemOptions == null ) {
+			return null;
+		}
+		boolean[] toret = new boolean[votingSystemOptions.length];
+		String allp = request.getParameter( "systems" );
+		if ( (allp != null) && allp.equals( "all" ) ) {
+			for ( int i = 0; i < toret.length; i++ ) {
+				toret[i] = true;
+			}
+			return toret;
+		}
+		int numOn = 0;
+		for ( int i = 0; i < votingSystemOptions.length; i++ ) {
+			String op;
+			op = request.getParameter( votingSystemOptions[i].shortOpt );
+			if ( (op != null) && op.equals("1") ) {
+				toret[i] = true;
+				numOn++;
+			} else {
+				toret[i] = false;
+			}
+		}
+		if ( numOn == 0 ) {
+			// none on? set defaults
+			for ( int i = 0; i < toret.length; i++ ) {
+				toret[i] = votingSystemOptions[i].onDef;
+			}
+		}
+		return toret;
+	}
+	public void printOnOffFormPart( PrintWriter out, boolean[] on ) {
+		if ( votingSystemOptions == null ) {
+			out.println("error: no voting systems loaded");
+			return;
+		}
+		for ( int i = 0; i < votingSystemOptions.length; i++ ) {
+			out.print("<input type=\"checkbox\" name=\"");
+			out.print( votingSystemOptions[i].shortOpt );
+			if ( (on == null) || (on[i]) ) {
+				out.print("\" value=\"1\" checked>");
+			} else {
+				out.print("\" value=\"1\">");
+			}
+			out.print( votingSystemOptions[i].name );
+			out.println("<br>");
+		}
+	}
+	public VotingSystem[] buildVSArray( int numc, boolean[] on ) {
+		int numsys = 0;
+		for ( int i = 0; i < votingSystemOptions.length; i++ ) {
+			if ( (on == null) || on[i] ) {
+				numsys++;
+			}
+		}
+		VotingSystem[] toret = new VotingSystem[numsys];
+		int tp = 0;
+		for ( int i = 0; i < votingSystemOptions.length; i++ ) {
+			if ( (on == null) || on[i] ) {
+				toret[tp] = votingSystemOptions[i].build( numc );
+				tp++;
+			}
+		}
+		return toret;
+	}
+    public void doGet(HttpServletRequest request,
+                      HttpServletResponse response)
+	throws IOException, ServletException
+	{
+		doPost( request, response );
+	}
+	public static final String defaultData = "1, 2, 3, 4\n1, 2, 3, 4\n1, 4, 2, 3\n1, 4, 3, 2\n1, 4, 3, 2\n4, 2, 1, 3\n4, 2, 1, 3\n4, 2, 3, 1\n4, 2, 3, 1\n4, 2, 3, 1";
+    public void doPost(HttpServletRequest request,
+					   HttpServletResponse response)
+	throws IOException, ServletException
+	{
+        response.setContentType("text/html");
+		
+        PrintWriter out = response.getWriter();
+        out.println("<html><head><title>Election Test</title></head><body bgcolor=\"white\">");
+		
+		String vrr = "-R", inputFormat = "-d", data;
+		int numc = 4;
+		int numSeats = 1;
+		boolean[] onOff = getOnOffForReq( request );
+		boolean debug = false;
+		{
+			String debugP = request.getParameter( "debug" );
+			debug = (debugP != null) && (debugP.equals( "true" ));
+		}
+		data = request.getParameter( "data" );
+		if ( data != null ) {
+		vrr = request.getParameter( "vrr" );
+		inputFormat = request.getParameter( "if" );
+		numc = Integer.parseInt( request.getParameter( "cand" ) );
+		{
+			String seatParm = request.getParameter( "seats" );
+			if ( seatParm != null ) {
+				numSeats = Integer.parseInt( seatParm );
+			}
+		}
+//		out.println("vrr="+vrr+"<br>");
+//		out.println("if="+inputFormat+"<br>");
+//		out.println("<pre>data="+data+"</pre>");
+		String[] de = data.split("\n");
+		int[] mult = new int[de.length];
+//		String[][] vparts = new String[de.length][];
+		Object[] na = new Object[de.length];
+		String[] cnames = new String[numc];
+		char unnamedName = 'A';
+		Hashtable namehash = new Hashtable();
+		int newNameIndex = 0;
+		int i;
+		NameVotingSystem[] nvs = null;
+		
+		if ( vrr.equals( "-name" ) ) {
+			nvs = new NameVotingSystem[] {
+				new NamedIRNR(),
+				new NamedVRR(),
+				new NamedRaw(),
+				new NamedApproval(),
+				new NamedIRV(),
+				new NamedHistogram( 10, 0.0f, 10.0f ),
+			};
+			for ( int vi = 0; vi < nvs.length; vi++ ) {
+				nvs[vi].init( null );
+			}
+		}
+		
+		/*****     READ DATA     *****/
+		out.println("<PRE>");
+		for ( i = 0; i < de.length; i++ ) {
+			int pp, sp;
+			String cd;
+			cd = de[i];
+			pp = 0;
+			mult[i] = 1;
+			if ( cd.charAt( 0 ) == '*' ) {
+				pp = 1;
+				sp = cd.indexOf( ' ', pp );
+				if ( sp <= 1 ) {
+					// no space or no number, bogus!
+					if ( sp == 1 ) {
+						cd = cd.substring( 2 );
+					}
+				} else {
+					cd = cd.substring( sp + 1 );
+					pp = 0;
+					try {
+						mult[i] = Integer.parseInt( de[i].substring( 1, sp ) );
+					} catch ( Exception e ) {
+						out.println( "Invalid line while parsing '*': " + de[i] );
+					}
+				}
+			}
+			if ( nvs != null ) {
+				NameVotingSystem.NameVote[] nv;
+				nv = NameVotingSystem.nameEqStrToVoteArray( cd, "\\s+", true );
+				for ( int repeat = 0; repeat < mult[i]; repeat++ ) {
+					for ( int vi = 0; vi < nvs.length; vi++ ) {
+						nvs[vi].voteRating( nv );
+					}
+				}
+				na[i] = cd;
+			} else if ( vrr.equals("-clist") ) {
+				try {
+					na[i] = vote.CListToNumberArray( cd, numc, namehash );
+				} catch ( Exception e ) {
+					out.println( e );
+					//e.printStackTrace( out );
+				}
+			} else {
+				//out.print("stna:");out.println(cd);
+				na[i] = vote.StringToNumberArray( cd, numc );
+			}
+			//out.println( na[i] );
+		}
+		if ( namehash.size() > 0 ) {
+			for ( Enumeration namee = namehash.keys(); namee.hasMoreElements(); ) {
+				String nei;
+				nei = (String)namee.nextElement();
+				Integer neir = (Integer)namehash.get( nei );
+				cnames[neir.intValue()] = nei;
+			}
+		}
+		out.println("</PRE>");
+
+		// print config and table of data
+		out.print("<P>");//<H1>Votes</H1>
+		if ( vrr.equals( "-R" ) ) {
+			out.print("Rankings, ");
+		} else if ( vrr.equals( "-r" ) ) {
+			out.print("Ratings, ");
+		} else if ( vrr.equals( "-clist" ) ) {
+			out.print("Candidate Name List, ");
+		}
+		if ( inputFormat.equals( "-d" ) ) {
+			out.print("Integers, ");
+		} else if ( inputFormat.equals( "-f" ) ) {
+			out.print("Float/Decimal numbers, ");
+		}
+		out.print( "Candidates: " );
+		out.print( numc );
+		out.print("</P>");
+		out.print("<TABLE BORDER=\"1\"><TR><TH valign=\"top\" rowspan=\"");
+		out.print( na.length + 1 );
+		out.print("\"><font size=\"+3\">Votes</fonts></TH><TH>Raw String</TH><TH>Multiplier</TH>");
+		for ( i = 0; i < cnames.length; i++ ) {
+			out.print("<TH>");
+			if ( cnames[i] == null ) {
+				cnames[i] = Character.toString( unnamedName );
+				unnamedName++;
+			}
+			out.print(cnames[i]);
+			out.print("</TH>");
+		}
+		out.println("</TR>");
+		for ( i = 0; i < na.length; i++ ) {
+			out.println("<TR><TD>");
+			out.println(de[i]);
+			out.println("</TD><TD>");
+			out.println(mult[i]);
+			out.println("</TD>");
+			if ( na[i] == null ) {
+			} else if ( na[i] instanceof String ) {
+				out.print( na[i] );
+			} else {
+				out.println(numArrayToHtmlTable(na[i]));
+			}
+			out.println("</TR>");
+		}
+		out.println("</TABLE>");
+
+		/*****      VOTE      *****/
+		if ( nvs != null ) {
+			for ( int vi = 0; vi < nvs.length; vi++ ) {
+				out.print( "<h2>" );
+				out.print( nvs[vi].name() );
+				out.print( "</h2>" );
+				out.println( nvs[vi].htmlSummary() );
+			}
+		} else {
+		VotingSystem[] vs = buildVSArray( numc, onOff );
+		Histogram h;
+		out.println("<PRE>");
+		if ( inputFormat.equals("-f") ) {
+			// find min/max for histogram's use
+			double hmin = 1e9;
+			double hmax = -1e9;
+			for ( i = 0; i < na.length; i++ ) {
+				double[] d = (double[])na[i];
+				for ( int di = 0; di < d.length; di++ ) {
+					if ( d[di] < hmin ) {
+						hmin = d[di];
+					}
+					if ( d[di] > hmax) {
+						hmax = d[di];
+					}
+				}
+			}
+			// count and histogram
+			h = new Histogram( numc, 21, hmin, hmax );
+			h.valueTitle = "Rating";
+			for ( i = 0; i < na.length; i++ ) {
+				double[] d = (double[])na[i];
+				for ( int mi = 0; mi < mult[i]; mi++ ) {
+					for ( int vi = 0; vi < vs.length; vi++ ) {
+						//out.println(numArrayToHtmlTable(na[i]));
+						vs[vi].voteRating( d );
+					}
+					h.addRating( d );
+				}
+			}
+		} else {
+			boolean rating;
+			if ( (rating = vrr.equals("-r")) ) {
+				int hmin = Integer.MAX_VALUE;
+				int hmax = Integer.MIN_VALUE;
+				for ( i = 0; i < na.length; i++ ) {
+					int[] d = (int[])na[i];
+					for ( int di = 0; di < d.length; di++ ) {
+						if ( d[di] < hmin ) {
+							hmin = d[di];
+						}
+						if ( d[di] > hmax) {
+							hmax = d[di];
+						}
+					}
+				}
+				h = new Histogram( numc, hmax-hmin+1, hmin, hmax );
+				h.valueTitle = "Rating";
+			} else {
+				// rankings, either table or clist
+				h = new Histogram( numc, numc, 1, numc );
+			}
+			for ( i = 0; i < na.length; i++ ) {
+				int[] d = (int[])na[i];
+				for ( int mi = 0; mi < mult[i]; mi++ ) {
+					for ( int vi = 0; vi < vs.length; vi++ ) {
+						//out.println(numArrayToHtmlTable(na[i]));
+						if ( rating ) {
+							vs[vi].voteRating( d );
+						} else {
+							vs[vi].voteRanking( d );
+						}
+					}
+					if ( rating ) {
+						h.addRating( d );
+					} else {
+						h.addRanking( d );
+					}
+				}
+			}
+		}
+		out.println("</PRE>");
+
+		// now, display proper output
+		// first, short summary table
+		vote.winnerSummaryHTMLTable( out, vs, cnames, debug, numSeats );
+		out.println("<HR><H1>Details</H1>");
+		// full display
+		vote.resultsHTMLDisplay( out, vs, cnames, debug, numSeats );
+		out.println("<H1>Vote Histogram</H1>");
+		out.println( h.toString( 4, cnames ) );
+		}
+		out.println("<HR>");
+		} else {
+			data = defaultData;
+		}
+		out.print("<form action=\"");
+		out.print(request.getRequestURI());
+		out.println("\" method=\"GET\"><select name=\"vrr\"><option value=\"-R\"");
+		if ( vrr.equals( "-R" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Rankings</option><option value=\"-r\"");
+		if ( vrr.equals( "-r" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Ratings</option><option value=\"-clist\"");
+		if ( vrr.equals( "-clist" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Candidate List</option><option value=\"-name\"");
+		if ( vrr.equals( "-name" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Named-Impl Candidate List</option></select><select name=\"if\"><option value=\"-d\"");
+		if ( inputFormat.equals( "-d" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Integers</option><option value=\"-f\"");
+		if ( inputFormat.equals( "-f" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Float/Decimal numbers</option><option value=\"-cname\"");
+		if ( inputFormat.equals( "-cname" ) ) {
+			out.print(" selected");
+		}
+		out.print(">Candidate Names</option></select>Choices:<input type=\"text\" name=\"cand\" size=\"3\" value=\"");
+		out.print(numc);
+		out.print("\"> Seats:<input type=\"text\" name=\"seats\" size=\"3\" value=\"");
+		out.print(numSeats);
+		out.println("\"><br><textarea name=\"data\" rows=\"20\" cols=\"40\">");
+		out.println(data);
+		out.println("</textarea><br>");
+		out.println("<input type=\"submit\"><br>");
+		printOnOffFormPart( out, onOff );
+		out.print("---<input type=\"checkbox\" name=\"systems\" value=\"all\">All Systems<br><input type=\"checkbox\" name=\"debug\" value=\"true\"");
+		if ( debug ) {
+			out.print(" checked");
+		}
+		out.println(">debug<br><input type=\"submit\">");
+		out.println("</form>");
+		out.println("</body></html>");
+	}
+}

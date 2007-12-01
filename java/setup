@@ -1,0 +1,31 @@
+#!/bin/sh
+
+if [ ! -d dependlibs ]; then
+  mkdir dependlibs
+fi
+
+cd dependlibs
+
+if [ ! -e servlet-api.jar ]; then
+  if [ -L servlet-api.jar ]; then
+    rm -f servlet-api.jar
+  fi
+  for i in /home/tomcat/lib /home/tomcat/current/lib /Library/Tomcat/lib \
+      /Library/Tomcat/common/lib; do
+    if [ -e "$i/servlet-api.jar" ]; then
+	  echo "found $i/servlet-api.jar"
+      ln -s "$i/servlet-api.jar" .
+      break
+    fi
+  done
+fi
+
+if [ ! -e servlet-api.jar ]; then
+  echo <<EOF
+could not set up dependlibs/servlet-api.jar
+org.bolson.vote.ElectionTestServlet will not be built.
+Please make it a symlink or a copy of the version your servel will use.
+EOF
+else
+cp ../org/bolson/vote/ElectionTestServlet.java.in ../org/bolson/vote/ElectionTestServlet.java
+fi
