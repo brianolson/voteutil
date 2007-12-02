@@ -4,6 +4,7 @@ package org.bolson.vote;
 A voting system that can add up results from partial counts of the total vote.
  For example, precincts send their partial sum to a central tabulating location which produces the final result.
  SummableVotingSystem implementations should almost certainly also implement Serializable.
+ @author Brian Olson
  */
 public interface SummableVotingSystem {
 	/** Vote a partial tally into this voting system.

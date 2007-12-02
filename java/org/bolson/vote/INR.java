@@ -4,6 +4,7 @@ import java.util.Vector;
 /**
 * Iterated Normalized Ratings
  I don't know how useful this is. Maybe it's always the same as straight rating summation. dunno.
+ @author Brian Olson
  */
 public class INR extends RatedVotingSystem {
 	Vector votes = new Vector();

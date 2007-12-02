@@ -6,7 +6,7 @@ UNAME=$(shell uname)
 
 include make/${UNAME}
 
-CFLAGS+=-g -Wall -ansi -pedantic -std=c99
+CFLAGS+=-g -Wall -ansi -pedantic -std=c99 -MMD
 #CFLAGS+=-O2 -Wall
 LDFLAGS+=-g
 

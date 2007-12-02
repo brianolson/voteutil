@@ -1,6 +1,7 @@
 package org.bolson.vote;
 /**
  * Empty code for copying before making a new VotingSystem.
+ @author Somebody
  */
 
 public class EmptyVotingSystem extends VotingSystem {

@@ -2,6 +2,7 @@ package org.bolson.vote;
 
 /**
 	Wrapper that makes all calls synchronized on the subordinate VotingSystem object.
+ @author Brian Olson
 */
 public class SynchronizedVSWrapper extends VotingSystem {
 	VotingSystem wrapped;

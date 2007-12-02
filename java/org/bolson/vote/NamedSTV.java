@@ -11,15 +11,32 @@ Need deweight per voter per choice.
 
 Truncated ballots should, if possible, fully deweight on any choices that do get elected. Let voters who cast fuller ballots transfer more to lower ranked choices.
 
-@href http://stv.sourceforge.net/Details.html
-@href http://en.wikipedia.org/wiki/Single_Transferable_Vote
+@see <a href="http://stv.sourceforge.net/Details.html">STV in python</a>
+@see <a href="http://en.wikipedia.org/wiki/Single_Transferable_Vote">STV on Wikipedia</a>
+ @author Brian Olson
 */
-public class NamedSTV extends NameVotingSystem {
-	int seats = 1;
-	HashMap they = new HashMap();
-	NameVote[] winners = null;
-	ArrayList votes = new ArrayList();
-	
+public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMethod {
+	/** Number of choices who will count as elected. */
+	protected int seats = 1;
+	/** HashMap<String,TallyState> map from choice names to the TallyState about them. */
+	protected HashMap they = new HashMap();
+	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
+	protected NameVote[] winners = null;
+	/** ArrayList<WeightedVote> record of all votes passed in. */
+	protected ArrayList votes = new ArrayList();
+
+	/**
+	 How many winners will we target when running getWinners() ?
+	 @param seats number of openings to fill from this set of choices and votes.
+	 @see #getWinners()
+	 */
+	public void setNumSeats(int seats) {
+		this.seats = seats;
+	}
+
+	/**
+	 Wrapper for a NameVote[] vote so that it can be deweighted during intermediate steps of STV.
+	 */
 	protected static class WeightedVote {
 		NameVote[] vote;
 		double weight = 1.0;
@@ -89,6 +106,9 @@ public class NamedSTV extends NameVotingSystem {
 	public NamedSTV() {
 	}
 
+	/**
+	 Holds the internal count state for one choice.
+	 */
 	protected static class TallyState {
 		public String name;
 		public double tally = 0.0;
@@ -104,6 +124,14 @@ public class NamedSTV extends NameVotingSystem {
 		}
 	}
 	
+	/**
+	 Modify this STV method.
+	 <p>"seats" <i>n</i> Sets the number of choices to elect.<br />
+	 "droop" sets droop quota(default)<br />
+	 "hare" sets hare quota<br />
+	 "imperiali" sets imperiali quota</p>
+	 @see #quota(int,double,int)
+	 */
 	public int init( String[] argv ) {
 		if ( argv != null ) {
 			for ( int i = 0; i < argv.length && argv[i] != null; i++ ) {
@@ -127,7 +155,7 @@ public class NamedSTV extends NameVotingSystem {
 		return super.init( argv );
 	}
 	
-	TallyState get( String name ) {
+	protected TallyState get( String name ) {
 		TallyState v = (TallyState)they.get( name );
 		if ( v == null ) {
 			v = new TallyState( name );
@@ -135,6 +163,9 @@ public class NamedSTV extends NameVotingSystem {
 		}
 		return v;
 	}
+	/**
+	 Record vote. Keeps a reference to passed in vote array.
+	 */
 	public void voteRating( NameVote[] vote ) {
 		if ( vote == null || vote.length == 0 ) {
 			return;
@@ -146,6 +177,10 @@ public class NamedSTV extends NameVotingSystem {
 		}
 		votes.add( new WeightedVote( vote ) );
 	}
+	/**
+	 Allows use of java.util.Arrays.sort(Object[],java.util.Comparator) on arrays of TallyState.
+	 (Maybe I should just make TallyState Comparable?)
+	 */
 	protected static class TallyStateComparator implements java.util.Comparator {
 		public int compare( Object ai, Object bi ) {
 			TallyState a = (TallyState)ai;
@@ -170,6 +205,10 @@ public class NamedSTV extends NameVotingSystem {
 	}
 	// no data, just function, only ever need one of these.
 	protected static TallyStateComparator theTSC = new TallyStateComparator();
+	/**
+	 Run STV over accumulated votes and return results.
+	 @return total ranking of all choices. [0..seats-1] are elected.
+	 */
 	public NameVote[] getWinners() {
 		if ( winners != null ) {
 			return winners;
@@ -312,12 +351,18 @@ public class NamedSTV extends NameVotingSystem {
 	}
 	
 	
-	static final int DROOP = 1;
-	static final int HARE = 2;
-	static final int IMPERIALI = 3;
+	public static final int DROOP = 1;
+	public static final int HARE = 2;
+	public static final int IMPERIALI = 3;
 	
-	int quotaStyle = DROOP;
+	protected int quotaStyle = DROOP;
 	
+	/**
+	 Three methods of calculating STV election threshold or 'quota'.
+	 Droop (1, default): (votes / (seats+1.0)) + 1.0
+	 Hare (2): votes / seats
+	 Imperiali (3): votes / (seats + 2.0)
+	 */
 	public static double quota( int style, double votes, int seats ) {
 		switch ( style ) {
 			case HARE:
@@ -330,7 +375,7 @@ public class NamedSTV extends NameVotingSystem {
 		}
 	}
 	
-	double quota( double votes ) {
+	public double quota( double votes ) {
 		return quota( quotaStyle, votes, seats );
 	}
 	

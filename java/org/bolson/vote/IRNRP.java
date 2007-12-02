@@ -5,6 +5,7 @@ import java.io.PrintWriter;
 /**
  * Instant Runoff Normalized Ratings Proportional
  * @see org.bolson.vote.IRNR
+ @author Brian Olson
  */
 
 public class IRNRP extends RatedVotingSystem {

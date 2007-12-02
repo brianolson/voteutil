@@ -3,7 +3,9 @@ import java.lang.reflect.Constructor;
 import java.util.regex.Pattern;
 
 /** VoteSouce with Options
-Store configuration for a VoteSource ready to produce one when numc is known. */
+Store configuration for a VoteSource ready to produce one when numc is known.
+ @author Brian Olson
+ */
 public class VotingSystemFactory {
 	public String name;
 	public Constructor f;

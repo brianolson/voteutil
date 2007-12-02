@@ -6,6 +6,7 @@ import java.util.Vector;
  * There's wide debate about the flaws and virtues of this system.
  @see Condorcet
  @see IRNR
+ @author Brian Olson
  */
 public class IRV extends RankedVotingSystem {
 	public IRV( int numCandidates ) {

@@ -4,13 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Iterator;
 
+/**
+ @author Brian Olson
+*/
 public class NamedApproval extends NameVotingSystem {
-	/* public int init( String[] argv ) {
-	} */
+	/** HashMap<String,int[]> maps names to int[1] counts. */
 	HashMap they = new HashMap();
-
+	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
 	NameVote[] winners = null;
 	
+	/** rating > 0.0 counted as approval. */
 	public void voteRating( NameVote[] vote ) {
 		winners = null;
 		for ( int i = 0; i < vote.length; i++ ) {

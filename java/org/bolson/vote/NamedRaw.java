@@ -4,6 +4,10 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.Iterator;
 
+/**
+ Raw sum of ratings, highest wins.
+ @author Brian Olson
+ */
 public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, java.io.Serializable {
 	/* public int init( String[] argv ) {
 	} */

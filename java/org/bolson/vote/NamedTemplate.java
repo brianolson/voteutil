@@ -1,5 +1,9 @@
 package org.bolson.vote;
 
+/**
+ Empty source for you to copy for making a new election method implementation.
+ @author Somebody
+ */
 public class NamedTemplate extends NameVotingSystem {
 	/* public int init( String[] argv ) {
 	} */

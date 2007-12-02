@@ -3,6 +3,7 @@ import java.util.Vector;
 /**
  * Single Transferrable Vote, IRV for multi-seat elections.
  * @see <a href="http://en.wikipedia.org/wiki/Single_transferable_vote">Wikipedia: Single Transferrable Vote</a>
+ @author Brian Olson
  */
 
 public class STV extends RankedVotingSystem {

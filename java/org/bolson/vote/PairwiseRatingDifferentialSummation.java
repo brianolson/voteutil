@@ -11,6 +11,7 @@ package org.bolson.vote;
 	If choice B is rated higher than choice A, add (B's rating minus A's rating) to the talley entry (B,A)
  After all votes have been tallied, if (A,B) is greater than (B,A) then A has 'defeated' B.
  Examine all such relations and count up the defeats. The choice or choices with the fewest defeats win.
+ @author Brian Olson
  */
 public class PairwiseRatingDifferentialSummation extends RatedVotingSystem {
     protected double talley[];

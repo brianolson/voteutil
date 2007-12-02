@@ -1,7 +1,8 @@
 package org.bolson.vote;
 import java.util.Vector;
 /**
- * Empty code for copying before making a new VotingSystem.
+ * experimental election method, probably souldn't be used.
+ @author Brian Olson
  */
 
 public class GradualApproval extends RatedVotingSystem {

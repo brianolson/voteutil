@@ -3,6 +3,9 @@ import java.io.*;
 import java.util.Enumeration;
 /**
  * Command line app for processing votes.
+ @author Brian Olson
+ @deprecated {@link org.bolson.vote.countvotes}
+ @see org.bolson.vote.countvotes
  */
 public class vote {
     boolean rating = true;

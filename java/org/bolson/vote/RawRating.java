@@ -3,6 +3,7 @@ package org.bolson.vote;
 /**
  * Raw summation of voter's ratings.
  * External limits must be established.
+ @author Brian Olson
  */
 public class RawRating extends RatedVotingSystem {
 	public RawRating( int numCandidates ) {

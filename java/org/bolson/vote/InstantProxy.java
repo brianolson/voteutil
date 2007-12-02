@@ -8,6 +8,7 @@ import java.io.IOException;
 
 /**
 A proxy is an integer triplet: ( voter uid, proxy uid, priority )
+ @author Brian Olson
  */
 public class InstantProxy {
 	public static int proxyIndex( Card cur, int[] uids ) {

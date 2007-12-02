@@ -4,19 +4,44 @@ import java.util.HashMap;
 
 /**
 Virtual Round Robin election (Condorcet).
+ @see <a href="http://en.wikipedia.org/wiki/Condorcet's_Method">Condorcet's Method (Wikipedia)</a>
+ @author Brian Olson
  */
 public class NamedVRR extends NameVotingSystem {
-	static final String dummyname = "DUMMY_CHOICE_NAME";
-	HashMap counts = new HashMap();
-	NameVote[] winners = null;
-	int defeatCount[] = null;
+	/** "DUMMY_CHOICE_NAME" is standin for choices not voted on yet so that write-ins count correctly. */
+	protected static final String dummyname = "DUMMY_CHOICE_NAME";
+	/** HashMap<String,Count> maps choice names to Count.
+	 @see Count */
+	protected HashMap counts = new HashMap();
+	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
+	protected NameVote[] winners = null;
+	/** intermediate count calculated during getWinners */
+	protected int defeatCount[] = null;
 
+	/**
+	 Checks arguments to modify this VRR.
+	 "winningVotes" and "margins" modify cycle resolution.
+	 @see #winningVotes
+	 @see #margins
+	 */
 	public int init( String argv[] ) {
 		if ( argv == null ) {
 			return 0;
 		}
-		super.init( argv );
-		return 0;
+		for ( int i = 0; i < argv.length; ++i ) {
+			if ( argv[i] == null ) {
+				// skip
+			} else if ( argv[i].equals("winningVotes") ) {
+				winningVotes = true;
+				margins = false;
+				argv[i] = null;
+			} else if ( argv[i].equals("margins") ) {
+				winningVotes = false;
+				margins = true;
+				argv[i] = null;
+			}
+		}
+		return super.init( argv );
 	}
 	
 	public NamedVRR() {
@@ -24,9 +49,9 @@ public class NamedVRR extends NameVotingSystem {
 	}
 	
 	/**
-		counts the names voted.
+	 Record a vote.
 	 Keeps only a summation of the votes, not individual vote data.
-		*/
+	*/
 	public void voteRating( NameVote[] vote ) {
 		Count[] cs = new Count[vote.length];
 		// minimize hash table lookup, and force fork if any new names. need to fork before modifying any data.
@@ -134,7 +159,9 @@ public class NamedVRR extends NameVotingSystem {
 		return getWinnersCSSD( they, tally );
 	}
 	
-	/** */
+	/** Extract counts in order of name index from counts mapping. 
+	 @see #counts
+	 */
 	protected Count[] getIndexedCounts( boolean ldebug ) {
 		int numi = counts.size();
 		if ( ! ldebug ) {
@@ -245,6 +272,10 @@ public class NamedVRR extends NameVotingSystem {
 		return "Virtual Round Robin";
 	}
 
+	/**
+	 Holds a portion of the VRR table.
+	 Holds beats and defeats for this.name vs all others voted on before it.
+	 */
 	protected static class Count {
 		String name;
 		int index;
@@ -303,9 +334,18 @@ D z z z 0
 		return tally;
 	}
 	
-	boolean winningVotes = true;
-	boolean margins = false;
+	/** Break cycles based on which defeat A>B in the cycle has the fewest votes for A>B.
+	 One of winningVotes and margins should be true.
+	 @see #margins
+	 */
+	public boolean winningVotes = true;
+	/** Break cycles based on which defeat A>B in the cycle has smallest difference between votes for A>B and votes for B>A.
+	 One of winningVotes and margins should be true.
+	 @see #winningVotes
+	 */
+	public boolean margins = false;
 
+	/** Cycle resolution. */
 	public NameVote[] getWinnersCSSD( Count[] they, int[] tally ) {
 		// cloneproof schwartz set dropping
 		// which ought to be the same as above "beatpath" method, but a new implementation

@@ -6,13 +6,15 @@ import java.util.ArrayList;
 
 /**
 	The normal vote interface in this case accumulates the ratings into histograms per name.
+ @author Brian Olson
  */
 public class NamedHistogram extends NameVotingSystem {
-	float min, max, step;
-	int buckets;
-	HashMap they = new HashMap();
-	int maxbucket = 0;
+	protected float min, max, step;
+	protected int buckets;
+	protected HashMap they = new HashMap();
+	protected int maxbucket = 0;
 	public boolean intmode = false;
+	/** lowfirst indicates 1st,2nd,3rd,... rankings input */
 	public boolean lowfirst = false;
 	/** bucketscale used at display time on bucket labels */
 	public float bucketscale = 1.0f;
@@ -29,7 +31,7 @@ public class NamedHistogram extends NameVotingSystem {
 	double minRecorded = Double.MAX_VALUE;
 	double maxRecorded = Double.MAX_VALUE * -1.0;
 	double sum;
-	int votes;
+	protected int votes;
 
 	protected class Choice implements Comparable {
 		public int[] counts;

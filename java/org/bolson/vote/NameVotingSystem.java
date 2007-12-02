@@ -7,14 +7,15 @@ import java.util.Iterator;
 
 /**
 Taking a bunch of (name,rating) pairs this type of voting system allows for write-ins and perhaps a somewhat simpler usage.
+ @author Brian Olson
 */
 public abstract class NameVotingSystem {
 	/** If true, save or spew extra info while running.
 		Defaults to false, can be enabled by a "debug" option to init. */
-	boolean debug = false;
+	protected boolean debug = false;
 	
 	/** If debug, then log stuff here. */
-	StringBuffer debugLog = null;
+	protected StringBuffer debugLog = null;
 	
 	/** If debug, return debugLog.toString(), else null. */
 	public String getDebug() {
@@ -28,8 +29,8 @@ public abstract class NameVotingSystem {
 	/**
 	Set options for voting system.
 	Default implementation sets debug to true if it sees "debug".
-	Skip pass null entries, which may have been yanked by a subclass.
-	Unless there's an error, last line should be "return super.init( argv );"
+	Skip past null entries, which may have been yanked by a subclass.
+	Unless there's an error, subclass's last line should be "return super.init( argv );"
 	Multi-seat capable implementations should accept an option pair  ("seats", &lt;int&gt;) to set the number of seats.
 	@param argv array of options, just like main()
 	@return 0 on success
@@ -80,7 +81,7 @@ public abstract class NameVotingSystem {
 
 	/**
 	Vote a set of ratings.
-	Keys of the map should be strings (choice names) and values should be of a numeric type.
+	Keys of the map should be strings (choice names) and values should be a Number or a Float parseable string.
 	The default implementation unpacks the map into a NameVote array and calls voteRating( NameVote[] )
 	@see #voteRating(NameVote[])
 	@param vote a set of (name,rating) pairs
@@ -96,7 +97,17 @@ public abstract class NameVotingSystem {
 		for ( int i = 0; i < es.length; i++ ) {
 			Map.Entry en;
 			en = (Map.Entry)es[i];
-			nv[i] = new NameVote( (String)en.getKey(), ((Number)en.getValue()).floatValue() );
+			String name = (String)en.getKey();
+			float rating;
+			Object ratingO = en.getValue();
+			if ( ratingO instanceof Number ) {
+				rating = ((Number)ratingO).floatValue();
+			} else if ( ratingO instanceof String ) {
+				rating = Float.parseFloat((String)ratingO);
+			} else {
+				throw new ClassCastException("don't know how to handle rating of type: " + ratingO.getClass().getName());
+			}
+			nv[i] = new NameVote( name, rating );
 		}
 		es = null;
 		s = null;
@@ -106,14 +117,18 @@ public abstract class NameVotingSystem {
 	/**
 	Vote a set of ratings.
 	Keys of the map should be strings (choice names) and values should be of a numeric type.
-	This is slightly faster than the version that takes a map because no conversion is done.
+	May keep a reference to the passed in vote (don't modify it after passing it in).
+	This is faster than the version that takes a map because no conversion is done.
 	@see #voteRating(Map)
 	@param vote a set of (name,rating) pairs
 	*/
 	public abstract void voteRating( NameVote[] vote );
 	
 	/**
-	@return A sorted array of (name,rating) pairs. Ties can be determined by rating.
+	@return A sorted array of (name,rating) pairs.
+	 This is the total ordering of all choices, not just the elected winner(s).
+	 'Total ordering' may be imprecise below top few choices.
+	 For example, VRR/Cordorcet need not run tie-breaker methods on groups of tied choices that don't tie with the elected choice.
 	*/
 	public abstract NameVote[] getWinners();
 
@@ -577,14 +592,24 @@ public abstract class NameVotingSystem {
 		}
 	}
 	
+	/* HashMap<String,Class> mapping short election method implementation names to their Class objects. */
 	static private final HashMap implRegistry = new HashMap();
 	
+	/**
+	 Register an implementatino of NameVotingSystem so that it can be found from getImplForName and getImplNames.
+	 Use a short name with no spaces suitable for being a command-line argument.
+	 @param name short name for this implementation
+	 @param c MyVotingSystem.class
+	 */
 	protected static void registerImpl( String name, Class c ) {
 		implRegistry.put( name, c );
 	}
 	public static Class getIpmlForName( String name ) {
 		return (Class)implRegistry.get( name );
 	}
+	/**
+	 @return Iterator of String short names for implemented and registered election methods.
+	 */
 	public static Iterator getImplNames() {
 		return implRegistry.keySet().iterator();
 	}

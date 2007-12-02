@@ -2,6 +2,10 @@ package org.bolson.vote;
 
 /**
 	Points-based-on-rank election method.
+ Weak, do not use.
+ @see Condorcet
+ @see IRNR
+ @author Brian Olson
 */
 public class BordaVotingSystem extends RankedVotingSystem {
 	protected int talley[];

@@ -7,9 +7,11 @@ import java.util.Vector;
 
 /**
  * command line utility for counting votes.
+ @author Brian Olson
  */
 public class countvotes {
 	// TODO WRITEME comma-separated-value input mode
+	// TODO WRITEME interpret number values as 1,2,3... rankings
 	public static final String[] usage = {
 		"countvotes [--urlencoded|--whitespace|--votespec][--histMax n][--histMin n][-m method.class.name]",
 		"\t[-i votedata][--dump][--disable-all][--enable-all]",
@@ -225,14 +227,7 @@ public class countvotes {
 					return;
 				}
 				if ( redumpVotes ) {
-					for ( int i = 0; i < nv.length; i++ ) {
-						System.out.print( nv[i].name );
-						System.out.print( '=' );
-						System.out.print( nv[i].rating );
-						if ( i + 1 < nv.length ) {
-							System.out.print( '&' );
-						}
-					}
+					System.out.print( NameVotingSystem.urlEncode(nv) );
 					System.out.println();
 				}
 				for ( int vi = 0; vi < vs.length; vi++ ) {

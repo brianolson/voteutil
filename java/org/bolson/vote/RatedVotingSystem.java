@@ -2,6 +2,7 @@ package org.bolson.vote;
 /**
  * Interface for any voting system that inputs a voter's ratings of the choices.
  * Supplies implementations of voteRanking which call voteRating
+ @author Brian Olson
  */
 
 public abstract class RatedVotingSystem extends VotingSystem {

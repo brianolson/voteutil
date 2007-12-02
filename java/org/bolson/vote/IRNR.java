@@ -3,6 +3,7 @@ import java.util.Vector;
 
 /**
  * Instant Runoff Normalized Ratings
+ @author Brian Olson
  */
 public class IRNR extends RatedVotingSystem {
 	Vector votes = new Vector();

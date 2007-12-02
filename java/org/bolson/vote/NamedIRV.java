@@ -2,16 +2,31 @@ package org.bolson.vote;
 import java.util.Vector;
 import java.util.HashMap;
 
+/**
+ Instant Runoff Voting.
+ Do not use, IRV is bad, VRR is better, IRNR is my favorite.
+ 
+ @see NamedVRR
+ @see NamedIRNR
+ @author Brian Olson
+ */
 public class NamedIRV extends NameVotingSystem {
-	HashMap they = new HashMap();
-	NameVote[] winners = null;
-	Vector votes = new Vector();
-	Vector deadVotes = new Vector();
-	Vector tiedVotes = new Vector();
+	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
+	protected HashMap they = new HashMap();
+	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
+	protected NameVote[] winners = null;
+	/** Holds each passed in vote.
+	 This would be Vector<NameVote[]> if I broke Java 1.4 compatibility. */
+	protected Vector votes = new Vector();
+	protected Vector deadVotes = new Vector();
+	protected Vector tiedVotes = new Vector();
 
 	public NamedIRV() {
 	}
 
+	/**
+	 Holds the internal count state for one choice.
+	 */
 	protected static class TallyState {
 		public String name;
 		public double tally = 0.0;
@@ -22,9 +37,7 @@ public class NamedIRV extends NameVotingSystem {
 		}
 	}
 	
-	/*public int init( String[] argv ) {}*/
-	
-	TallyState get( String name ) {
+	protected TallyState get( String name ) {
 		TallyState v = (TallyState)they.get( name );
 		if ( v == null ) {
 			v = new TallyState( name );
@@ -43,7 +56,7 @@ public class NamedIRV extends NameVotingSystem {
 		}
 		votes.add( vote );
 	}
-	void bucketize( NameVote[] vote ) {
+	protected void bucketize( NameVote[] vote ) {
 		float max = Float.NaN;
 		int tied = 1;
 		int i = 0;
@@ -181,6 +194,7 @@ public class NamedIRV extends NameVotingSystem {
 		sb.append( "</table>" );
 		return sb;
 	}
+	/** @return "Instant Runoff Voting" */
 	public String name() {
 		return "Instant Runoff Voting";
 	}

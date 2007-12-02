@@ -4,6 +4,7 @@ import java.util.LinkedList;
 /**
  * Implements the Ranked Pairs method of ranked voting tabulation.
  * It is much like Condorcet.
+ @author Brian Olson
  */
 public class RankedPairs extends Condorcet {
 	public RankedPairs( int nc ) {

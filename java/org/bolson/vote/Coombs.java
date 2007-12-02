@@ -4,6 +4,11 @@ import java.util.Vector;
 /**
  * Coombs election method.
  * May be mathematically flawed, and is as computationally inconvenient as IRV.
+ * Do not use.
+ 
+ @see Condorcet
+ @see IRNR
+ @author Brian Olson
  */
 public class Coombs extends RankedVotingSystem {
 	

@@ -3,6 +3,7 @@ package org.bolson.vote;
 /**
  * Election method based on summation of Yes/No "good enough" votes.
  * This class contains utility code for thresholding data at various points.
+ @author Brian Olson
  */
 public class Approval extends VotingSystem {
 	public Approval( int numCandidates ) {

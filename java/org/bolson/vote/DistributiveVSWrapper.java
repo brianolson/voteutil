@@ -2,6 +2,7 @@ package org.bolson.vote;
 
 /**
 Utility class for running several VotingSystem instances at once.
+ @author Brian Olson
  */
 public class DistributiveVSWrapper extends VotingSystem {
 	/**

@@ -2,6 +2,7 @@ package org.bolson.vote;
 
 /**
  Collects votes and presents HTML histograms.
+ @author Brian Olson
  */
 public class Histogram extends VotingSystem {
 	//    boolean isRanking = true;

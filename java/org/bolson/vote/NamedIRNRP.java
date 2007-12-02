@@ -4,16 +4,24 @@ import java.util.Vector;
 import java.util.HashMap;
 
 /**
-Instant Runoff Normalized Ratings
+Instant Runoff Normalized Ratings with Proportional-Representation extension.
+ @author Brian Olson
 */
-public class NamedIRNRP extends NamedIRNR {
-	Vector votes = new Vector();
-	HashMap names = new HashMap();
-	NameVote[] winners = null;
-	int seats = 1;
+public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
+	protected int seats = 1;
 
-	boolean rmsnorm = true;
-	boolean deweightPerCurrent = true;
+	/**
+	 How many winners will we target when running getWinners() ?
+	 @param seats number of openings to fill from this set of choices and votes.
+	 @see #getWinners()
+	 */
+	public void setNumSeats(int seats) {
+		this.seats = seats;
+	}
+
+	/** deweight per contribution to currently active choices.
+	 if false, deweight per contribution to all the choices. */
+	protected boolean deweightPerCurrent = true;
 
 	public int init( String[] argv ) {
 		if ( argv != null ) {

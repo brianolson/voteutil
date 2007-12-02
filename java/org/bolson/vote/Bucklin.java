@@ -4,6 +4,9 @@ import java.util.Vector;
 /**
  * Bucklin election method.
  * May be mathematically flawed, and is as computationally inconvenient as IRV.
+ @see Condorcet
+ @see IRNR
+ @author Brian Olson
  */
 public class Bucklin extends RankedVotingSystem {
 	

@@ -2,6 +2,7 @@ package org.bolson.vote;
 /**
  * Implements the Condorcet method of ranked voting tabulation
  * and beatpath tie resolution based on Ratings, as suggested by James Green-Armytage
+ @author Brian Olson
  */
 public class CondorcetRTB extends Condorcet {
     protected int talley[];

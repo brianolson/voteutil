@@ -4,13 +4,27 @@ import java.util.Vector;
 import java.util.HashMap;
 
 /**
-Instant Runoff Normalized Ratings
+Instant Runoff Normalized Ratings.
+ <p>Given votes of ratings for choices, normalize so that each voter has a vote of equal magnitude.
+ Sum up the normalized ratings.<br />
+ If there are more than 2 choices, disqualify the one with the lowest sum.<br />
+ Re-normalize the votes as if the disqualified candidates aren't there so that each voter still has a full magnitude vote.<br />
+ Repeat sum, disqualify, re-normalize as needed.</p>
+ @see <a href="http://bolson.org/voting/methods.html#IRNR">IRNR (bolson.org)</a>
+ @author Brian Olson
 */
 public class NamedIRNR extends NameVotingSystem {
-	Vector votes = new Vector();
-	HashMap names = new HashMap();
-	NameVote[] winners = null;
+	/** Holds each passed in vote.
+	 This would be Vector<NameVote[]> if I broke Java 1.4 compatibility. */
+	protected Vector votes = new Vector();
+	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
+	protected HashMap names = new HashMap();
+	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
+	protected NameVote[] winners = null;
 
+	/** Record vote.
+	 Keeps a refence to passed in array.
+	 */
 	public void voteRating( NameVote[] vote ) {
 		if ( vote == null ) {
 			return;
@@ -27,6 +41,10 @@ public class NamedIRNR extends NameVotingSystem {
 		}
 		winners = null;
 	}
+	
+	/**
+	 Holds the internal count state for one choice.
+	 */
 	protected static class TallyState {
 		public String name;
 		public double tally;
@@ -36,12 +54,13 @@ public class NamedIRNR extends NameVotingSystem {
 		TallyState( String nin ) {
 			name = nin;
 		}
-		/*public void clear() {
-			tally = 0.0;
-			active = true;
-		}*/
 	}
-	boolean rmsnorm = true;
+	
+	/**
+	 Normalize to vector magnitude == 1.
+	 If false then sum of absolute values == 1.
+	 */
+	protected boolean rmsnorm = true;
 	public NameVote[] getWinners() {
 		return getWinners(null);
 	}
@@ -165,12 +184,13 @@ public class NamedIRNR extends NameVotingSystem {
 				loser.active = false;
 				winners[numActive] = new NameVote( loser.name, (float)loser.tally );
 			}
-		}
+		} // while numActive > 1
 		for ( i = 0; i < numWinners; i++ ) {
 			winners[i] = new NameVote( namea[choiceIndecies[i]].name, (float)namea[choiceIndecies[i]].tally );
 		}
 		return winners;
 	}
+	/** Used in htmlSummary. Default "0.00" */
 	public static java.text.DecimalFormat ratingFormat = new java.text.DecimalFormat( "0.00" );
 	public StringBuffer htmlSummary( StringBuffer sb ) {
 		if ( winners == null ) {
@@ -192,6 +212,7 @@ public class NamedIRNR extends NameVotingSystem {
 	    getWinners( sb );
 	    return sb;
 	}
+	/** "Instant Runoff Normalized Ratings" */
 	public String name() {
 		return "Instant Runoff Normalized Ratings";
 	}

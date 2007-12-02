@@ -4,6 +4,7 @@ package org.bolson.vote;
  * and beatpath tie resolution. See <a href="http://www.electionmethods.org/">electionmethods.org</a>.
  * Several variations are contained in this based on options submitted to init().
  * @see CondorcetRTB
+ @author Brian Olson
  */
 public class Condorcet extends RatedVotingSystem {
 	protected int talley[];

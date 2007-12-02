@@ -5,6 +5,7 @@ package org.bolson.vote;
  * RatedVotingSystem.
  * @see RankedVotingSystem
  * @see RatedVotingSystem
+ @author Brian Olson
  */
 
 public abstract class VotingSystem implements java.io.Serializable {
