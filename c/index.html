@@ -5,54 +5,67 @@ p.f { font-family: "Courier", monospace; }
 </style></head><body bgcolor="#ffffff" text="#000000">
 <h1>Election Methods in C</h1>
 <h2>Command Line Utility</h2>
-<p><a href="countvotes.c">countvotes</a> takes url formatted votes, one per line, on the standard input and runs Histogram, VRR, IRNR, IRV, Raw Rating Summation and STV on them, producing HTML results on the standard output.</p>
+<p><a href="countvotes.c">countvotes</a> takes <a href="#format">url formatted</a> votes, one per line, on the standard input and runs Histogram, VRR, IRNR, IRV, Raw Rating Summation and STV on them, producing HTML results on the standard output.</p>
 
 <h3>usage:</h3>
 <pre>countvotes [--dump][--debug][--preindexed]
 	[--full-html|--no-full-html|--no-html-head]
 	[--disable-all][--enable-all]
+	[--rankings][--seats n]
 	[--enable|--disable hist|irnr|vrr|raw|irv|stv]
-	input-file-name|
+	[-o filename|--out filename]
+	[input-file-name|-i filename]
 	--pg "PostgreSQL connect string" --query "SQL;"</pre>
  
 <dl>
-<dt>--dump
-<dd>Repeat votes to standard out. Text may not be identical as they are reconstructed from an internal representation.
+<dt>--dump</dt>
+<dd>Repeat votes to standard out. Text may not be identical as they are reconstructed from an internal representation.</dd>
 
-<dt>--debug
-<dd>Print some additional information as it runs
+<dt>--debug</dt>
+<dd>Print some additional information as it runs</dd>
 
-<dt>--preindexed
-<dd>All choice names must be integers that can be parsed with strtol()
+<dt>--preindexed</dt>
+<dd>All choice names must be integers that can be parsed with strtol()</dd>
 
-<dt>--full-html
-<dd>Emit a generic &lt;html&gt;&lt;head&gt;&lt;title&gt;&lt;/head&gt;&lt;body&gt; sequences, and close with &lt;/body&gt;&lt;/html&gt;<br><i>this is the default</i>
+<dt>--full-html</dt>
+<dd>Emit a generic &lt;html&gt;&lt;head&gt;&lt;title&gt;&lt;/head&gt;&lt;body&gt; sequences, and close with &lt;/body&gt;&lt;/html&gt;<br><i>this is the default</i></dd>
 
-<dt>--no-full-html
-<dt>--no-html-head
-<dd>Emit only the vote result HTML which should be included in a full HTML document. These options are synonyms.
+<dt>--no-full-html</dt>
+<dt>--no-html-head</dt>
+<dd>Emit only the vote result HTML which should be included in a full HTML document. These options are synonyms.</dd>
 
-<dt>--disable-all
-<dd>Disable all voting methods. You should probably follow this with --enable
+<dt>--disable-all</dt>
+<dd>Disable all voting methods. You should probably follow this with --enable</dd>
 
-<dt>--enable-all
-<dd>Enable all voting methods.
+<dt>--enable-all</dt>
+<dd>Enable all voting methods.</dd>
 
-<dt>--enable <i>method</i>
-<dd>Enable a voting method. Can be used multiple times.
+<dt>--rankings</dt>
+<dd>Input is rankings (1,2,3, etc. 1 is highest) not ratings (higher numbers better, default).<br>--dump will show input converted to ratings.</dd>
 
-<dt>--disable <i>method</i>
-<dd>Disable a voting method. Can be used multiple times.
+<dt>--enable <i>method</i></dt>
+<dd>Enable a voting method. Can be used multiple times.</dd>
 
-<dt>--pg "PostgreSQL connect string"
+<dt>--disable <i>method</i></dt>
+<dd>Disable a voting method. Can be used multiple times.</dd>
+
+<dt>--seats <i>N</i></dt>
+<dd>Number of seats to elect from choices. If <i>N</i> is not 1, this disables all single-seat only methods and enables hist and stv.</dd>
+
+<dt>--pg "PostgreSQL connect string"</dt>
 <dd>Specify PostgreSQL database to connect to.
 Probably at least "user=<i>foo</i> dbname=<i>bar</i>" should be specified, possibly "host" and "port".
-See the documentation for PQconnectdb() for details.
+See the documentation for PQconnectdb() for details.</dd>
 
-<dt>--query "SQL;"
-<dd>The SQL query should return one column which contains strings of url formatted vote data.
+<dt>--query "SQL;"</dt>
+<dd>The SQL query should return one column which contains strings of url formatted vote data.</dd>
 
 </dl>
+
+<a name="format"><h3>Input Format</h3></a>
+<p>The input format is similar to URL form input:</p>
+<blockquote><i>name1</i>=<i>rating1</i>&amp;<i>name2</i>=<i>rating2</i>&amp;...</blockquote>
+<p>%xx hex conversion is done. Input may not be utf8 safe, but it might pass through cleanly since only '&amp;', '%', '=' and new-line are special.</P>
 
 <h2>Election Method Implementations</h2>
 <table>

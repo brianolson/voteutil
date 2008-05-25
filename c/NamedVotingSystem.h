@@ -45,6 +45,19 @@ typedef struct StoredIndexVoteNode StoredIndexVoteNode;
 StoredIndexVoteNode* newStoredIndexVoteNode(int count);
 StoredIndexVoteNode* dupStoredIndexVoteNode( const StoredIndexVoteNode* );
 
+/* Convert Rankings <-> Ratings.
+ * Symmetric function can be used to restore original rankings data from stored ratings.
+ * rating = numVotes - ranking
+ * ranking = numVotes  - rating
+ */
+NVSINLINE void convertRankingsAndRatings(StoredIndexVoteNode* v) {
+	int i;
+	for (i = 0; i < v->numVotes; ++i) {
+		// 1st place gets N-1, last place gets 0.
+		v->vote[i].rating = v->numVotes - v->vote[i].rating;
+	}
+}
+
 struct NameIndexEntry {
 	const char* name;
 	int index;

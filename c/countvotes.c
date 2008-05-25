@@ -4,15 +4,13 @@
 #include <errno.h>
 #include <assert.h>
 
-#if HAVE_POSTGRES
-#include "libpq-fe.h"
-#endif
-
 const char* helptext = "countvotes [--dump][--debug][--preindexed]\n"
 "\t[--full-html|--no-full-html|--no-html-head]\n"
 "\t[--disable-all][--enable-all]\n"
+"\t[--rankings][--help|-h|--list]\n"
+"\t[-o filename|--out filenam]\n"
 "\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"
-"\tinput-file-name|\n"
+"\t[input file name|-i filename]\n"
 #if HAVE_POSTGRES
 "\t--pg \"PostgreSQL connect string\" --query \"SQL;\"\n"
 #endif
@@ -50,10 +48,32 @@ struct vvsf votestFatoryTable[] = {
 	}
 };
 
+int setMethodEnabled(const char* shortName, int enable) {
+	int j;
+	int enableCount = 0;
+	for ( j = 0; votestFatoryTable[j].enableName != NULL; j++ ) {
+		if ( !strcmp(votestFatoryTable[j].enableName, shortName) ) {
+			votestFatoryTable[j].enabled = enable;
+			enableCount++;
+		}
+	}
+	return enableCount;
+}
+
+void listMethods(FILE* out) {
+	int j;
+	fprintf(out, "known methods (short name for enable/disable, long name, enabled by default):\n");
+	for ( j = 0; votestFatoryTable[j].enableName != NULL; j++ ) {
+		fprintf(out, "\t%s \"%s\" (%s)\n", votestFatoryTable[j].enableName, votestFatoryTable[j].name, votestFatoryTable[j].enabled ? "enabled" : "disabled" );
+	}
+}
+
 void voteLine( char* line, NameIndex* ni );
 void doFile( const char* finame, NameIndex* ni );
 
 #if HAVE_POSTGRES
+#include "libpq-fe.h"
+
 void doPG( const char* finame, NameIndex* ni );
 char* dbspec = NULL;// = "user=poll dbname=poll";
 const char* dbquery = NULL;
@@ -66,11 +86,15 @@ int numSystems = 0;
 int redumpVotes = 0;
 int fullHtml = 1;
 int testOutput = 0;
+int inputIsRankings = 0;
+int seats = 1;
 
 int main( int argc, char** argv ) {
 	NameIndex ni;
 	int i;
 	const char* finame = NULL;
+	const char* foname = NULL;
+	FILE* out = stdout;
 
 #if HAVE_POSTGRES
 	dbspec = getenv("PGPOLLDB");
@@ -83,45 +107,50 @@ int main( int argc, char** argv ) {
 			debug = 1;
 		} else if ( !strcmp( argv[i], "--preindexed" )) {
 			preindexed = 1;
+		} else if ( !strcmp( argv[i], "--rankings" )) {
+			inputIsRankings = 1;
 		} else if ( !strcmp( argv[i], "--full-html" )) {
 			fullHtml = 1;
 		} else if ( !strcmp( argv[i], "--no-full-html" )) {
 			fullHtml = 0;
 		} else if ( !strcmp( argv[i], "--no-html-head" )) {
 			fullHtml = 0;
+		} else if ( !strcmp( argv[i], "--seats" )) {
+			char* endp;
+			i++;
+			seats = strtol(argv[i], &endp, 10);
+			if ((endp == argv[i]) || (errno == ERANGE) || (errno == EINVAL) || (seats <= 0)) {
+				fprintf(stderr, "can't understand --seats \"%s\"\n", argv[i]);
+				exit(1);
+			}
+			if (seats > 1) {
+				// disable all, enable multi-seat capable.
+				int j;
+				for ( j = 0; votestFatoryTable[j].name != NULL; j++ ) {
+					votestFatoryTable[j].enabled = 0;
+				}
+				assert(setMethodEnabled("hist", 1));
+				assert(setMethodEnabled("stv", 1));
+			}
 		} else if ( !strcmp( argv[i], "--test" )) {
 			fullHtml = 0;
 			testOutput = 1;
 		} else if ( !strcmp( argv[i], "--enable" )) {
-			int j;
 			int any = 0;
 			i++;
-			for ( j = 0; votestFatoryTable[j].enableName != NULL; j++ ) {
-				if ( !strcmp(votestFatoryTable[j].enableName, argv[i]) ) {
-					votestFatoryTable[j].enabled = 1;
-					any = 1;
-				}
-			}
+			any = setMethodEnabled(argv[i], 1);
 			if ( ! any ) {
-				printf("unknown --enable method \"%s\"\n\toptions are: %s", argv[i], votestFatoryTable[0].enableName );
-				for ( j = 1; votestFatoryTable[j].enableName != NULL; j++ ) {
-					printf(", %s", votestFatoryTable[j].enableName );
-				}
-				printf("\n");
+				fprintf(stderr, "unknown --enable method \"%s\"\n", argv[i] );
+				listMethods(stderr);
 				exit(1);
 			}
 		} else if ( !strcmp( argv[i], "--disable" )) {
-			int j;
 			int any = 0;
 			i++;
-			for ( j = 0; votestFatoryTable[j].enableName != NULL; j++ ) {
-				if ( !strcmp(votestFatoryTable[j].enableName, argv[i]) ) {
-					votestFatoryTable[j].enabled = 0;
-					any = 1;
-				}
-			}
+			any = setMethodEnabled(argv[i], 0);
 			if ( ! any ) {
-				printf("unknown --disable method \"%s\"\n", argv[i] );
+				fprintf(stderr, "unknown --disable method \"%s\"\n", argv[i] );
+				listMethods(stderr);
 				exit(1);
 			}
 		} else if ( !strcmp( argv[i], "--disable-all" )) {
@@ -143,14 +172,20 @@ int main( int argc, char** argv ) {
 			dbquery = argv[i];
 #endif
 		} else if ( (!strcmp( argv[i], "--help" )) ||
-					(!strcmp( argv[i], "-h" )) ) {
-			int j;
+				    (!strcmp( argv[i], "-h" )) ||
+				    (!strcmp( argv[i], "--list" )) ) {
 			puts(helptext);
-			printf("known methods (short name for enable/disable, long name, enabled by default):\n");
-			for ( j = 0; votestFatoryTable[j].enableName != NULL; j++ ) {
-				printf("\t%s \"%s\" (%s)\n", votestFatoryTable[j].enableName, votestFatoryTable[j].name, votestFatoryTable[j].enabled ? "enabled" : "disabled" );
-			}
+			listMethods(stdout);
 			exit(0);
+		} else if ( (!strcmp( argv[i], "-o" )) ||
+				    (!strcmp( argv[i], "--out")) ) {
+			i++;
+			foname = argv[i];
+			out = fopen(foname, "w");
+			if (out == NULL) {
+				perror(foname);
+				exit(1);
+			}
 		} else if ( !strcmp( argv[i], "-i" )) {
 			i++;
 			finame = argv[i];
@@ -165,10 +200,10 @@ int main( int argc, char** argv ) {
 	initNameIndex( &ni );
 
 	if ( fullHtml ) {
-		printf("<html><head><title>vote results</title></head><body bgcolor=\"#ffffff\" text=\"#000000\">\n");
+		fprintf(out, "<html><head><title>vote results</title></head><body bgcolor=\"#ffffff\" text=\"#000000\">\n");
 	}
 	if ( debug ) {
-		printf("<pre>debug:\n");
+		fprintf(out, "<pre>debug:\n");
 	}
 
 	i = 0;
@@ -191,6 +226,13 @@ int main( int argc, char** argv ) {
 			systemNames[numSystems] = votestFatoryTable[i].name;
 			systems[numSystems]->setSharedNameIndex( systems[numSystems]->it, &ni );
 			//		printf("system[%d] \"%s\" initted\n", i, votestFatoryTable[i].name );
+			if ( seats != 1 ) {
+				if ( systems[numSystems]->setSeats == NULL ) {
+					fprintf(stderr, "electing %d seats but system \"%s\" is not multi-seat capable\n", seats, systemNames[numSystems] );
+					exit(1);
+				}
+				systems[numSystems]->setSeats(systems[numSystems]->it, seats);
+			}
 			numSystems++;
 		}
 		i++;
@@ -208,7 +250,7 @@ int main( int argc, char** argv ) {
 	}
 
 	if ( debug ) {
-		printf("</pre>\n");
+		fprintf(out, "</pre>\n");
 	}
 
 	// print results
@@ -218,30 +260,30 @@ int main( int argc, char** argv ) {
 		int numWinners;
 		numWinners = systems[i]->getWinners( systems[i]->it, 0, &winners );
 		if ( testOutput ) {
-			printf( "%s: ", systemNames[i] );
+			fprintf(out, "%s: ", systemNames[i] );
 			if ( numWinners > 0 ) {
 				int w;
-				printf( "%s", winners[0].name );
+				fprintf(out, "%s", winners[0].name );
 				for ( w = 1; w < numWinners; w++ ) {
-					printf( ", %s", winners[w].name );
+					fprintf(out, ", %s", winners[w].name );
 				}
 			}
-			printf( "\n" );
+			fprintf(out, "\n" );
 		} else if ( 1 ) {
-			printf( "<h2>%s</h2>", systemNames[i] );
+			fprintf(out, "<h2>%s</h2>", systemNames[i] );
 			systems[i]->htmlSummary( systems[i]->it, stdout );
 		} else {
-			printf("system[%d]: \"%s\"\n", i, votestFatoryTable[i].name );
+			fprintf(out, "system[%d]: \"%s\"\n", i, votestFatoryTable[i].name );
 			int j;
 			for ( j = 0; j < numWinners; j++ ) {
-				printf( "\"%s\"\t%.9g\n", winners[j].name, winners[j].rating );
+				fprintf(out, "\"%s\"\t%.9g\n", winners[j].name, winners[j].rating );
 			}
-			printf( "\n" );
+			fprintf(out, "\n" );
 		}
 	}
 	//printf( "done\n" );
 	if ( fullHtml ) {
-		printf("</body></html>\n");
+		fprintf(out, "</body></html>\n");
 	}
 	return 0;
 }
@@ -263,8 +305,11 @@ void voteLine( char* line, NameIndex* ni ) {
 		x = newStoredIndexVoteNodeFromURL(ni,line);
 	}
 	if ( x == NULL ) {
-		printf("error parsing vote line:\n\t%s\n", line );
+		fprintf(stderr, "error parsing vote line:\n\t%s\n", line );
 		return;
+	}
+	if ( inputIsRankings ) {
+		convertRankingsAndRatings(x);
 	}
 	//printf("read vote of %d name-rating pairs\n", x->numVotes );
 	if ( redumpVotes ) {

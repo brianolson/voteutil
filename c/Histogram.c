@@ -287,11 +287,15 @@ void Histogram_deleteVVS( VirtualVotingSystem* vvs ) {
 	clearHistogram( (Histogram*)vvs->it );
 	free( vvs );
 }
+void Histogram_setSeats( Histogram* it, int seats ) {
+	// No-op, to allow Histogram to pose as a multi-winner method.
+}
 
 VirtualVotingSystem* newVirtualHistogram() {
 	struct vvsrr* vr = (struct vvsrr*)malloc(sizeof(struct vvsrr));
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(Histogram);
+	vr->vvs.setSeats = (vvs_setSeats)Histogram_setSeats;
 	toret->close = Histogram_deleteVVS;
 	toret->it = &vr->rr;
 	initHistogram( &vr->rr );
