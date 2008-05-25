@@ -1,8 +1,9 @@
 package org.bolson.vote;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.BufferedReader;
+import java.io.PrintWriter;
 import java.util.Vector;
 
 /**
@@ -56,6 +57,7 @@ public class countvotes {
 		boolean redumpVotes = false;
 		int outmode = OUT_PART_HTML;
 		boolean explain = false;
+		PrintWriter out = null;
 		
 		NamedHistogram histInstance = null;
 		NameVotingSystem firstWinner = null;
@@ -120,6 +122,11 @@ public class countvotes {
 				outmode = OUT_FULL_HTML;
 			} else if ( argv[i].equals("--test") ) {
 				outmode = OUT_TEST;
+				countClasses = new Vector();
+				// start at 1, skip histogram
+				for ( int j = 1; j < enableNames.length; j++ ) {
+					countClasses.add( enableClassNames[j] );
+				}
 			} else if ( argv[i].equals("--text") ) {
 				outmode = OUT_TEXT;
 			} else if ( argv[i].equals("--short") ) {
@@ -128,12 +135,14 @@ public class countvotes {
 				redumpVotes = true;
 			} else if ( argv[i].equals("--help") || argv[i].equals("-help") || argv[i].equals("-h") ) {
 				printUsage();
-				java.util.Iterator ni = NameVotingSystem.getImplNames();
 				System.out.println("available election methods:");
-				while ( ni.hasNext() ) {
-					String tn = (String)ni.next();
-					System.out.println("\t" + tn );
+				for ( int j = 0; j < enableNames.length; j++ ) {
+					System.out.print( enableNames[j] );
+					if ( (j+1) < enableNames.length ) {
+						System.out.print( ", " );
+					}
 				}
+				System.out.println();
 				return;
 			} else if ( argv[i].equals("--histMax") ) {
 				i++;
@@ -141,6 +150,15 @@ public class countvotes {
 			} else if ( argv[i].equals("--histMin") ) {
 				i++;
 				histMin = Integer.parseInt( argv[i] );
+			} else if ( argv[i].equals("--out") ||
+					    argv[i].equals("-o") ) {
+				i++;
+				try {
+					out = new PrintWriter(new java.io.FileWriter( argv[i] ));
+				} catch (java.io.IOException e) {
+					e.printStackTrace();
+					return;
+				}
 			} else if ( argv[i].equals("-m") ) {
 				i++;
 				countClasses.add( argv[i] );
@@ -161,15 +179,18 @@ public class countvotes {
 				System.exit(1);
 			}
 		}
+		if ( out == null ) {
+			out = new PrintWriter(new java.io.OutputStreamWriter(System.out));
+		}
 		if ( outmode == OUT_FULL_HTML ) {
 			System.out.println("<html><head><title>vote results</title></head><body bgcolor=\"#ffffff\" text=\"#000000\">");
 		}
 		// setup methods to count into
 		if ( debug ) {
 			if ( isHtml(outmode) ) {
-				System.out.print("<pre>");
+				out.print("<pre>");
 			}
-			System.out.println("debug:");
+			out.println("debug:");
 		}
 		NameVotingSystem[] vs;
 		if ( countClasses.size() > 0 ) {
@@ -227,8 +248,8 @@ public class countvotes {
 					return;
 				}
 				if ( redumpVotes ) {
-					System.out.print( NameVotingSystem.urlEncode(nv) );
-					System.out.println();
+					out.print( NameVotingSystem.urlEncode(nv) );
+					out.println();
 				}
 				for ( int vi = 0; vi < vs.length; vi++ ) {
 					vs[vi].voteRating( nv );
@@ -238,41 +259,43 @@ public class countvotes {
 			e.printStackTrace();
 		}
 		if ( debug && isHtml(outmode) ) {
-			System.out.println( "</pre>" );
+			out.println( "</pre>" );
 		}
 		// display results, various modes
 		if ( outmode == OUT_TEST ) {
 			// minimal and easily regular output so that a good test result has no diff to standard output
 			for ( int vi = 0; vi < vs.length; vi++ ) {
-				System.out.print( vs[vi].name() + ": " );
+				out.print( vs[vi].name() + ": " );
 				NameVotingSystem.NameVote[] winners = vs[vi].getWinners();
 				if ( winners == null || winners.length == 0 ) {
-					System.out.println();
+					out.println();
 					continue;
 				}
-				System.out.print( winners[0].name );
+				out.print( winners[0].name );
 				for ( int i = 1; i < winners.length; i++ ) {
-					System.out.print( ", " );
-					System.out.print( winners[i].name );
+					out.print( ", " );
+					out.print( winners[i].name );
 				}
-				System.out.println();
+				out.println();
 			}
+			out.flush();
 			return;
 		}
 		if ( outmode == OUT_TEXT ) {
 			// simple plain text output
 			for ( int vi = 0; vi < vs.length; vi++ ) {
-				System.out.println( vs[vi].name() );
+				out.println( vs[vi].name() );
 			}
+			out.flush();
 			return;
 		}
 		if ( outmode == OUT_SHORT ) {
 		}
 		// only HTML outputting modes remain below here
 		for ( int vi = 0; vi < vs.length; vi++ ) {
-			System.out.print( "<h2>" );
-			System.out.print( vs[vi].name() );
-			System.out.print( "</h2>" );
+			out.print( "<h2>" );
+			out.print( vs[vi].name() );
+			out.print( "</h2>" );
 			String hs = null;
 			if ( vs[vi] == histInstance && firstWinner != null ) {
 				hs = histInstance.htmlSummary( new StringBuffer(), firstWinner.getWinners() ).toString();
@@ -284,16 +307,17 @@ public class countvotes {
 			if ( debug ) {
 				String dbs = vs[vi].getDebug();
 				if ( dbs != null && dbs.length() > 0 ) {
-					System.out.println( "<h3>debug:</h3><pre>" );
-					System.out.println( dbs );
-					System.out.println( "</pre>" );
+					out.println( "<h3>debug:</h3><pre>" );
+					out.println( dbs );
+					out.println( "</pre>" );
 				}
 			}
-			System.out.println( hs );
+			out.println( hs );
 		}
 		if ( outmode == OUT_FULL_HTML ) {
-			System.out.println("</body></html>");
+			out.println("</body></html>");
 		}
+		out.flush();
 	}
 	
 	protected static final String[] gmiPrefixes = {

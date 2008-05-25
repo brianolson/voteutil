@@ -133,8 +133,13 @@ int main( int argc, char** argv ) {
 				assert(setMethodEnabled("stv", 1));
 			}
 		} else if ( !strcmp( argv[i], "--test" )) {
+			int j;
 			fullHtml = 0;
 			testOutput = 1;
+			for ( j = 0; votestFatoryTable[j].name != NULL; j++ ) {
+				votestFatoryTable[j].enabled = 1;
+			}
+			assert(setMethodEnabled("hist", 0));
 		} else if ( !strcmp( argv[i], "--enable" )) {
 			int any = 0;
 			i++;
@@ -223,7 +228,11 @@ int main( int argc, char** argv ) {
 		//printf("found system %d: %s\n", numSystems, votestFatoryTable[numSystems].name );
 		if ( votestFatoryTable[i].enabled ) {
 			systems[numSystems] = votestFatoryTable[i].make();
-			systemNames[numSystems] = votestFatoryTable[i].name;
+			if ( testOutput && 0 ) {
+				systemNames[numSystems] = votestFatoryTable[i].enableName;
+			} else {
+				systemNames[numSystems] = votestFatoryTable[i].name;
+			}
 			systems[numSystems]->setSharedNameIndex( systems[numSystems]->it, &ni );
 			//		printf("system[%d] \"%s\" initted\n", i, votestFatoryTable[i].name );
 			if ( seats != 1 ) {
@@ -271,7 +280,7 @@ int main( int argc, char** argv ) {
 			fprintf(out, "\n" );
 		} else if ( 1 ) {
 			fprintf(out, "<h2>%s</h2>", systemNames[i] );
-			systems[i]->htmlSummary( systems[i]->it, stdout );
+			systems[i]->htmlSummary( systems[i]->it, out );
 		} else {
 			fprintf(out, "system[%d]: \"%s\"\n", i, votestFatoryTable[i].name );
 			int j;

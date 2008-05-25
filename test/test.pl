@@ -1,0 +1,115 @@
+#!/usr/bin/perl -w
+
+use File::Temp qw/ tempfile tempdir /;
+use File::Path;
+
+@groups = (
+	['c', "../c/countvotes"],
+#	['cpp', "../cpp/dynamic_canditates/countvotes_dynamic"],
+	['java', "java -jar ../java/vote.jar"],
+#	['perl', "../perl/votep.pl"],
+);
+
+$n = 1;
+
+$tmpdir = undef;
+$cleanup = 1;
+
+while ( $arg = shift ) {
+	if ( $arg eq "-n" ) {
+		$n = shift;
+	} elsif ( $arg eq "--tmpdir" ) {
+		$tmpdir = shift;
+		$cleanup = 0;
+	} elsif ( $arg eq "--keep-temps" ) {
+		$cleanup = 0;
+	} else {
+		print STDERR "bogus arg \"$arg\"\n";
+		exit 1;
+	}
+}
+
+$anybad = 0;
+
+sub randname($) {
+	my $length = shift;
+	my $out = "";
+	my $i = 0;
+	while ( $i < $length ) {
+		$out  = $out . chr(ord('a') + int(rand(26)));
+		$i++;
+	}
+	return $out;
+}
+sub randNameSet($) {
+	my $count = shift;
+	my @out = ();
+	my $i;
+	for ($i = 1; $i <= $count; $i++) {
+		push @out, randname($i);
+	}
+	return @out;
+}
+
+if ( ! defined $tmpdir ) {
+	$tmpdir = tempdir( CLENAUP => 0 );
+}
+
+for ($i = 0; $ i < $n; $i++ ) {
+	($tf, $tfname) = tempfile( DIR => $tmpdir );
+	$numChoices = int(rand(10)) + 2;
+	@names = randNameSet($numChoices);
+	$numVotes = int(rand(100000)) + 10;
+	#print "creating $tfname with $numChoices choics and $numVotes votes\n";
+	for ( $j = 0; $j < $numVotes; $j++ ) {
+		print $tf join( '&', map { $_ . "=" . int(rand(100)) } @names ) . "\n";
+	}
+	close $tf;
+	%results = ();
+	@commands = ();
+	foreach $impl ( @groups ) {
+		$iname = $impl->[0];
+		$app = $impl->[1];
+		$outname = $tfname . "_" . $iname;
+		$cmd = $app . " --test -o " . $outname . " -i " . $tfname;
+		#print $cmd . "\n";
+		push @commands, $cmd;
+		system $cmd;
+		open FIN, '<', $outname;
+		while ( $line = <FIN> ) {
+			($meth, $result) = $line =~ /([^:]+): (.*)/;
+			#print $iname . "\t" . $meth . "\n";
+			if (! defined $results{$meth}) {
+				$results{$meth} = {};
+			}
+			$results{$meth}->{$iname} = $result;
+		}
+		close FIN;
+	}
+	$localbad = 0;
+	while (($meth, $they) = each %results) {
+		#print $meth . ":";
+		$pimpl = undef;
+		$presult = undef;
+		%x = %{$they};
+		while (($iname, $result) = each %x) {
+			if ((defined $pimpl) && ($presult ne $result)) {
+				print STDERR "error: mismatch in $meth, numChoices=${numChoices}, numVotes=${numVotes}\n$iname: $result\n$pimpl: $presult\nbadvotes: $tfname\n";
+				$anybad = 1;
+				$localbad = 1;
+			} else {
+				#print " " . $iname;
+			}
+			$pimpl = $iname;
+			$presult = $result;
+		}
+		#print "\n";
+	}
+	if ( $localbad ) {
+		print join("\n", @commands) . "\n";
+	}
+}
+
+if ( ($cleanup) && (! $anybad) ) {
+	rmtree($tmpdir, 0, 0);
+}

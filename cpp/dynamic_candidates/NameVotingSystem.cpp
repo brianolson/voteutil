@@ -70,7 +70,6 @@ int NameIndex::getIndexConst(const char* name) const {
 	Entry* cur = root;
 	while ( cur != NULL ) {
 		int cmp = strcmp( cur->name, name );
-		Entry* prev = cur;
 		if ( cmp == 0 ) {
 			return cur->index;
 		} else if ( cmp < 0 ) {
