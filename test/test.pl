@@ -10,6 +10,11 @@ use File::Path;
 #	['perl', "../perl/votep.pl"],
 );
 
+%implToApp = ();
+foreach $g ( @groups ) {
+	$implToApp{$g->[0]} = $g->[1];
+}
+
 $n = 1;
 
 $tmpdir = undef;
@@ -55,6 +60,8 @@ if ( ! defined $tmpdir ) {
 	$tmpdir = tempdir( CLENAUP => 0 );
 }
 
+%redone = ();
+
 for ($i = 0; $ i < $n; $i++ ) {
 	($tf, $tfname) = tempfile( DIR => $tmpdir );
 	$numChoices = int(rand(10)) + 2;
@@ -62,7 +69,7 @@ for ($i = 0; $ i < $n; $i++ ) {
 	$numVotes = int(rand(100000)) + 10;
 	#print "creating $tfname with $numChoices choics and $numVotes votes\n";
 	for ( $j = 0; $j < $numVotes; $j++ ) {
-		print $tf join( '&', map { $_ . "=" . int(rand(100)) } @names ) . "\n";
+		print $tf join( '&', map { $_ . "=" . int(rand(11)) } @names ) . "\n";
 	}
 	close $tf;
 	%results = ();
@@ -97,6 +104,18 @@ for ($i = 0; $ i < $n; $i++ ) {
 				print STDERR "error: mismatch in $meth, numChoices=${numChoices}, numVotes=${numVotes}\n$iname: $result\n$pimpl: $presult\nbadvotes: $tfname\n";
 				$anybad = 1;
 				$localbad = 1;
+				$outname = $tfname . "_" . $iname . ".html";
+				if ( ! $redone{$outname} ) {
+					$cmd = $implToApp{$iname} . " -o " . $outname . " -i " . $tfname;
+					$redone{$outname} = 1;
+				}
+				system $cmd;
+				$outname = $tfname . "_" . $pimpl . ".html";
+				if ( ! $redone{$outname} ) {
+					$cmd = $implToApp{$pimpl} . " -o " . $outname . " -i " . $tfname;
+					$redone{$outname} = 1;
+				}
+				system $cmd;
 			} else {
 				#print " " . $iname;
 			}
@@ -108,6 +127,10 @@ for ($i = 0; $ i < $n; $i++ ) {
 	if ( $localbad ) {
 		print join("\n", @commands) . "\n";
 	}
+}
+
+foreach $outname ( keys %redone ) {
+	print $outname . "\n";
 }
 
 if ( ($cleanup) && (! $anybad) ) {
