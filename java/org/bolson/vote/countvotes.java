@@ -16,7 +16,7 @@ public class countvotes {
 	public static final String[] usage = {
 		"countvotes [--urlencoded|--whitespace|--votespec][--histMax n][--histMin n][-m method.class.name]",
 		"\t[-i votedata][--dump][--disable-all][--enable-all]",
-		"\t[--disable method][--enable method][--explain][--fullHtml|--text|--short]",
+		"\t[--disable method][--enable method][--explain][--full-html|--no-full-html|--text|--short]",
 		"\t[--histMax n][--histMin n]",
 		"\t[-- args to methods [debug]] < votedata"
 	};
@@ -55,7 +55,7 @@ public class countvotes {
 		Vector countClasses = new Vector();
 		int mode = MODE_URL; // 1 = url encoded, 2 = whitespace separated
 		boolean redumpVotes = false;
-		int outmode = OUT_PART_HTML;
+		int outmode = OUT_FULL_HTML;
 		boolean explain = false;
 		PrintWriter out = null;
 		
@@ -118,8 +118,10 @@ public class countvotes {
 				mode = MODE_GTEQ_SPEC;
 			} else if ( argv[i].equals("--explain") ) {
 				explain = true;
-			} else if ( argv[i].equals("--fullHtml") ) {
+			} else if ( argv[i].equals("--full-html") ) {
 				outmode = OUT_FULL_HTML;
+			} else if ( argv[i].equals("--no-full-html") ) {
+				outmode = OUT_PART_HTML;
 			} else if ( argv[i].equals("--test") ) {
 				outmode = OUT_TEST;
 				countClasses = new Vector();
@@ -183,7 +185,7 @@ public class countvotes {
 			out = new PrintWriter(new java.io.OutputStreamWriter(System.out));
 		}
 		if ( outmode == OUT_FULL_HTML ) {
-			System.out.println("<html><head><title>vote results</title></head><body bgcolor=\"#ffffff\" text=\"#000000\">");
+			out.println("<html><head><title>vote results</title></head><body bgcolor=\"#ffffff\" text=\"#000000\">");
 		}
 		// setup methods to count into
 		if ( debug ) {

@@ -35,6 +35,12 @@ public class NamedIRV extends NameVotingSystem {
 		public TallyState( String nin ) {
 			name = nin;
 		}
+		public TallyState stateCopy() {
+			TallyState x = new TallyState(name);
+			x.tally = tally;
+			x.active = active;
+			return x;
+		}
 	}
 	
 	protected TallyState get( String name ) {
@@ -100,7 +106,11 @@ public class NamedIRV extends NameVotingSystem {
 			tiedVotes.add( vote );
 		}
 	}
+	
 	public NameVote[] getWinners() {
+		return getWinners(null);
+	}
+	public NameVote[] getWinners(StringBuffer explain) {
 		if ( winners != null ) {
 			return winners;
 		}
@@ -124,6 +134,10 @@ public class NamedIRV extends NameVotingSystem {
 		    bucketize( (NameVote[])votes.remove(votes.size()-1) );
 		}
 		winners = new NameVote[tv.length];
+		Vector rounds = null;  // Vector<TallyState[]>
+		if (explain != null) {
+			rounds = new Vector();
+		}
 		// numActive == tv.length
 		while ( numActive > 1 ) {
 			double min = 0;
@@ -143,6 +157,13 @@ public class NamedIRV extends NameVotingSystem {
 				}
 			}
 			tv[mini].active = false;
+			if (rounds != null) {
+				TallyState[] ntv = new TallyState[tv.length];
+				for ( i = 0; i < tv.length; i++ ) {
+					ntv[i] = tv[i].stateCopy();
+				}
+				rounds.add(ntv);
+			}
 			numActive--;
 			winners[numActive] = new NameVote( tv[mini].name, (float)min );
 			if ( numActive > 1 ) {
@@ -162,15 +183,21 @@ public class NamedIRV extends NameVotingSystem {
 				}
 			}
 		}
+		// Find the winner
 		for ( i = 0; i < tv.length; i++ ) {
 			if ( tv[i].active ) {
 				break;
 			}
 		}
 		if ( i >= tv.length || tv[i] == null ) {
-			return new NameVote[0];
+			// No winner. Bad source data?
+			winners = new NameVote[0];
+		} else {
+			winners[0] = new NameVote( tv[i].name, (float)(tv[i].votes.size() + tv[i].tally) );
 		}
-		winners[0] = new NameVote( tv[i].name, (float)(tv[i].votes.size() + tv[i].tally) );
+		if ( explain != null && rounds != null ) {
+			roundsToHTML( explain, rounds, winners );
+		}
 		return winners;
 	}
 	public StringBuffer htmlSummary( StringBuffer sb ) {
@@ -197,6 +224,66 @@ public class NamedIRV extends NameVotingSystem {
 	/** @return "Instant Runoff Voting" */
 	public String name() {
 		return "Instant Runoff Voting";
+	}
+	
+	/**
+	 @param sb where to print the table
+	 @param rounds is Vector<TallyState[]> of intermediate state.
+	 @return sb with stuff
+	 */
+	public static StringBuffer roundsToHTML( StringBuffer sb, Vector rounds, NameVote[] winners ) {
+		sb.append("<table border=\"1\"><tr>");
+		for ( int r = 0; r < rounds.size(); r++ ) {
+			sb.append( "<th colspan=\"2\">Round " );
+			sb.append( r + 1 );
+			sb.append( "</th>");
+		}
+		sb.append( "</tr>\n<tr>" );
+		for ( int r = 0; r < rounds.size(); r++ ) {
+			sb.append( "<th>Name</th><th>Count</th>");
+		}
+		sb.append( "</tr>\n" );
+		if ( (winners != null) && (winners.length > 0) ) {
+			// present based on sorted order
+			for ( int c = 0; c < winners.length; c++ ) {
+				sb.append( "<tr>" );
+				for ( int r = 0; r < rounds.size(); r++ ) {
+					TallyState[] tv = (TallyState[])rounds.get(r);
+					boolean found = false;
+					for ( int i = 0; i < tv.length; i++ ) {
+						if ( tv[i].name.equals( winners[c].name ) ) {
+							found = true;
+							if ( tv[i].active ) {
+								sb.append( "<td>" );
+							} else {
+								sb.append( "<td style=\"color:#999999;\">" );
+							}
+							sb.append( winners[i].name );
+							sb.append( "</td><td>" );
+							sb.append( tv[i].tally );
+							sb.append( "</td>" );
+						}
+					}
+					if ( ! found ) {
+						System.err.println( "round(" + r + "): could not find winners[" + c + "] \"" + winners[c].name + "\" in tv:" );
+						for ( int i = 0; i < tv.length; i++ ) {
+							System.err.println( tv[i].name + " = " + tv[i].tally );
+						}
+					}
+				}
+				sb.append( "</tr>\n" );
+			}
+		} else {
+			sb.append( "<tr><td>FIXME: implement no-winner-data IRV explain</td></tr>\n" );
+		}
+		sb.append( "</table>\n" );
+		return sb;
+	}
+
+	public StringBuffer htmlExplain( StringBuffer sb ){
+		winners = null;
+		getWinners(sb);
+		return htmlSummary( sb );
 	}
 	
 	static {
