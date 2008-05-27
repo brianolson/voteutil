@@ -95,6 +95,7 @@ NVSINLINE void clearNameIndex( NameIndex* ni ) {
 }
 	/*!
 		@function nameIndex
+	 strdup()s passed in name argument to keep a copy.
 		@param name name to look up or create index for
 		@result index of name supplied
 	*/

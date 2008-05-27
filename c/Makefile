@@ -10,9 +10,9 @@ CFLAGS+=-g -Wall -ansi -pedantic -std=c99 -MMD
 #CFLAGS+=-O2 -Wall
 LDFLAGS+=-g
 
-OBJS := NamedVotingSystem.o IRNR.o RawRating.o VRR.o IRV.o Histogram.o STV.o
+OBJS := NamedVotingSystem.o IRNR.o RawRating.o VRR.o IRV.o Histogram.o STV.o NChooseKSlates.o
 
-all:	libvote.a countvotes
+all:	libvote.a countvotes permuteutil
 
 libvote.a:	${OBJS}
 	ar -c -r libvote.a ${OBJS}
@@ -23,6 +23,8 @@ countvotes:	LDFLAGS+=${LINK_POSTGRES}
 
 countvotes.o:	CFLAGS+=${COMPILE_POSTGRES}
 
+permuteutil:	libvote.a permuteutil.o
+
 ## ALTERNATE BUILD LINES
 #cc -g -Wall -DHAVE_POSTGRES countvotes.c -I/Library/PostgreSQL/include -L/Library/PostgreSQL/lib -lpq -L. -lvote
 #cc -g -Wall countvotes.c -L. -lvote
@@ -32,3 +34,5 @@ countvotes.o:	CFLAGS+=${COMPILE_POSTGRES}
 
 clean:
 	rm -rf *.o libvote.a countvotes
+
+-include *.d
