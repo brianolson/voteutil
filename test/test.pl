@@ -106,13 +106,13 @@ for ($i = 0; $ i < $n; $i++ ) {
 				$localbad = 1;
 				$outname = $tfname . "_" . $iname . ".html";
 				if ( ! $redone{$outname} ) {
-					$cmd = $implToApp{$iname} . " -o " . $outname . " -i " . $tfname;
+					$cmd = $implToApp{$iname} . " --explain -o " . $outname . " -i " . $tfname;
 					$redone{$outname} = 1;
 				}
 				system $cmd;
 				$outname = $tfname . "_" . $pimpl . ".html";
 				if ( ! $redone{$outname} ) {
-					$cmd = $implToApp{$pimpl} . " -o " . $outname . " -i " . $tfname;
+					$cmd = $implToApp{$pimpl} . " --explain -o " . $outname . " -i " . $tfname;
 					$redone{$outname} = 1;
 				}
 				system $cmd;
