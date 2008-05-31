@@ -1,5 +1,5 @@
 package org.bolson.vote;
-import java.util.Vector;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -16,10 +16,9 @@ public class NamedIRV extends NameVotingSystem {
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
 	protected NameVote[] winners = null;
 	/** Holds each passed in vote.
-	 This would be Vector<NameVote[]> if I broke Java 1.4 compatibility. */
-	protected Vector votes = new Vector();
-	protected Vector deadVotes = new Vector();
-	protected Vector tiedVotes = new Vector();
+	 This would be ArrayList<NameVote[]> if I broke Java 1.4 compatibility. */
+	protected ArrayList votes = new ArrayList();
+	protected ArrayList tiedVotes = new ArrayList();
 
 	public NamedIRV() {
 	}
@@ -29,15 +28,23 @@ public class NamedIRV extends NameVotingSystem {
 	 */
 	protected static class TallyState {
 		public String name;
-		public double tally = 0.0;
+		
+		/** the sum of partial votes from cast ties */
+		public double fractions = 0.0;
+		
 		public boolean active = true;
-		public Vector votes = new Vector();
+		public ArrayList votes = new ArrayList();
 		public TallyState( String nin ) {
 			name = nin;
 		}
+		
+		/**
+		 Copy state for later verbose round descriptions.
+		 fractions usage in copy is full count, not just fractions.
+		 */
 		public TallyState stateCopy() {
 			TallyState x = new TallyState(name);
-			x.tally = tally;
+			x.fractions = fractions + votes.size();
 			x.active = active;
 			return x;
 		}
@@ -66,8 +73,10 @@ public class NamedIRV extends NameVotingSystem {
 		float max = Float.NaN;
 		int tied = 1;
 		int i = 0;
-		TallyState v = null, maxv = null;
-		for ( ; i < vote.length; i++ ) {
+		TallyState v = null;
+		TallyState maxv = null;
+		// find an active one and initialize max
+		while ( i < vote.length ) {
 			v = get( vote[i].name );
 			if ( v.active ) {
 				maxv = v;
@@ -75,10 +84,10 @@ public class NamedIRV extends NameVotingSystem {
 				i++;
 				break;
 			}
+			i++;
 		}
 		if ( maxv == null ) {
 			// none of the names in this vote are active
-			deadVotes.add( vote );
 			return;
 		}
 		for ( ; i < vote.length; i++ ) {
@@ -100,7 +109,9 @@ public class NamedIRV extends NameVotingSystem {
 			for ( i = 0; i < vote.length; i++ ) {
 				if ( vote[i].rating == max ) {
 					v = get( vote[i].name );
-					v.tally += fract;
+					if ( v.active ) {
+						v.fractions += fract;
+					}
 				}
 			}
 			tiedVotes.add( vote );
@@ -117,44 +128,50 @@ public class NamedIRV extends NameVotingSystem {
 		TallyState[] tv = new TallyState[they.size()];
 		int i = 0;
 		java.util.Iterator ti = they.values().iterator();
-		votes.addAll( deadVotes );
-		deadVotes.clear();
 		int numActive = 0;
 		while ( ti.hasNext() ) {
 			TallyState ts = (TallyState)ti.next();
-			votes.addAll( ts.votes );
 			ts.votes.clear();
-			ts.tally = 0;
+			ts.fractions = 0;
 			ts.active = true;
 			numActive++;
 			tv[i] = ts;
 			i++;
 		}
-		while ( votes.size() > 0 ) {
-		    bucketize( (NameVote[])votes.remove(votes.size()-1) );
+		java.util.Iterator vi = votes.iterator();
+		while ( vi.hasNext() ) {
+		    bucketize( (NameVote[])vi.next() );
 		}
 		winners = new NameVote[tv.length];
-		Vector rounds = null;  // Vector<TallyState[]>
+		ArrayList rounds = null;  // ArrayList<TallyState[]>
 		if (explain != null) {
-			rounds = new Vector();
+			rounds = new ArrayList();
 		}
 		// numActive == tv.length
 		while ( numActive > 1 ) {
 			double min = 0;
 			int mini = 0;
-			for ( i = 0; i < tv.length; i++ ) {
+			// find an active one, initialize min
+			i = 0;
+			while ( i < tv.length ) {
 				if ( tv[i].active ) {
-					min = tv[i].votes.size() + tv[i].tally;
+					min = tv[i].votes.size() + tv[i].fractions;
 					mini = i;
+					i++;
 					break;
 				}
+				i++;
 			}
-			for ( ; i < tv.length; i++ ) {
-				double tm = tv[i].votes.size() + tv[i].tally;
-				if ( tv[i].active && (tm < min) ) {
-					min = tm;
-					mini = i;
+			// find min
+			while ( i < tv.length ) {
+				if ( tv[i].active ) {
+					double tm = tv[i].votes.size() + tv[i].fractions;
+					if ( tm < min ) {
+						min = tm;
+						mini = i;
+					}
 				}
+				i++;
 			}
 			tv[mini].active = false;
 			if (rounds != null) {
@@ -164,6 +181,7 @@ public class NamedIRV extends NameVotingSystem {
 				}
 				rounds.add(ntv);
 			}
+			tv[mini].fractions += tv[mini].votes.size();  // archive best count
 			numActive--;
 			winners[numActive] = new NameVote( tv[mini].name, (float)min );
 			if ( numActive > 1 ) {
@@ -173,11 +191,11 @@ public class NamedIRV extends NameVotingSystem {
 				}
 				for ( i = 0; i < tv.length; i++ ) {
 					if ( tv[i].active ) {
-						tv[i].tally = 0;
+						tv[i].fractions = 0;
 					}
 				}
-				Vector oldTied = tiedVotes;
-				tiedVotes = new Vector();
+				ArrayList oldTied = tiedVotes;
+				tiedVotes = new ArrayList();
 				while ( oldTied.size() > 0 ) {
 					bucketize( (NameVote[])oldTied.remove(oldTied.size()-1) );
 				}
@@ -193,7 +211,7 @@ public class NamedIRV extends NameVotingSystem {
 			// No winner. Bad source data?
 			winners = new NameVote[0];
 		} else {
-			winners[0] = new NameVote( tv[i].name, (float)(tv[i].votes.size() + tv[i].tally) );
+			winners[0] = new NameVote( tv[i].name, (float)(tv[i].votes.size() + tv[i].fractions) );
 		}
 		if ( explain != null && rounds != null ) {
 			roundsToHTML( explain, rounds, winners );
@@ -228,10 +246,10 @@ public class NamedIRV extends NameVotingSystem {
 	
 	/**
 	 @param sb where to print the table
-	 @param rounds is Vector<TallyState[]> of intermediate state.
+	 @param rounds is ArrayList<TallyState[]> of intermediate state.
 	 @return sb with stuff
 	 */
-	public static StringBuffer roundsToHTML( StringBuffer sb, Vector rounds, NameVote[] winners ) {
+	public static StringBuffer roundsToHTML( StringBuffer sb, ArrayList rounds, NameVote[] winners ) {
 		sb.append("<table border=\"1\"><tr>");
 		for ( int r = 0; r < rounds.size(); r++ ) {
 			sb.append( "<th colspan=\"2\">Round " );
@@ -258,16 +276,16 @@ public class NamedIRV extends NameVotingSystem {
 							} else {
 								sb.append( "<td style=\"color:#999999;\">" );
 							}
-							sb.append( winners[i].name );
+							sb.append( tv[i].name );
 							sb.append( "</td><td>" );
-							sb.append( tv[i].tally );
+							sb.append( tv[i].fractions );
 							sb.append( "</td>" );
 						}
 					}
 					if ( ! found ) {
 						System.err.println( "round(" + r + "): could not find winners[" + c + "] \"" + winners[c].name + "\" in tv:" );
 						for ( int i = 0; i < tv.length; i++ ) {
-							System.err.println( tv[i].name + " = " + tv[i].tally );
+							System.err.println( tv[i].name + " = " + tv[i].fractions );
 						}
 					}
 				}
