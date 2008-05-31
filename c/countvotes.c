@@ -7,7 +7,7 @@
 const char* helptext = "countvotes [--dump][--debug][--preindexed]\n"
 "\t[--full-html|--no-full-html|--no-html-head]\n"
 "\t[--disable-all][--enable-all]\n"
-"\t[--rankings][--help|-h|--list]\n"
+"\t[--rankings][--help|-h|--list][--explain]\n"
 "\t[-o filename|--out filenam]\n"
 "\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"
 "\t[input file name|-i filename]\n"
@@ -21,6 +21,7 @@ VirtualVotingSystem* newVirtualIRNR();
 VirtualVotingSystem* newVirtualHistogram();
 VirtualVotingSystem* newVirtualIRV();
 VirtualVotingSystem* newVirtualVRR();
+VirtualVotingSystem* newVirtualRankedPairs();
 VirtualVotingSystem* newVirtualSTV();
 
 struct vvsf {
@@ -37,6 +38,8 @@ struct vvsf votestFatoryTable[] = {
 		newVirtualIRNR, "Instant Runoff Normalized Ratings", "irnr", 1
 	},{
 		newVirtualVRR, "Virtual Round Robin", "vrr", 1
+	},{
+		newVirtualRankedPairs, "Virtual Round Robin, Ranked Pairs Resolution", "rp", 0
 	},{
 		newVirtualRawRating, "Raw Rating Summation", "raw", 1
 	},{
@@ -88,6 +91,7 @@ int fullHtml = 1;
 int testOutput = 0;
 int inputIsRankings = 0;
 int seats = 1;
+int explain = 0;
 
 int main( int argc, char** argv ) {
 	NameIndex ni;
@@ -109,6 +113,8 @@ int main( int argc, char** argv ) {
 			preindexed = 1;
 		} else if ( !strcmp( argv[i], "--rankings" )) {
 			inputIsRankings = 1;
+		} else if ( !strcmp( argv[i], "--explain" )) {
+			explain = 1;
 		} else if ( !strcmp( argv[i], "--full-html" )) {
 			fullHtml = 1;
 		} else if ( !strcmp( argv[i], "--no-full-html" )) {
@@ -280,7 +286,11 @@ int main( int argc, char** argv ) {
 			fprintf(out, "\n" );
 		} else if ( 1 ) {
 			fprintf(out, "<h2>%s</h2>", systemNames[i] );
-			systems[i]->htmlSummary( systems[i]->it, out );
+			if ( explain ) {
+				systems[i]->htmlExplain( systems[i]->it, out );
+			} else {
+				systems[i]->htmlSummary( systems[i]->it, out );
+			}
 		} else {
 			fprintf(out, "system[%d]: \"%s\"\n", i, votestFatoryTable[i].name );
 			int j;
@@ -375,7 +385,7 @@ void doPG( const char* finame, NameIndex* ni ) {
 #endif
 
 #ifndef MAX_LINE_LEN
-#define MAX_LINE_LEN 4096
+#define MAX_LINE_LEN 0xffff
 #endif
 
 void doFile( const char* finame, NameIndex* ni ) {

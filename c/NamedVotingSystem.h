@@ -137,9 +137,13 @@ struct VirtualVotingSystem {
 	int (*voteStoredIndexVoteNode)( void* it, StoredIndexVoteNode* votes );
 	int (*getWinners)( void* it, int numVotes, NameVote** winnersP );
 	void (*htmlSummary)( void* it, FILE* fout );
+	// Like summary, but with verbose behind-the-scenes step-by-step detail.
+	// Defaults to htmlSummary as per INIT_VVS_TYPE macro below.
+	void (*htmlExplain)( void* it, FILE* fout );
 	void (*print)( void* it, FILE* fout );
 	void (*setSharedNameIndex)( void* it, NameIndex* ni );
 	void (*close)( VirtualVotingSystem* it );// delete
+	// For multi-seat methods. INIT_VVS_TYPE defaults it to NULL.
 	void (*setSeats)( void* it, int seats );
 
 	void* it;
@@ -161,11 +165,14 @@ typedef void (*vvs_setSeats)( void* it, int seats );
 	it->ni = ni;\
 }
 
-// helper macro for setting up a newVirtual<Type>()
+// Helper macro for setting up a newVirtual<Type>()
+// All the typecasting allows definiton of code to
+// use actual type while being called as void*
 #define INIT_VVS_TYPE(type) toret->voteRating = (vvs_voteRating)type##_voteRating; \
 toret->voteStoredIndexVoteNode = (vvs_voteStoredIndexVoteNode)type##_voteStoredIndexVoteNode; \
 toret->getWinners = (vvs_getWinners)type##_getWinners; \
 toret->htmlSummary = (vvs_htmlSummary)type##_htmlSummary; \
+toret->htmlExplain = (vvs_htmlSummary)type##_htmlSummary; \
 toret->print = (vvs_print)type##_print;\
 toret->setSharedNameIndex = (vvs_setSharedNameIndex)type##_setSharedNameIndex;\
 toret->setSeats = NULL;

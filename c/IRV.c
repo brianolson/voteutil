@@ -47,18 +47,40 @@ int IRV_voteStoredIndexVoteNode( IRV* it, StoredIndexVoteNode* votes ) {
 typedef unsigned char boolean;
 #define true ((boolean)1)
 #define false ((boolean)0)
+
+typedef struct TallyState {
+	boolean active;
+	int whole;
+	double fractions;
+	StoredIndexVoteNode* bucket;
+} TallyState;
+
+typedef struct RoundPart {
+	double tally;
+	const char* name;
+	boolean active;
+} RoundPart;
+typedef struct RoundScore {
+	struct RoundScore* next;
+	RoundPart they[1];
+} RoundScore;
+RoundScore* newRoundScore(int numc) {
+	return (RoundScore*)malloc( sizeof(RoundScore) + (sizeof(RoundPart) * (numc-1)) );
+}
+
 static __inline int min( int a, int b ) {
 	if ( a < b ) return a; return b;
 }
-int IRV_getWinners( IRV* it, int wlen, NameVote** winnersP ) {
+static int IRV_getWinnersInternal(
+		IRV* it, int wlen, NameVote** winnersP, RoundScore** rounds ) {
 	int numActive;
 	int i;
-	int* tally;
-	boolean* active;
-	StoredIndexVoteNode** buckets;
+	TallyState* they;
 	int numc = it->ni->nextIndex;
 	StoredIndexVoteNode* cur;
 	StoredIndexVoteNode* exhausted = NULL;
+	StoredIndexVoteNode* tiedVotes = NULL;
+	RoundScore* round;
 
 	if ( winnersP == NULL ) {
 		return -1;
@@ -67,70 +89,102 @@ int IRV_getWinners( IRV* it, int wlen, NameVote** winnersP ) {
 		// have valid solution
 		goto returnsolution;
 	}
+	if ( rounds != NULL ) {
+		round = newRoundScore(numc);
+		*rounds = round;
+	} else {
+		round = NULL;
+	}
 	numActive = numc;
 	it->winners = (NameVote*)malloc( sizeof(NameVote)*numc );
-	tally = (int*)malloc( sizeof(int)*numc );
-	assert( tally != NULL );
-	active = (boolean*)malloc( sizeof(boolean)*numc );
-	assert( active != NULL );
-	buckets = (StoredIndexVoteNode**)malloc( sizeof(StoredIndexVoteNode*)*numc );
-	assert( buckets != NULL );
+	they = (TallyState*)malloc( sizeof(TallyState) * numc );
+	assert( they != NULL );
 	for ( i = 0; i < numc; i++ ) {
-		active[i] = true;
-		tally[i] = 0;
-		buckets[i] = NULL;
+		they[i].active = true;
+		they[i].whole = 0;
+		they[i].fractions = 0.0;
+		they[i].bucket = NULL;
 	}
 	cur = it->storedVotes;
 	it->storedVotes = NULL;
 	while ( numActive > 1 ) {
+		for ( i = 0; i < numc; i++ ) {
+			if ( they[i].active ) {
+				they[i].fractions = 0.0;
+			}
+		}
 		// bucketize a list
 		while ( cur != NULL ) {
 			StoredIndexVoteNode* next;
-			int mini;
-			float min;
+			int maxi;
+			float max;
 			next = cur->next;
-			for ( i = 0; ! active[cur->vote[i].index] && i < cur->numVotes; i++ ) {
+			i = 0;
+			while ( (i < cur->numVotes) && (! they[cur->vote[i].index].active) ) {
+				i++;
 			}
 			if ( i == cur->numVotes ) {
 				// exhausted ballot
 				cur->next = exhausted;
 				exhausted = cur;
 			} else {
-				min = cur->vote[i].rating;
-				mini = cur->vote[i].index;
+				int tied = 1;
+				max = cur->vote[i].rating;
+				maxi = cur->vote[i].index;
 				i++;
 				for ( ; i < cur->numVotes; i++ ) {
-					if ( active[cur->vote[i].index] && cur->vote[i].rating > min ) {
-						mini = cur->vote[i].index;
-						min = cur->vote[i].rating;
-					}
+					if ( they[cur->vote[i].index].active ) {
+						if ( cur->vote[i].rating > max ) {
+							tied = 1;
+							maxi = cur->vote[i].index;
+							max = cur->vote[i].rating;
+						} else if ( cur->vote[i].rating == max ) {
+							tied++;
+						}
+					} 
 				}
-				cur->next = buckets[mini];
-				buckets[mini] = cur;
-				tally[mini]++;
+				if ( tied == 1 ) {
+					cur->next = they[maxi].bucket;
+					they[maxi].bucket = cur;
+					they[maxi].whole++;
+				} else {
+					double tf = 1.0 / tied;
+					for ( i = 0; i < cur->numVotes; ++i ) {
+						if ( they[cur->vote[i].index].active ) {
+							if ( cur->vote[i].rating == max ) {
+								they[cur->vote[i].index].fractions += tf;
+							}
+						}
+					}
+					cur->next = tiedVotes;
+					tiedVotes = cur;
+				}
 				if ( debug ) {
-					printf("IRV bucketize \"%s\"<br>\n", indexName( it->ni, mini ) );
+					printf("IRV bucketize \"%s\"<br>\n", indexName( it->ni, maxi ) );
 				}
 			}
 			cur = next;
 		}
 		// disqualify loser(s)
 		{
-			float min;
+			double min;
 			int tied;
 			StoredIndexVoteNode* curend = NULL;
-			for ( i = 0; ! active[i] && i < numc; i++ ) {
+			cur = curend = tiedVotes;
+			tiedVotes = NULL;
+			for ( i = 0; (i < numc) && (! they[i].active); i++ ) {
 			}
-			min = tally[i];
+			assert(i < numc);
+			min = they[i].whole + they[i].fractions;
 			tied = 1;
 			i++;
 			for ( ; i < numc; i++ ) {
-				if ( ! active[i] ) {
+				if ( ! they[i].active ) {
 					// skip
-				} else if ( tally[i] < min ) {
-					min = tally[i];
+				} else if ( (they[i].whole + they[i].fractions) < min ) {
+					min = (they[i].whole + they[i].fractions);
 					tied = 1;
-				} else if ( tally[i] == min ) {
+				} else if ( (they[i].whole + they[i].fractions) == min ) {
 					tied++;
 				}
 			}
@@ -139,31 +193,39 @@ int IRV_getWinners( IRV* it, int wlen, NameVote** winnersP ) {
 				break;
 			}
 			for ( i = 0; i < numc; i++ ) {
-				if ( tally[i] == min ) {
-					active[i] = false;
-					if ( buckets[i] == NULL ) {
+				if ( (they[i].whole + they[i].fractions) == min ) {
+					they[i].active = false;
+					if ( they[i].bucket == NULL ) {
 						// nothing to rebucketize
 					} else if ( curend == NULL ) {
-						cur = buckets[i];
-						curend = buckets[i];
-						while ( curend->next != NULL ) {
-							curend = curend->next;
-						}
+						cur = they[i].bucket;
+						curend = they[i].bucket;
 					} else {
-						curend->next = buckets[i];
 						while ( curend->next != NULL ) {
 							curend = curend->next;
 						}
+						curend->next = they[i].bucket;
 					}
-					buckets[i] = NULL;
+					they[i].bucket = NULL;
 					numActive--;
 					it->winners[numActive].name = indexName( it->ni, i );
-					it->winners[numActive].rating = tally[i];
+					it->winners[numActive].rating = (they[i].whole + they[i].fractions);
 					if ( debug ) {
-						printf("IRV dq \"%s\" = %d<br>\n", indexName( it->ni, i ), tally[i] );
+						printf("IRV dq \"%s\" = %f<br>\n", indexName( it->ni, i ), (they[i].whole + they[i].fractions) );
 					}
-					//printf("disqualify \"%s\" (%d) with %d, %d remain\n", indexName( it->ni, i ), i, tally[i], numActive );
+					//printf("disqualify \"%s\" (%d) with %d, %d remain\n", indexName( it->ni, i ), i, (they[i].whole + they[i].fractions), numActive );
 				}
+			}
+		}
+		if ( round != NULL ) {
+			for ( i = 0; i < numc; ++i ) {
+				round->they[i].active = they[i].active;
+				round->they[i].name = indexName( it->ni, i );
+				round->they[i].tally = (they[i].whole + they[i].fractions);
+			}
+			if ( numActive > 1 ) {
+				round->next = newRoundScore(numc);
+				round = round->next;
 			}
 		}
 		if ( debug ) {
@@ -171,10 +233,10 @@ int IRV_getWinners( IRV* it, int wlen, NameVote** winnersP ) {
 		}
 	}
 	for ( i = 0; i < numc; i++ ) {
-		if ( active[i] == true ) {
+		if ( they[i].active == true ) {
 			numActive--;
 			it->winners[numActive].name = indexName( it->ni, i );
-			it->winners[numActive].rating = tally[i];
+			it->winners[numActive].rating = (they[i].whole + they[i].fractions);
 		}
 	}
 	// re-bundle all the votes into storedVotes from cur, exhausted and buckets[]
@@ -192,15 +254,13 @@ int IRV_getWinners( IRV* it, int wlen, NameVote** winnersP ) {
 			while ( cur->next != NULL ) {
 				cur = cur->next;
 			}
-			cur->next = buckets[i];
+			cur->next = they[i].bucket;
 		} else {
 			// first non-null thing encountered!
-			it->storedVotes = cur = buckets[i];
+			it->storedVotes = cur = they[i].bucket;
 		}
 	}
-	free( buckets );
-	free( active );
-	free( tally );
+	free( they );
 returnsolution:
 	if ( *winnersP != NULL && wlen > 0 ) {
 		// copy into provided return space
@@ -215,20 +275,84 @@ returnsolution:
 		return numc;
 	}
 }
-void IRV_htmlSummary( IRV* it, FILE* fout ) {
-	int numw;
-	NameVote* winners;
+int IRV_getWinners( IRV* it, int wlen, NameVote** winnersP ) {
+	return IRV_getWinnersInternal( it, wlen, winnersP, NULL );
+}
+static void printWinners( FILE* fout, NameVote* winners, int numw ) {
 	int i;
 
-	numw = IRV_getWinners( it, 0, &winners );
-	if ( numw <= 0 ) {
-		return;
-	}
 	fprintf( fout, "<table border=\"1\"><tr><th>Name</th><th>Best IRV Count</th></tr>" );
 	for ( i = 0; i < numw; i++ ) {
 		fprintf( fout, "<tr><td>%s</td><td>%d</td></tr>", winners[i].name, (int)(winners[i].rating) );
 	}
 	fprintf( fout, "</table>\n");
+}
+void IRV_htmlSummary( IRV* it, FILE* fout ) {
+	int numw;
+	NameVote* winners;
+
+	numw = IRV_getWinners( it, 0, &winners );
+	if ( numw <= 0 ) {
+		return;
+	}
+	printWinners( fout, winners, numw );
+}
+void IRV_htmlExplain( IRV* it, FILE* fout ) {
+	int numw;
+	NameVote* winners;
+	RoundScore* rounds = NULL;
+
+	if ( it->winners != NULL ) {
+		free( it->winners );
+		it->winners = NULL;
+	}
+	numw = IRV_getWinnersInternal( it, 0, &winners, &rounds );
+	if ( numw <= 0 ) {
+		return;
+	}
+	{
+		RoundScore* cur;
+		int nrounds = 0;
+		int i;
+		cur = rounds;
+		while ( cur != NULL ) {
+			nrounds++;
+			cur = cur->next;
+		}
+		if ( nrounds == 0 ) {
+			return;
+		}
+		fprintf(fout, "<table border=\"1\"><tr>");
+		for ( i = 0; i < nrounds; ++i ) {
+			fprintf(fout, "<th colspan=\"2\">Round %d</th>", i + 1 );
+		}
+		fprintf(fout, "</tr>\n<tr>");
+		for ( i = 0; i < nrounds; ++i ) {
+			fprintf(fout, "<th>Name</th><th>Count</th>" );
+		}
+		fprintf(fout, "</tr>\n" );
+		for ( i = 0; i < numw; ++i ) {
+			fprintf(fout, "<tr>" );
+			cur = rounds;
+			while ( cur != NULL ) {
+				int j;
+				for ( j = 0; j < numw; ++j ) {
+					if ( cur->they[j].name == winners[i].name ) {
+						if ( cur->they[j].active ) {
+							fprintf(fout, "<td>%s</td><td>%f</td>", cur->they[j].name, cur->they[j].tally );
+						} else {
+							fprintf(fout, "<td style=\"color:#999999\">%s</td><td>%f</td>", cur->they[j].name, cur->they[j].tally );
+						}
+						break;
+					}
+				}
+				cur = cur->next;
+			}
+			fprintf(fout, "</tr>\n" );
+		}
+		fprintf(fout, "</table>\n" );
+	}
+	printWinners( fout, winners, numw );
 }
 void IRV_print( IRV* it, FILE* fout ) {
 	int numw;
@@ -276,6 +400,7 @@ VirtualVotingSystem* newVirtualIRV() {
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(IRV);
 	toret->close = IRV_deleteVVS;
+	toret->htmlExplain = (vvs_htmlSummary)IRV_htmlExplain;
 	toret->it = &vr->rr;
 	return toret;
 }
