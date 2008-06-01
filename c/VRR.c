@@ -376,6 +376,11 @@ int VRR_getWinnersRankedPairs( VRR* it, int winnersLength, NameVote** winnersP )
 	return VRR_RankedPairs( it, winnersLength, winnersP, defeatCount );
 }
 
+typedef struct minij {
+	int ihi;
+	int ilo;
+} minij;
+
 // I believe this correctly implements Cloneproof Schwartz Set Dropping, aka
 // the Schulze method.
 // http://wiki.electorama.com/wiki/Schulze_method
@@ -384,8 +389,9 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 	int i, j;
 	int* tally;
 	int* ss;
+	minij* mins;
 	int numWinners;
-	int mindj, mindk, mind; // minimum defeat, index and strength
+	int mind; // minimum defeat, index and strength
 	int tie = 0;
 
 	if ( debug ) {
@@ -400,6 +406,8 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 	assert( tally != NULL );
 	ss = malloc( sizeof(int)*numc );
 	assert( ss != NULL );
+	mins = malloc( sizeof(minij)*numc );
+	assert( mins != NULL );
 	// Copy original VRR tally into local tally where defeats can be deleted.
 	for ( i = 0; i < numc; i++ ) {
 		for ( j = 0; j < numc; j++ ) {
@@ -413,10 +421,7 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 	numWinners = getSchwartzSet( it, tally, defeatCount, ss );
 	while ( 1 ) {
 		int ji, ki;
-		int defeatCountIncIndex = -1;
 		mind = INT_MAX;
-		mindj = -1;
-		mindk = -1;
 		tie = 0;
 		if ( it->explain != NULL ) {
 			assert(numWinners > 0);
@@ -447,6 +452,9 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 				k = ss[ki];
 				vk = tally[k*numc + j];	// k beat j vk times // OR k prefered to j vk times
 				vj = tally[j*numc + k];	// j beat k vj times // OR j prefered to k vj times
+				if ((vk == -1) && (vj == -1)) {
+					continue;
+				}
 				if ( vk > vj ) {
 					ihi = k;
 					ilo = j;
@@ -462,14 +470,17 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 					m = vhi;
 				} else if ( margins ) {
 					m = vhi - vlo;
+				} else {
+					assert(0);
 				}
 				if ( m < mind ) {
-					mind = m;
-					mindj = ihi;
-					mindk = ilo;
 					tie = 1;
-					defeatCountIncIndex = ilo;
+					mind = m;
+					mins[0].ihi = ihi;
+					mins[0].ilo = ilo;
 				} else if ( m == mind ) {
+					mins[tie].ihi = ihi;
+					mins[tie].ilo = ilo;
 					tie++;
 				}
 			}
@@ -483,40 +494,23 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 		// all are tied
 		if ( tie == numWinners) {
 			if ( debug ) {
-				fprintf(stderr, "tie==numWinners, mind=%d, mindj=%d, mindk=%d\n", mind, mindj, mindk);
+				fprintf(stderr, "tie==numWinners==%d, mind=%d\n", tie, mind);
 			}
 			goto finish;
 		}
-		if ( tie == 1 ) {
+		for ( i = 0; i < tie; ++i ) {
+			int mindk = mins[i].ihi;
+			int mindj = mins[i].ilo;
 			if ( it->explain != NULL ) {
 				fprintf((FILE*)it->explain, "<p>Weakest defeat is %s (%d) v %s (%d). %s has one fewer defeat.</p>\n",
 						indexName(it->ni, mindk), tally[mindk*numc + mindj],
 						indexName(it->ni, mindj), tally[mindj*numc + mindk],
-						indexName(it->ni, defeatCountIncIndex)
+						indexName(it->ni, mindj)
 						);
 			}
-			tally[mindk*numc + mindj] = 0;
-			tally[mindj*numc + mindk] = 0;
-			defeatCount[defeatCountIncIndex]--;
-		} else {
-			// More than one defeat ties. Delete both.
-			// Run back through and find defeats equal in quality to mindk mindj.
-			//assert(0);
-			fprintf(stderr, "WARNING: not handling %d tied defeats that need disqualifying\n", tie );
-			if ( it->explain != NULL ) {
-				fprintf((FILE*)it->explain, "<p>Weakest defeat is %s (%d) v %s (%d). %s has one fewer defeat.</p>\n",
-						indexName(it->ni, mindk), tally[mindk*numc + mindj],
-						indexName(it->ni, mindj), tally[mindj*numc + mindk],
-						indexName(it->ni, defeatCountIncIndex)
-						);
-			}
-			tally[mindk*numc + mindj] = 0;
-			tally[mindj*numc + mindk] = 0;
-			defeatCount[defeatCountIncIndex]--;
-		}
-		if ( debug ) {
-			fprintf(stderr, "%d/%d = 0\n", mindk, mindj );
-			//htmlTable( debugsb, numc, tally, "intermediate", null );  // FIXME: Java translation cruft.
+			tally[mindk*numc + mindj] = -1;
+			tally[mindj*numc + mindk] = -1;
+			defeatCount[mindj]--;
 		}
 		numWinners = getSchwartzSet( it, tally, defeatCount, ss );
 		if ( numWinners == 1 ) {
@@ -532,6 +526,7 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 		}
 	}
 	finish:
+	free( mins );
 	free( ss );
 	free( tally );
 	VRR_makeWinners( it, defeatCount );
