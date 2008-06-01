@@ -16,14 +16,14 @@ static int initVRR( VRR* it ) {
 		return -1;
 	}
 	it->numc = 0;
+	it->winners = NULL;
+	it->explain = NULL;
 	it->ni = malloc(sizeof(NameIndex));
 	if ( it->ni == NULL ) {
 		free( it->counts );
 		return -1;
 	}
 	initNameIndex( it->ni );
-	it->winners = NULL;
-	it->explain = NULL;
 	return 0;
 }
 
@@ -53,7 +53,7 @@ VRR* newVRR() {
 #define setxy( x, y, v ) do { if (x > y) { it->counts[x][y] = (v); }else{ it->counts[y][y+x] = (v); } } while (0)
 //#define incxy( x, y ) do { if (x > y) { it->counts[x][y]++; }else{ it->counts[y][y+x]++; } } while (0)
 
-static /*__inline*/ void _incxy( VRR* it, int x, int y ) {
+static __inline void _incxy( VRR* it, int x, int y ) {
 	if (x > y) {
 		it->counts[x][y]++;
 	} else {
@@ -208,20 +208,19 @@ int VRR_voteStoredIndexVoteNode( VRR* it, StoredIndexVoteNode* votes ) {
 	}
 	for ( i = 0; i < votes->numVotes; i++ ) {
 		int x;
+		double r = votes->vote[i].rating;
 		x = votes->vote[i].index;
 		// vote vs unvoted dummy
-		if ( votes->vote[i].rating >= 0 ) {
+		if ( r >= 0 ) {
 			incxy( x, it->numc );
 		} else {
 			incxy( it->numc, x );
 		}
-	}
-	for ( i = 0; i < votes->numVotes; i++ ) {
 		for ( j = i + 1; j < votes->numVotes; j++ ) {
-			if ( votes->vote[i].rating > votes->vote[j].rating ) {
-				incxy(votes->vote[i].index,votes->vote[j].index);
-			} else if ( votes->vote[j].rating > votes->vote[i].rating ) {
-				incxy(votes->vote[j].index,votes->vote[i].index);
+			if ( r > votes->vote[j].rating ) {
+				incxy(x, votes->vote[j].index);
+			} else if ( votes->vote[j].rating > r ) {
+				incxy(votes->vote[j].index, x);
 			} else {
 				// tie rating policy?
 			}
@@ -1037,6 +1036,7 @@ VirtualVotingSystem* newVirtualVRR() {
 	toret->htmlExplain = (vvs_htmlSummary)VRR_htmlExplain;
 	toret->close = VRR_deleteVVS;
 	toret->it = &vr->rr;
+	initVRR(&(vr->rr));
 	return toret;
 }
 
@@ -1048,6 +1048,7 @@ VirtualVotingSystem* newVirtualRankedPairs() {
 	toret->getWinners = (vvs_getWinners)VRR_getWinnersRankedPairs;
 	toret->close = VRR_deleteVVS;
 	toret->it = &vr->rr;
+	initVRR(&(vr->rr));
 	return toret;
 }
 
