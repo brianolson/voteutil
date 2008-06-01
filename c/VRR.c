@@ -658,6 +658,7 @@ typedef struct pair {
 	// i always winner, j always loser.
 	int i, j;
 	int Vij, Vji;
+	int active;
 } pair;
 
 //  1 == a higher
@@ -712,6 +713,9 @@ int findPath(pair* ranks, int numranks, int from, int to, SearchStack* up) {
 	fprintf(stderr, "%sfindpath(:%d) %d->%d\n", prefix, numranks-1, from, to);
 #endif
 	for ( i = 0; i < numranks; ++i ) {
+		if ( (!ranks[i].active) && (pair_cmp(ranks + i, ranks + (numranks-1))) ){
+			continue;
+		}
 		if ( ranks[i].i == from ) {
 			if ( ranks[i].j == to ) {
 #if verbose
@@ -769,12 +773,14 @@ int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 				ranks[x].j = j;
 				ranks[x].Vij = ij;
 				ranks[x].Vji = ji;
+				ranks[x].active = 1;
 				x++;
 			} else if ( ji > ij ) {
 				ranks[x].i = j;
 				ranks[x].j = i;
 				ranks[x].Vij = ji;
 				ranks[x].Vji = ij;
+				ranks[x].active = 1;
 				x++;
 			} else {
 				// tie policy?
@@ -797,7 +803,14 @@ int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 	}
 	i = 1;
 	while ( i < x ) {
-		if ( findPath(ranks, i, ranks[i].j, ranks[i].i, NULL) ) {
+		int equivalenceLimit = i;
+		while ( (equivalenceLimit + 1) < x ) {
+			if (pair_cmp(ranks + equivalenceLimit, ranks + (equivalenceLimit + 1))) {
+				break;
+			}
+			++equivalenceLimit;
+		}
+		if ( findPath(ranks, equivalenceLimit, ranks[i].j, ranks[i].i, NULL) ) {
 			// drop this link as there is a pre-existing reverse path
 			if ( verbose ) {
 				fprintf(stderr, "DROP: %3d > %3d (%5d > %5d)\n", ranks[i].i, ranks[i].j, ranks[i].Vij, ranks[i].Vji);
@@ -806,13 +819,9 @@ int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 				fprintf((FILE*)it->explain, "DROP: %s > %s (%d > %d)<br />\n",
 						indexName(it->ni, ranks[i].i), indexName(it->ni, ranks[i].j), ranks[i].Vij, ranks[i].Vji);
 			}
-			x--;
-			for ( j = i; j < x; ++j ) {
-				ranks[j] = ranks[j+1];
-			}
-		} else {
-			++i;
+			ranks[i].active = 0;
 		}
+		++i;
 	}
 	if ( it->explain != NULL ) {
 		fprintf((FILE*)it->explain, "</p><p>Final pair rankings:</p><table border=\"0\">\n" );
@@ -826,7 +835,9 @@ int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 		defeatCount[i] = 0;
 	}
 	for ( i = 0; i < x; ++i ) {
-		defeatCount[ranks[i].j]++;
+		if ( ranks[i].active ) {
+			defeatCount[ranks[i].j]++;
+		}
 	}
 #if 1
 	VRR_makeWinners( it, defeatCount );
