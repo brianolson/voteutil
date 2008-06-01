@@ -131,21 +131,37 @@ char* storedIndexVoteToURL( NameIndex* ni, StoredIndexVoteNode* v );
 /* should be created by a factory method and destroyed by close() */
 
 typedef struct VirtualVotingSystem VirtualVotingSystem;
+	
+/* For all methods below, first argument 'it' is the 'it' member of VirtualVotingSystem. */
 struct VirtualVotingSystem {
-	int (*voteRating)( void* it, int numVotes, const NameVote* votes );
-	/*! assumed to retain or free() votes passed in. because it may free(), votes must not be accessed after call.  */
+	/* Passed in pointer is not retained (it would be converted to a StoreIndexVoteNode if needed) */
+	int (*voteRating)( void* it, int votesLength, const NameVote* votes );
+
+	/* Ownership for 'votes' parameter goes to the callee and must not be accessed by caller after passing in.
+	 * 'votes' must be malloc() allocated memory that callee may free(). 
+	 * */
 	int (*voteStoredIndexVoteNode)( void* it, StoredIndexVoteNode* votes );
-	int (*getWinners)( void* it, int numVotes, NameVote** winnersP );
+
+	/*  */
+	int (*getWinners)( void* it, int winnersLength, NameVote** winnersP );
+
 	void (*htmlSummary)( void* it, FILE* fout );
+
 	// Like summary, but with verbose behind-the-scenes step-by-step detail.
 	// Defaults to htmlSummary as per INIT_VVS_TYPE macro below.
 	void (*htmlExplain)( void* it, FILE* fout );
+
+	// Plain text summary. Unimplemented in most methods.
 	void (*print)( void* it, FILE* fout );
+
 	void (*setSharedNameIndex)( void* it, NameIndex* ni );
+
 	void (*close)( VirtualVotingSystem* it );// delete
-	// For multi-seat methods. INIT_VVS_TYPE defaults it to NULL.
+
+	// For multi-seat methods. May be NULL.
 	void (*setSeats)( void* it, int seats );
 
+	/* Opaque context holding election method state. Pass this to all of above methods. */
 	void* it;
 };
 

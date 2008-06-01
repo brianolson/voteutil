@@ -23,6 +23,7 @@ static int initVRR( VRR* it ) {
 	}
 	initNameIndex( it->ni );
 	it->winners = NULL;
+	it->explain = NULL;
 	return 0;
 }
 
@@ -89,10 +90,10 @@ int growVRR( VRR* it, int x ) {
 	return 0;
 }
 
-static int voteUnvoted( VRR* it, int numVotes, const NameVote* votes, int* indexes, NameIndexEntry* cur ) {
+static int voteUnvoted( VRR* it, int votesLength, const NameVote* votes, int* indexes, NameIndexEntry* cur ) {
 	int i;
 	int unvoted = 1;
-	for ( i = 0; i < numVotes; i++ ) {
+	for ( i = 0; i < votesLength; i++ ) {
 		if ( indexes[i] == cur->index ) {
 			unvoted = 0;
 			break;
@@ -101,7 +102,7 @@ static int voteUnvoted( VRR* it, int numVotes, const NameVote* votes, int* index
 	if ( unvoted ) {
 		// All names not voted assumed to rate -0, lose to names with >= 0 ratings and beat < 0 ratings.
 		int j;
-		for ( j = 0; j < numVotes; j++ ) {
+		for ( j = 0; j < votesLength; j++ ) {
 			if ( votes[j].rating >= 0 ) {
 				incxy( indexes[j], cur->index );
 			} else {
@@ -111,18 +112,22 @@ static int voteUnvoted( VRR* it, int numVotes, const NameVote* votes, int* index
 	}
 	i = 0;
 	if ( cur->lt != NULL ) {
-		i |= voteUnvoted( it, numVotes, votes, indexes, cur->lt );
+		i |= voteUnvoted( it, votesLength, votes, indexes, cur->lt );
 	}
 	if ( cur->gt != NULL ) {
-		i |= voteUnvoted( it, numVotes, votes, indexes, cur->gt );
+		i |= voteUnvoted( it, votesLength, votes, indexes, cur->gt );
 	}
 	return i;
 }
-int VRR_voteRating( VRR* it, int numVotes, const NameVote* votes ) {
+int VRR_voteRating( VRR* it, int votesLength, const NameVote* votes ) {
 	int i, j;
-	int indexes[numVotes];
+	int indexes[votesLength];
+	if ( it->winners != NULL ) {
+		free( it->winners );
+		it->winners = NULL;
+	}
 	// preload indexes, only do lookup n, not (n^2)/2
-	for ( i = 0; i < numVotes; i++ ) {
+	for ( i = 0; i < votesLength; i++ ) {
 		int x;
 		x = nameIndex( it->ni, votes[i].name );
 		if ( x > it->numc ) {
@@ -140,8 +145,8 @@ int VRR_voteRating( VRR* it, int numVotes, const NameVote* votes ) {
 			incxy( it->numc + 1, x );
 		}
 	}
-	for ( i = 0; i < numVotes; i++ ) {
-		for ( j = i + 1; j < numVotes; j++ ) {
+	for ( i = 0; i < votesLength; i++ ) {
+		for ( j = i + 1; j < votesLength; j++ ) {
 			if ( votes[i].rating > votes[j].rating ) {
 				incxy(indexes[i],indexes[j]);
 			} else if ( votes[j].rating > votes[i].rating ) {
@@ -152,7 +157,7 @@ int VRR_voteRating( VRR* it, int numVotes, const NameVote* votes ) {
 		}
 	}
 	// All names not voted assumed to rate -0, lose to names with >= 0 ratings and beat < 0 ratings.
-	i = voteUnvoted( it, numVotes, votes, indexes, it->ni->root );
+	i = voteUnvoted( it, votesLength, votes, indexes, it->ni->root );
 	return i;
 }
 static int voteUnvotedSIVN( VRR* it, const StoredIndexVoteNode* votes, NameIndexEntry* cur ) {
@@ -250,6 +255,10 @@ static void countDefeats( VRR* it, int* defeatCount ) {
 void VRR_makeWinners( VRR* it, int* defeatCount ) {
 	int i;
 	int notdone;
+	if ( it->winners != NULL ) {
+		free( it->winners );
+		it->winners = NULL;
+	}
 	it->winners = (NameVote*)malloc( sizeof(NameVote)*it->numc );
 	assert( it->winners != NULL );
 	for ( i = 0; i < it->numc; i++ ) {
@@ -274,11 +283,11 @@ void VRR_makeWinners( VRR* it, int* defeatCount ) {
 		}
 	}
 }
-int VRR_returnWinners( VRR* it, int numVotes, NameVote** winnersP ) {
-	if ( *winnersP != NULL && numVotes > 0 ) {
+static int VRR_returnWinners( VRR* it, int winnersLength, NameVote** winnersP ) {
+	if ( *winnersP != NULL && winnersLength > 0 ) {
 		// copy into provided return space
 		NameVote* winners = *winnersP;
-		int lim = it->numc < numVotes ? it->numc : numVotes;
+		int lim = it->numc < winnersLength ? it->numc : winnersLength;
 		int i;
 		for ( i = 0; i < lim; i++ ) {
 			winners[i] = it->winners[i];
@@ -291,8 +300,8 @@ int VRR_returnWinners( VRR* it, int numVotes, NameVote** winnersP ) {
 }
 
 static int getSchwartzSet( VRR* it, int* tally, int* defeatCount, int* sset );
-static int VRR_CSSD( VRR* it, int numVotes, NameVote** winnersP, int* defeatCount );
-static int VRR_RankedPairs( VRR* it, int numVotes, NameVote** winnersP, int* defeatCount );
+static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defeatCount );
+static int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defeatCount );
 
 int winningVotes = 1;
 int margins = 0;
@@ -323,7 +332,7 @@ static void printTally( FILE* out, int* tally, int numc ) {
 }
 
 // If there is a simple undefeated Condorcet winner, that is enough. Return the winner.
-static int VRR_plainCondorcet( VRR* it, int numVotes, NameVote** winnersP, int** defeatCountP ) {
+static int VRR_plainCondorcet( VRR* it, int winnersLength, NameVote** winnersP, int** defeatCountP ) {
 	int* defeatCount;
 	int i;
 	
@@ -338,39 +347,39 @@ static int VRR_plainCondorcet( VRR* it, int numVotes, NameVote** winnersP, int**
 			// winner
 			VRR_makeWinners( it, defeatCount );
 			free( defeatCount );
-			return VRR_returnWinners( it, numVotes, winnersP );
+			return VRR_returnWinners( it, winnersLength, winnersP );
 		}
 	}
 	*defeatCountP = defeatCount;
 	return -1;
 }
 
-int VRR_getWinners( VRR* it, int numVotes, NameVote** winnersP ) {
-	return VRR_getWinnersCSSD( it, numVotes, winnersP );
+int VRR_getWinners( VRR* it, int winnersLength, NameVote** winnersP ) {
+	return VRR_getWinnersCSSD( it, winnersLength, winnersP );
 }
-int VRR_getWinnersCSSD( VRR* it, int numVotes, NameVote** winnersP ) {
+int VRR_getWinnersCSSD( VRR* it, int winnersLength, NameVote** winnersP ) {
 	int* defeatCount;
 
-	int result = VRR_plainCondorcet( it, numVotes, winnersP, &defeatCount );
+	int result = VRR_plainCondorcet( it, winnersLength, winnersP, &defeatCount );
 	if ( result >= 0 ) {
 		return result;
 	}
-	return VRR_CSSD( it, numVotes, winnersP, defeatCount );
+	return VRR_CSSD( it, winnersLength, winnersP, defeatCount );
 }
-int VRR_getWinnersRankedPairs( VRR* it, int numVotes, NameVote** winnersP ) {
+int VRR_getWinnersRankedPairs( VRR* it, int winnersLength, NameVote** winnersP ) {
 	int* defeatCount;
 	
-	int result = VRR_plainCondorcet( it, numVotes, winnersP, &defeatCount );
+	int result = VRR_plainCondorcet( it, winnersLength, winnersP, &defeatCount );
 	if ( result >= 0 ) {
 		return result;
 	}
-	return VRR_RankedPairs( it, numVotes, winnersP, defeatCount );
+	return VRR_RankedPairs( it, winnersLength, winnersP, defeatCount );
 }
 
 // I believe this correctly implements Cloneproof Schwartz Set Dropping, aka
 // the Schulze method.
 // http://wiki.electorama.com/wiki/Schulze_method
-static int VRR_CSSD( VRR* it, int numVotes, NameVote** winnersP, int* defeatCount ) {
+static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defeatCount ) {
 	int numc = it->numc;
 	int i, j;
 	int* tally;
@@ -409,6 +418,14 @@ static int VRR_CSSD( VRR* it, int numVotes, NameVote** winnersP, int* defeatCoun
 		mindj = -1;
 		mindk = -1;
 		tie = 0;
+		if ( it->explain != NULL ) {
+			assert(numWinners > 0);
+			fprintf((FILE*)it->explain, "<p>Top choices: %s", indexName(it->ni, ss[0]));
+			for ( i = 1; i < numWinners; ++i ) {
+				fprintf((FILE*)it->explain, ", %s", indexName(it->ni, ss[i]) );
+			}
+			fprintf((FILE*)it->explain, "</p>");
+		}
 		if ( debug ) {
 			printTally(stdout,tally,numc);
 			fprintf(stderr,"ss (%d):", numWinners );
@@ -423,107 +440,103 @@ static int VRR_CSSD( VRR* it, int numVotes, NameVote** winnersP, int* defeatCoun
 			for ( ki = ji + 1; ki < numWinners; ki++ ) {
 				int k;
 				int vj, vk;
+				int ihi, ilo;
+				int vhi, vlo;
+				int m;
+
 				k = ss[ki];
 				vk = tally[k*numc + j];	// k beat j vk times // OR k prefered to j vk times
 				vj = tally[j*numc + k];	// j beat k vj times // OR j prefered to k vj times
-				if ( vj > vk ) {
-					if ( winningVotes ) {
-						if ( vj < mind ) {
-							mind = vj;
-							mindj = j;
-							mindk = k;
-							tie = 1;
-							defeatCountIncIndex = k;
-						} else if ( vj == mind ) {
-							tie++;
-						}
-					} else if ( margins ) {
-						int m = vj - vk;
-						if (m < mind) {
-							mind = m;
-							mindj = j;
-							mindk = k;
-							tie = 1;
-							defeatCountIncIndex = k;
-						} else if ( m == mind ) {
-							tie++;
-						}
-					}
-				} else if ( vk > vj ) {
-					if ( winningVotes ) {
-						if ( vk < mind ) {
-							mind = vk;
-							mindj = j;
-							mindk = k;
-							tie = 1;
-							defeatCountIncIndex = j;
-						} else if ( vk == mind ) {
-							tie++;
-						}
-					} else if ( margins ) {
-						int m = vk - vj;
-						if (m < mind) {
-							mind = m;
-							mindj = j;
-							mindk = k;
-							tie = 1;
-							defeatCountIncIndex = j;
-						} else if ( m == mind ) {
-							tie++;
-						}
-					}
+				if ( vk > vj ) {
+					ihi = k;
+					ilo = j;
+					vhi = vk;
+					vlo = vj;
+				} else if ( vj > vk ) {
+					ihi = j;
+					ilo = k;
+					vhi = vj;
+					vlo = vk;
+				}
+				if ( winningVotes ) {
+					m = vhi;
+				} else if ( margins ) {
+					m = vhi - vlo;
+				}
+				if ( m < mind ) {
+					mind = m;
+					mindj = ihi;
+					mindk = ilo;
+					tie = 1;
+					defeatCountIncIndex = ilo;
+				} else if ( m == mind ) {
+					tie++;
 				}
 			}
 		}
 		if ( tie == 0 ) {
-#if 0
 			if ( debug ) {
-				debugsb.append("tie = 0, no weakest defeat found to cancel\n");
+				fprintf(stderr, "tie = 0, no weakest defeat found to cancel\n");
 			}
-#endif
 			goto finish;
 		}
 		// all are tied
 		if ( tie == numWinners) {
-#if 0
 			if ( debug ) {
-				debugsb.append("tie==numWinners, mind=").append(mind).append(", mindj=").append(mindj).append(", mindk=").append(mindk).append('\n');
+				fprintf(stderr, "tie==numWinners, mind=%d, mindj=%d, mindk=%d\n", mind, mindj, mindk);
 			}
-#endif
 			goto finish;
 		}
-		tally[mindk*numc + mindj] = 0;
-		tally[mindj*numc + mindk] = 0;
-		defeatCount[defeatCountIncIndex]--;
-#if 0
-		if ( debug ) {
-			debugfprintf( fout, mindk ).append( '/' ).append( mindj ).append(" = 0\n");
-			htmlTable( debugsb, numc, tally, "intermediate", null );
+		if ( tie == 1 ) {
+			if ( it->explain != NULL ) {
+				fprintf((FILE*)it->explain, "<p>Weakest defeat is %s (%d) v %s (%d). %s has one fewer defeat.</p>\n",
+						indexName(it->ni, mindk), tally[mindk*numc + mindj],
+						indexName(it->ni, mindj), tally[mindj*numc + mindk],
+						indexName(it->ni, defeatCountIncIndex)
+						);
+			}
+			tally[mindk*numc + mindj] = 0;
+			tally[mindj*numc + mindk] = 0;
+			defeatCount[defeatCountIncIndex]--;
+		} else {
+			// More than one defeat ties. Delete both.
+			// Run back through and find defeats equal in quality to mindk mindj.
+			//assert(0);
+			fprintf(stderr, "WARNING: not handling %d tied defeats that need disqualifying\n", tie );
+			if ( it->explain != NULL ) {
+				fprintf((FILE*)it->explain, "<p>Weakest defeat is %s (%d) v %s (%d). %s has one fewer defeat.</p>\n",
+						indexName(it->ni, mindk), tally[mindk*numc + mindj],
+						indexName(it->ni, mindj), tally[mindj*numc + mindk],
+						indexName(it->ni, defeatCountIncIndex)
+						);
+			}
+			tally[mindk*numc + mindj] = 0;
+			tally[mindj*numc + mindk] = 0;
+			defeatCount[defeatCountIncIndex]--;
 		}
-#endif
+		if ( debug ) {
+			fprintf(stderr, "%d/%d = 0\n", mindk, mindj );
+			//htmlTable( debugsb, numc, tally, "intermediate", null );  // FIXME: Java translation cruft.
+		}
 		numWinners = getSchwartzSet( it, tally, defeatCount, ss );
-//		ss = getSchwartzSet( numc, tally, defeatCount, debugsb );
 		if ( numWinners == 1 ) {
 			goto finish;
 		}
-#if 0
 		if ( debug ) {
-			debugsb.append("ss={ ");
-			debugfprintf( fout, ss[0] );
+			assert(numWinners > 0);
+			fprintf(stderr, "ss={ %d", ss[0] );
 			for ( j = 1; j < numWinners; j++ ) {
-				debugsb.append(", ");
-				debugfprintf( fout, ss[j] );
+				fprintf(stderr, ", %d", ss[j] );
 			}
-			debugsb.append(" }\n");
+			fprintf(stderr, " }\n");
 		}
-#endif
 	}
 	finish:
 	free( ss );
 	free( tally );
 	VRR_makeWinners( it, defeatCount );
 	free( defeatCount );
-	return VRR_returnWinners( it, numVotes, winnersP );
+	return VRR_returnWinners( it, winnersLength, winnersP );
 }
 
 
@@ -549,11 +562,9 @@ int verifySchwartzSet( int numc, int* tally, int* ss, int numWinners ) {
 				vm = tally[m*numc + j];	// m beat j vm times // OR m prefered to j vm times
 				vj = tally[j*numc + m];	// j beat m vj times // OR j prefered to m vj times
 				if ( vj > vm ) {
-#if 0
-					if ( debugsb != null ) {
+					if ( debug ) {
 						fprintf(stderr, "choice %d in bad schwartz set defeated by %d not in set\n", m, j);
 					}
-#endif
 					return 0;
 				}
 			}
@@ -573,11 +584,9 @@ int verifySchwartzSet( int numc, int* tally, int* ss, int numWinners ) {
 			}
 		}
 		if ( (innerDefeats > 0) && (innerDefeats == numWinners - 1) ) {
-#if 0
-			if ( debugsb != null ) {
+			if ( debug ) {
 				fprintf(stderr, "choice %d in bad schwartz is defeated by all in set.\n", m);
 			}
-#endif
 			return 0;
 		}
 	}
@@ -635,22 +644,17 @@ static int getSchwartzSet( VRR* it, int* tally, int* defeatCount, int* sset ) {
 	for ( j = 0; j < numWinners; j++ ) {
 		sset[j] = choiceIndecies[j];
 	}
+#ifndef NDEBUG
 	if ( ! verifySchwartzSet( numc, tally, sset, numWinners ) ) {
-#if 0
-		//System.err.println("getSchwartzSet is returning an invalid Schwartz set!");
-		if ( debugsb != null ) {
-			htmlTable( debugsb, numc, tally, "tally not met by schwartz set", null );
-			debugfprintf( fout, "bad sset: " );
-			debugfprintf( fout, sset[0] );
-			for ( j = 1; j < sset.length; j++ ) {
-				debugsb.append(", ");
-				debugsb.append(sset[j]);
-			}
+		fprintf(stderr, "getSchwartzSet is returning an invalid Schwartz set!\n");
+		assert(numWinners > 0);
+		//htmlTable( debugsb, numc, tally, "tally not met by schwartz set", null );  // FIXME: Java translation cruft.
+		fprintf(stderr, "bad sset: %d", sset[0] );
+		for ( j = 1; j < numWinners; j++ ) {
+			fprintf(stderr, ", %d", sset[j]);
 		}
-#else
-		fprintf(stderr,"verifySchwartzSet failed\n");
-#endif
 	}
+#endif
 	free(choiceIndecies);
 	return numWinners;
 }
@@ -692,11 +696,32 @@ typedef struct SeachStack {
 int findPath(pair* ranks, int numranks, int from, int to, SearchStack* up) {
 	SearchStack here;
 	int i;
+#if verbose
+	int depth = 0;
+	static char depthstr[] = "                                                            ";  // 60 spaces
+	static char* depthstrEnd = depthstr + 60;
+	char* prefix;
+	{
+		SearchStack* cur = up;
+		while ( cur != NULL ) {
+			depth++;
+			cur = cur->prev;
+		}
+		assert(depth < 30);
+		prefix = (depthstrEnd - (depth*2));
+	}
+#endif
 	here.from = from;
 	here.prev = up;
+#if verbose
+	fprintf(stderr, "%sfindpath(:%d) %d->%d\n", prefix, numranks-1, from, to);
+#endif
 	for ( i = 0; i < numranks; ++i ) {
 		if ( ranks[i].i == from ) {
 			if ( ranks[i].j == to ) {
+#if verbose
+				fprintf(stderr, "%sfound %d->%d\n", prefix, from, to);
+#endif
 				return 1;
 			} else {
 				int maybepath;
@@ -710,9 +735,19 @@ int findPath(pair* ranks, int numranks, int from, int to, SearchStack* up) {
 					cur = cur->prev;
 				}
 				if ( ! beenthere ) {
+#if verbose
+					fprintf(stderr, "%sthrough %d\n", prefix, ranks[i].j);
+#endif
 					maybepath = findPath(ranks, numranks, ranks[i].j, to, &here);
 					if ( maybepath != 0 ) {
+#if verbose
+						fprintf(stderr, "%sfound %d->%d\n", prefix, from, to);
+#endif
 						return maybepath;
+					} else {
+#if verbose
+						fprintf(stderr, "%sthrough %d fails\n", prefix, ranks[i].j);
+#endif
 					}
 				}
 			}
@@ -722,7 +757,7 @@ int findPath(pair* ranks, int numranks, int from, int to, SearchStack* up) {
 }
 
 // http://wiki.electorama.com/wiki/Ranked_Pairs
-int VRR_RankedPairs( VRR* it, int numVotes, NameVote** winnersP, int* defeatCount ) {
+int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defeatCount ) {
 	pair* ranks;
 	int numc = it->numc;
 	int i, j;
@@ -757,24 +792,59 @@ int VRR_RankedPairs( VRR* it, int numVotes, NameVote** winnersP, int* defeatCoun
 			fprintf(stderr, "%3d > %3d (%5d > %5d)\n", ranks[i].i, ranks[i].j, ranks[i].Vij, ranks[i].Vji);
 		}
 	}
-	for ( i = 1; i < x; ++i ) {
-		if ( findPath(ranks, i, ranks[i].i, ranks[i].j, NULL) ) {
+	if ( it->explain != NULL ) {
+		fprintf((FILE*)it->explain, "<p>Initial pair rankings:</p><table border=\"0\">\n" );
+		for ( i = 0; i < x; ++i ) {
+			fprintf((FILE*)it->explain, "<tr><td>%s</td><td>&gt;</td><td>%s</td><td>(%d > %d)</td></tr>\n",
+					indexName(it->ni, ranks[i].i), indexName(it->ni, ranks[i].j), ranks[i].Vij, ranks[i].Vji);
+		}
+		fprintf((FILE*)it->explain, "</table>\n<p>");
+	}
+	i = 1;
+	while ( i < x ) {
+		if ( findPath(ranks, i, ranks[i].j, ranks[i].i, NULL) ) {
 			// drop this link as there is a pre-existing reverse path
 			if ( verbose ) {
 				fprintf(stderr, "DROP: %3d > %3d (%5d > %5d)\n", ranks[i].i, ranks[i].j, ranks[i].Vij, ranks[i].Vji);
+			}
+			if ( it->explain != NULL ) {
+				fprintf((FILE*)it->explain, "DROP: %s > %s (%d > %d)<br />\n",
+						indexName(it->ni, ranks[i].i), indexName(it->ni, ranks[i].j), ranks[i].Vij, ranks[i].Vji);
 			}
 			x--;
 			for ( j = i; j < x; ++j ) {
 				ranks[j] = ranks[j+1];
 			}
+		} else {
+			++i;
 		}
 	}
+	if ( it->explain != NULL ) {
+		fprintf((FILE*)it->explain, "</p><p>Final pair rankings:</p><table border=\"0\">\n" );
+		for ( i = 0; i < x; ++i ) {
+			fprintf((FILE*)it->explain, "<tr><td>%s</td><td>&gt;</td><td>%s</td><td>(%d > %d)</td></tr>\n",
+					indexName(it->ni, ranks[i].i), indexName(it->ni, ranks[i].j), ranks[i].Vij, ranks[i].Vji);
+		}
+		fprintf((FILE*)it->explain, "</table>\n");
+	}
+	for ( i = 0; i < numc; ++i ) {
+		defeatCount[i] = 0;
+	}
+	for ( i = 0; i < x; ++i ) {
+		defeatCount[ranks[i].j]++;
+	}
+#if 1
+	VRR_makeWinners( it, defeatCount );
+	free( defeatCount );
+	return VRR_returnWinners( it, winnersLength, winnersP );
+#else
 	{
 		// make winners
 		NameVote* winners;
 		int winc = 0;
 		it->winners = (NameVote*)malloc( sizeof(NameVote)*it->numc );
 		winners = it->winners;
+		// emit winners as they show up in ranked pairs
 		for ( i = 0; i < x; ++i ) {
 			int foundw;
 			foundw = 0;
@@ -790,17 +860,35 @@ int VRR_RankedPairs( VRR* it, int numVotes, NameVote** winnersP, int* defeatCoun
 				winc++;
 			}
 		}
+		// search all indecies to ensure ultimate looser gets last place in winners output.
+		for ( i = 0; i < numc; ++i ) {
+			int foundw;
+			foundw = 0;
+			for ( j = 0; j < x; ++j ) {
+				if ( ranks[j].i == i ) {
+					foundw = 1;  // already emitted
+				}
+			}
+			if ( foundw == 0 ) {
+				assert(winc < numc);
+				winners[winc].name = indexName( it->ni, ranks[i].i );
+				winners[winc].rating = numc - winc;
+				winc++;
+			}
+		}
 		assert(winc == numc);
 	}
 	free(ranks);
-	return VRR_returnWinners( it, numVotes, winnersP );
+	return VRR_returnWinners( it, winnersLength, winnersP );
+#endif
 }
+
+static void VRR_condorcetTable( VRR* it, FILE* fout, int numw, NameVote* winners );
+static void simpleWinnerTable( FILE* fout, int numw, NameVote* winners );
 
 void VRR_htmlSummary( VRR* it, FILE* fout ) {
 	int numw;
-	int i, xi, xj;
 	NameVote* winners = NULL;
-	int* indextr;
 
 	if ( it->winners == NULL ) {
 		numw = VRR_getWinners( it, 0, &winners );
@@ -808,6 +896,26 @@ void VRR_htmlSummary( VRR* it, FILE* fout ) {
 		numw = it->numc;
 		winners = it->winners;
 	}
+	VRR_condorcetTable( it, fout, numw, winners );
+	simpleWinnerTable( fout, numw, winners );
+}
+void VRR_htmlSummaryRankedPairs( VRR* it, FILE* fout ) {
+	int numw;
+	NameVote* winners = NULL;
+	
+	if ( it->winners == NULL ) {
+		numw = VRR_getWinnersRankedPairs( it, 0, &winners );
+	} else {
+		numw = it->numc;
+		winners = it->winners;
+	}
+	VRR_condorcetTable( it, fout, numw, winners );
+	simpleWinnerTable( fout, numw, winners );
+}
+static void VRR_condorcetTable( VRR* it, FILE* fout, int numw, NameVote* winners ) {
+	int i, xi, xj;
+	int* indextr;
+
 	fprintf( fout, "<table border=\"1\"><tr><td></td>" );
 	for ( i = 0; i < numw; i++ ) {
 		fprintf( fout, "<td>(%d)</td>", i );
@@ -845,11 +953,44 @@ void VRR_htmlSummary( VRR* it, FILE* fout ) {
 	free( indextr );
 	indextr = NULL;
 	fprintf( fout, "</table>" );
+}
+static void simpleWinnerTable( FILE* fout, int numw, NameVote* winners ) {
+	int i;
 	fprintf( fout, "<table border=\"1\">" );
 	for ( i = 0; i < numw; i++ ) {
 		fprintf( fout, "<tr><td>%s</td><td>%.0f</tr>", winners[i].name, winners[i].rating );
 	}
 	fprintf( fout, "</table>\n" );
+}
+static void VRR_htmlExplainCommon( VRR* it, FILE* fout, int (*f)(VRR*,int,NameVote**,int*) ) {
+	int numw;
+	NameVote* winners = NULL;
+	int* defeatCount;
+
+	if ( it->winners != NULL ) {
+		free( it->winners );
+		it->winners = NULL;
+	}
+	
+	numw = VRR_plainCondorcet( it, 0, &winners, &defeatCount );
+	if ( numw >= 0 ) {
+		VRR_condorcetTable( it, fout, numw, winners );
+		simpleWinnerTable( fout, numw, winners );
+		return;
+	} else {
+		VRR_makeWinners( it, defeatCount );
+		VRR_condorcetTable( it, fout, it->numc, it->winners );
+	}
+	it->explain = fout;
+	numw = f( it, 0, &winners, defeatCount );
+	it->explain = NULL;
+	simpleWinnerTable( fout, numw, winners );
+}
+void VRR_htmlExplain( VRR* it, FILE* fout ) {
+	VRR_htmlExplainCommon( it, fout, VRR_CSSD );
+}
+void VRR_htmlExplainRankedPairs( VRR* it, FILE* fout ) {
+	VRR_htmlExplainCommon( it, fout, VRR_RankedPairs );
 }
 void VRR_print( VRR* it, FILE* fout ) {
 
@@ -887,6 +1028,7 @@ VirtualVotingSystem* newVirtualVRR() {
 	struct vvsrr* vr = (struct vvsrr*)malloc(sizeof(struct vvsrr));
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(VRR);
+	toret->htmlExplain = (vvs_htmlSummary)VRR_htmlExplain;
 	toret->close = VRR_deleteVVS;
 	toret->it = &vr->rr;
 	return toret;
@@ -896,6 +1038,7 @@ VirtualVotingSystem* newVirtualRankedPairs() {
 	struct vvsrr* vr = (struct vvsrr*)malloc(sizeof(struct vvsrr));
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(VRR);
+	toret->htmlExplain = (vvs_htmlSummary)VRR_htmlExplainRankedPairs;
 	toret->getWinners = (vvs_getWinners)VRR_getWinnersRankedPairs;
 	toret->close = VRR_deleteVVS;
 	toret->it = &vr->rr;

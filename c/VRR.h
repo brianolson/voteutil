@@ -8,6 +8,7 @@ struct VRR {
 	int numc;
 	NameIndex* ni;
 	NameVote* winners;
+	void* explain;  // secretly FILE*
 };
 typedef struct VRR VRR;
 

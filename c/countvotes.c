@@ -273,8 +273,8 @@ int main( int argc, char** argv ) {
 	for ( i = 0; i < numSystems; i++ ) {
 		winners = NULL;
 		int numWinners;
-		numWinners = systems[i]->getWinners( systems[i]->it, 0, &winners );
 		if ( testOutput ) {
+			numWinners = systems[i]->getWinners( systems[i]->it, 0, &winners );
 			fprintf(out, "%s: ", systemNames[i] );
 			if ( numWinners > 0 ) {
 				int w;
@@ -289,6 +289,7 @@ int main( int argc, char** argv ) {
 			if ( explain ) {
 				systems[i]->htmlExplain( systems[i]->it, out );
 			} else {
+//				numWinners = systems[i]->getWinners( systems[i]->it, 0, &winners );
 				systems[i]->htmlSummary( systems[i]->it, out );
 			}
 		} else {
