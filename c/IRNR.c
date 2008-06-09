@@ -1,15 +1,9 @@
 #include "IRNR.h"
+#include "RoundScore.h"
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
 
-/*
-struct IRNR {
-	StoredIndexVoteNode* storedVotes;
-	double* tally;
-};
-typedef struct IRNR IRNR;
-*/
 IRNR* newIRNR() {
 	IRNR* toret = (IRNR*)malloc( sizeof(IRNR) );
 	if ( toret == NULL ) { return toret; }
@@ -52,13 +46,20 @@ static __inline int min( int a, int b ) {
 
 int rmsnorm = 1;
 
-static void IRNR_calcWinners( IRNR* it ) {
+static void IRNR_calcWinners( IRNR* it, RoundScore** rounds ) {
 	double* tally;
 	boolean* active;
 	int numActive;
 	int i;
 	int numc = it->ni->nextIndex;
+	RoundScore* round;
 
+	if ( rounds != NULL ) {
+		round = newRoundScore(numc);
+		*rounds = round;
+	} else {
+		round = NULL;
+	}
 	numActive = numc;
 	it->winners = (NameVote*)malloc( sizeof(NameVote)*numc );
 	tally = (double*)malloc( sizeof(double)*numc );
@@ -143,6 +144,17 @@ static void IRNR_calcWinners( IRNR* it ) {
 				}
 			}
 		}
+		if ( round != NULL ) {
+			for ( i = 0; i < numc; ++i ) {
+				round->they[i].active = active[i];
+				round->they[i].name = indexName( it->ni, i );
+				round->they[i].tally = tally[i];
+			}
+			if ( numActive > 1 ) {
+				round->next = newRoundScore(numc);
+				round = round->next;
+			}
+		}
 	}
 	for ( i = 0; i < numc; i++ ) {
 		if ( active[i] == true ) {
@@ -165,7 +177,7 @@ int IRNR_getWinners( IRNR* it, int wlen, NameVote** winnersP ) {
 		// have valid solution
 		goto returnsolution;
 	}
-	IRNR_calcWinners( it );
+	IRNR_calcWinners( it, NULL );
 returnsolution:
 	if ( *winnersP != NULL && wlen > 0 ) {
 		// copy into provided return space
@@ -184,8 +196,23 @@ void IRNR_htmlSummary( IRNR* it, FILE* fout ) {
 	int i;
 	int numc = it->ni->nextIndex;
 	if ( ! it->winners ) {
-		IRNR_calcWinners( it );
+		IRNR_calcWinners( it, NULL );
 	}
+	fprintf(fout, "<table border=\"1\"><tr><th>Name</th><th>IRNR Rating</th></tr>");
+	for ( i = 0; i < numc; i++ ) {
+		fprintf( fout, "<tr><td>%s</td><td>%.2f</td></tr>", it->winners[i].name, it->winners[i].rating );
+	}
+	fprintf( fout, "</table>\n" );
+}
+void IRNR_htmlExplain( IRNR* it, FILE* fout ) {
+	int i;
+	int numc = it->ni->nextIndex;
+	RoundScore* rounds;
+	if ( ! it->winners ) {
+		IRNR_calcWinners( it, &rounds );
+	}
+	RoundScore_HTMLTable( rounds, fout, it->winners );
+	deleteRoundScore( rounds );
 	fprintf(fout, "<table border=\"1\"><tr><th>Name</th><th>IRNR Rating</th></tr>");
 	for ( i = 0; i < numc; i++ ) {
 		fprintf( fout, "<tr><td>%s</td><td>%.2f</td></tr>", it->winners[i].name, it->winners[i].rating );
@@ -196,7 +223,7 @@ void IRNR_print( IRNR* it, FILE* fout ) {
 	int i;
 	int numc = it->ni->nextIndex;
 	if ( ! it->winners ) {
-		IRNR_calcWinners( it );
+		IRNR_calcWinners( it, NULL );
 	}
 	fprintf(fout, "#Name\tIRNR Rating\n");
 	for ( i = 0; i < numc; i++ ) {
@@ -241,6 +268,7 @@ VirtualVotingSystem* newVirtualIRNR() {
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(IRNR);
 	toret->close = IRNR_deleteVVS;
+	toret->htmlExplain = (vvs_htmlSummary)IRNR_htmlExplain;
 	toret->it = &vr->rr;
 	return toret;
 }

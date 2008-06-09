@@ -55,6 +55,22 @@ sub randNameSet($) {
 	}
 	return @out;
 }
+sub mysys($) {
+	my $cmd = shift;
+	system $cmd;
+	if ($? == -1) {
+		die "failed to execute:\n\t$cmd\n";
+	} elsif ($? & 127) {
+		$signal = $? & 127;
+		$core = ($? & 128) ? "with" : "without";
+		die "died with signal $signal, $core coredump:\n$cmd\n";
+	} else {
+		$val = $? >> 8;
+		if ( $val != 0 ) {
+			die "failed with $val:\n$cmd\n";
+		}
+	}
+}
 
 if ( ! defined $tmpdir ) {
 	$tmpdir = tempdir( CLENAUP => 0 );
@@ -81,7 +97,7 @@ for ($i = 0; $ i < $n; $i++ ) {
 		$cmd = $app . " --test -o " . $outname . " -i " . $tfname;
 		#print $cmd . "\n";
 		push @commands, $cmd;
-		system $cmd;
+		mysys( $cmd );
 		open FIN, '<', $outname;
 		while ( $line = <FIN> ) {
 			($meth, $result) = $line =~ /([^:]+): (.*)/;
@@ -101,7 +117,12 @@ for ($i = 0; $ i < $n; $i++ ) {
 		%x = %{$they};
 		while (($iname, $result) = each %x) {
 			if ((defined $pimpl) && ($presult ne $result)) {
-				print STDERR "error: mismatch in $meth, numChoices=${numChoices}, numVotes=${numVotes}\n$iname: $result\n$pimpl: $presult\nbadvotes: $tfname\n";
+				print STDERR<<EOF;
+error: mismatch in $meth, numChoices=${numChoices}, numVotes=${numVotes}
+$iname: $result
+$pimpl: $presult
+badvotes: $tfname
+EOF
 				$anybad = 1;
 				$localbad = 1;
 				$outname = $tfname . "_" . $iname . ".html";
@@ -109,13 +130,13 @@ for ($i = 0; $ i < $n; $i++ ) {
 					$cmd = $implToApp{$iname} . " --explain -o " . $outname . " -i " . $tfname;
 					$redone{$outname} = 1;
 				}
-				system $cmd;
+				mysys( $cmd );
 				$outname = $tfname . "_" . $pimpl . ".html";
 				if ( ! $redone{$outname} ) {
 					$cmd = $implToApp{$pimpl} . " --explain -o " . $outname . " -i " . $tfname;
 					$redone{$outname} = 1;
 				}
-				system $cmd;
+				mysys( $cmd );
 			} else {
 				#print " " . $iname;
 			}

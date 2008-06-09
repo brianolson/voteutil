@@ -164,7 +164,7 @@ public abstract class NameVotingSystem {
 	@param sb a valid StringBuffer to which HTML explaination will be appended.
 	@return same StringBuffer passed in, with HTML explaination of voting system process appended.
 	*/
-	public StringBuffer htmlExplain( StringBuffer sb ){
+	public StringBuffer htmlExplain( StringBuffer sb ) {
 		return htmlSummary( sb );
 	}
 	
@@ -189,11 +189,11 @@ public abstract class NameVotingSystem {
 		public int compareTo( Object o ) throws ClassCastException {
 			NameVote b = (NameVote)o;
 			if ( rating < b.rating ) {
-				return -1;
-			} else if ( rating > b.rating ) {
 				return 1;
+			} else if ( rating > b.rating ) {
+				return -1;
 			}
-			return 0;
+			return name.compareTo( b.name );
 		}
 		public boolean equals( Object o ) {
 			NameVote b = (NameVote)o;
@@ -304,15 +304,7 @@ public abstract class NameVotingSystem {
 		voteRating( nameEqStrToVoteArray( cd ));
 	}
 	public static void sort( NameVote[] they ) {
-		for ( int i = 0; i < they.length; i++ ) {
-			for ( int j = i + 1; j < they.length; j++ ) {
-				if ( they[i].rating < they[j].rating ) {
-					NameVote tc = they[i];
-					they[i] = they[j];
-					they[j] = tc;
-				}
-			}
-		}
+		java.util.Arrays.sort( they );
 	}
 	
 	/** Reads tab separated name=rating vote per line. */

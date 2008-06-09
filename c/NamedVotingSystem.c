@@ -10,6 +10,22 @@ int debug = 0;
 char* strdup( const char* );
 #endif
 
+static int NameVote_cmp_qsort(const void* xa, const void* xb) {
+	NameVote* a = (NameVote*)xa;
+	NameVote* b = (NameVote*)xb;
+	if ( a->rating > b->rating ) {
+		return -1;
+	}
+	if ( a->rating < b->rating ) {
+		return 1;
+	}
+	return strcmp( a->name, b->name );
+}
+
+void sortNameVotes(NameVote* they, int length) {
+	qsort( they, length, sizeof(NameVote), NameVote_cmp_qsort );
+}
+
 void deleteNameIndexEntryTree( NameIndexEntry* x ) {
 	if ( x->lt ) {
 		deleteNameIndexEntryTree( x->lt );

@@ -46,7 +46,7 @@ public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
 				continue;
 			}
 			ts = 0.0;
-			ot = (NameVote[])votes.elementAt( v );
+			ot = (NameVote[])votes.get( v );
 			hasIt = false;
 			for ( int c = 0; c < ot.length; c++ ) {
 				TallyState tts;
@@ -146,7 +146,7 @@ public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
 					continue;
 				}
 				ts = 0.0;
-				ot = (NameVote[])votes.elementAt( v );
+				ot = (NameVote[])votes.get( v );
 				hasAny = false;
 				for ( int c = 0; c < ot.length; c++ ) {
 					TallyState tts;

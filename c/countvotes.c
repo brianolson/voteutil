@@ -10,7 +10,7 @@ const char* helptext = "countvotes [--dump][--debug][--preindexed]\n"
 "\t[--rankings][--help|-h|--list][--explain]\n"
 "\t[-o filename|--out filenam]\n"
 "\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"
-"\t[input file name|-i filename]\n"
+"\t[input file name|-i votesfile|-igz gzipped-votesfile]\n"
 #if HAVE_POSTGRES
 "\t--pg \"PostgreSQL connect string\" --query \"SQL;\"\n"
 #endif
@@ -73,6 +73,7 @@ void listMethods(FILE* out) {
 
 void voteLine( char* line, NameIndex* ni );
 void doFile( const char* finame, NameIndex* ni );
+void doGzFile( const char* finame, NameIndex* ni );
 
 #if HAVE_POSTGRES
 #include "libpq-fe.h"
@@ -92,6 +93,7 @@ int testOutput = 0;
 int inputIsRankings = 0;
 int seats = 1;
 int explain = 0;
+int doGz = 0;
 
 int main( int argc, char** argv ) {
 	NameIndex ni;
@@ -200,6 +202,10 @@ int main( int argc, char** argv ) {
 		} else if ( !strcmp( argv[i], "-i" )) {
 			i++;
 			finame = argv[i];
+		} else if ( !strcmp( argv[i], "-igz" )) {
+			i++;
+			finame = argv[i];
+			doGz = 1;
 		} else if ( finame == NULL ) {
 			finame = argv[i];
 		} else {
@@ -260,7 +266,9 @@ int main( int argc, char** argv ) {
 		doPG( finame, &ni );
 	} else
 #endif
-	{
+	if ( doGz ) {
+		doGzFile( finame, &ni );
+	} else {
 		doFile( finame, &ni );
 	}
 
@@ -414,3 +422,49 @@ void doFile( const char* finame, NameIndex* ni ) {
 	free( line );
 }
 
+#ifdef WITHOUT_LIB_Z
+void doGzFile( const char* finame, NameIndex* ni ) {
+	fprintf(stderr, "error: tried to read gzipped votes but compiled without zlib\n");
+	exit(1);
+}
+#else /* ! WITHOUT_LIB_Z */
+#include "zlib.h"
+
+void doGzFile( const char* finame, NameIndex* ni ) {
+	gzFile fin;
+	char* line;
+
+	line = malloc( MAX_LINE_LEN+1 );
+	assert(line != NULL);
+
+	if ( finame == NULL ) {
+		fin = gzdopen(STDIN_FILENO, "rb");
+	} else {
+		//printf("opening \"%s\"\n", finame );
+		fin = gzopen( finame, "rb" );
+		if ( fin == NULL ) {
+			perror(finame);
+			exit(1);
+		}
+	}
+	
+	while ( gzgets( fin, line, MAX_LINE_LEN ) != NULL ) {
+		voteLine( line, ni );
+	}
+	{
+		int gzerr;
+		const char* gzstr;
+		gzstr = gzerror( fin, &gzerr );
+		if ( (gzerr == Z_OK) || (gzerr == Z_STREAM_END) ) {
+			// OK!
+		} else if ( gzerr == Z_ERRNO ) {
+			perror(finame);
+		} else {
+			fprintf(stderr, "zlib says (%d):%s\n", gzerr, gzstr );
+		}
+	}
+	gzclose( fin );
+	
+	free( line );
+}
+#endif /* ! WITHOUT_LIB_Z */

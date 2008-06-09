@@ -1,6 +1,6 @@
 package org.bolson.vote;
 
-import java.util.Vector;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
@@ -15,8 +15,8 @@ Instant Runoff Normalized Ratings.
 */
 public class NamedIRNR extends NameVotingSystem {
 	/** Holds each passed in vote.
-	 This would be Vector<NameVote[]> if I broke Java 1.4 compatibility. */
-	protected Vector votes = new Vector();
+	 This would be ArrayList<NameVote[]> if I broke Java 1.4 compatibility. */
+	protected ArrayList votes = new ArrayList();
 	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
 	protected HashMap names = new HashMap();
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
@@ -54,6 +54,17 @@ public class NamedIRNR extends NameVotingSystem {
 		TallyState( String nin ) {
 			name = nin;
 		}
+		/**
+		 Copy state for later verbose round descriptions.
+		 fractions usage in copy is full count, not just fractions.
+		 */
+		public TallyState stateCopy() {
+			TallyState x = new TallyState(name);
+			x.tally = tally;
+			x.active = active;
+			x.count = count;
+			return x;
+		}
 	}
 	
 	/**
@@ -67,6 +78,10 @@ public class NamedIRNR extends NameVotingSystem {
 	public NameVote[] getWinners( StringBuffer explainb ) {
 		boolean debug = false;
 		boolean explain = explainb != null;
+		ArrayList rounds = null;
+		if ( explain ) {
+			rounds = new ArrayList(); // ArrayList<TallyState[]>
+		}
 		java.io.PrintWriter out = null;
 		if ( winners != null && ! explain ) {
 			return winners;
@@ -110,7 +125,7 @@ public class NamedIRNR extends NameVotingSystem {
 				double ts;
 				boolean hasAny;
 				ts = 0.0;
-				ot = (NameVote[])votes.elementAt( v );
+				ot = (NameVote[])votes.get( v );
 				hasAny = false;
 				for ( int c = 0; c < ot.length; c++ ) {
 					TallyState tts;
@@ -154,18 +169,12 @@ public class NamedIRNR extends NameVotingSystem {
 					}
 				}
 			}
-			if ( explain ) {
-				explainb.append("<p>");
-				explainb.append( numActive );
-				explainb.append(" active</p><table border=\"1\">");
-				for ( int c = 0; c < numActive; c++ ) {
-					explainb.append("<tr><td>");
-					explainb.append(namea[choiceIndecies[c]].name);
-					explainb.append("</td><td>");
-					explainb.append(namea[choiceIndecies[c]].tally);
-					explainb.append("</td></tr>\n");
+			if (rounds != null) {
+				TallyState[] ntv = new TallyState[namea.length];
+				for ( i = 0; i < namea.length; i++ ) {
+					ntv[i] = namea[i].stateCopy();
 				}
-				explainb.append("</table><hr>\n");
+				rounds.add(ntv);
 			}
 			if ( namea[choiceIndecies[0]].tally == namea[choiceIndecies[numActive-1]].tally ) {
 				// N-way tie.
@@ -187,6 +196,9 @@ public class NamedIRNR extends NameVotingSystem {
 		} // while numActive > 1
 		for ( i = 0; i < numWinners; i++ ) {
 			winners[i] = new NameVote( namea[choiceIndecies[i]].name, (float)namea[choiceIndecies[i]].tally );
+		}
+		if ( explain && rounds != null ) {
+			roundsToHTML( explainb, rounds, winners );
 		}
 		return winners;
 	}
@@ -210,8 +222,62 @@ public class NamedIRNR extends NameVotingSystem {
 	}
 	public StringBuffer htmlExplain( StringBuffer sb ) {
 	    getWinners( sb );
-	    return sb;
+	    return htmlSummary( sb );
 	}
+	/**
+	 @param sb where to print the table
+	 @param rounds is ArrayList<TallyState[]> of intermediate state.
+	 @return sb with stuff
+	 */
+	public static StringBuffer roundsToHTML( StringBuffer sb, ArrayList rounds, NameVote[] winners ) {
+		sb.append("<table border=\"1\"><tr>");
+		for ( int r = 0; r < rounds.size(); r++ ) {
+			sb.append( "<th colspan=\"2\">Round " );
+			sb.append( r + 1 );
+			sb.append( "</th>");
+		}
+		sb.append( "</tr>\n<tr>" );
+		for ( int r = 0; r < rounds.size(); r++ ) {
+			sb.append( "<th>Name</th><th>Count</th>");
+		}
+		sb.append( "</tr>\n" );
+		if ( (winners != null) && (winners.length > 0) ) {
+			// present based on sorted order
+			for ( int c = 0; c < winners.length; c++ ) {
+				sb.append( "<tr>" );
+				for ( int r = 0; r < rounds.size(); r++ ) {
+					TallyState[] tv = (TallyState[])rounds.get(r);
+					boolean found = false;
+					for ( int i = 0; i < tv.length; i++ ) {
+						if ( tv[i].name.equals( winners[c].name ) ) {
+							found = true;
+							if ( tv[i].active ) {
+								sb.append( "<td>" );
+							} else {
+								sb.append( "<td style=\"color:#999999;\">" );
+							}
+							sb.append( tv[i].name );
+							sb.append( "</td><td>" );
+							ratingFormat.format( tv[i].tally, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
+							sb.append( "</td>" );
+						}
+					}
+					if ( ! found ) {
+						System.err.println( "round(" + r + "): could not find winners[" + c + "] \"" + winners[c].name + "\" in tv:" );
+						for ( int i = 0; i < tv.length; i++ ) {
+							System.err.println( tv[i].name + " = " + tv[i].tally );
+						}
+					}
+				}
+				sb.append( "</tr>\n" );
+			}
+		} else {
+			sb.append( "<tr><td>FIXME: implement no-winner-data IRV explain</td></tr>\n" );
+		}
+		sb.append( "</table>\n" );
+		return sb;
+	}
+	
 	/** "Instant Runoff Normalized Ratings" */
 	public String name() {
 		return "Instant Runoff Normalized Ratings";

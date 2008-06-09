@@ -27,6 +27,8 @@ struct NameVoteStruct {
 };
 typedef struct NameVoteStruct NameVote;
 
+void sortNameVotes(NameVote* they, int length);
+
 /* A more compact struct than NameVote. For implementations that need to hold all votes in memory. */
 struct IndexVoteStruct {
 	int index;

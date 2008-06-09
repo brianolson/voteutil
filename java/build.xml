@@ -4,7 +4,7 @@
   </description>
   
   <target name="compile">
-    <javac srcdir="org" destdir="classes" source="1.4">
+    <javac srcdir="org" destdir="classes" source="1.4" debug="true">
 <!--
 	  Lots of unchecked references in post 1.4; they want to use <Type> containers.
 	  <compilerarg value="-Xlint:unchecked" />

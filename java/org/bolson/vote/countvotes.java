@@ -15,7 +15,8 @@ public class countvotes {
 	// TODO WRITEME interpret number values as 1,2,3... rankings
 	public static final String[] usage = {
 		"countvotes [--urlencoded|--whitespace|--votespec][--histMax n][--histMin n][-m method.class.name]",
-		"\t[-i votedata][--dump][--disable-all][--enable-all]",
+		"\t[-i votedata|-igz gzipped-votedata]",
+		"\t[--dump][--disable-all][--enable-all]",
 		"\t[--disable method][--enable method][--explain][--full-html|--no-full-html|--text|--short]",
 		"\t[--histMax n][--histMin n]",
 		"\t[-- args to methods [debug]] < votedata"
@@ -74,6 +75,14 @@ public class countvotes {
 				i++;
 				try {
 					fin = new java.io.FileInputStream(argv[i]);
+				} catch ( Exception e ) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+			} else if ( argv[i].equals("-igz") ) {
+				i++;
+				try {
+					fin = new java.util.zip.GZIPInputStream(new java.io.FileInputStream(argv[i]));
 				} catch ( Exception e ) {
 					e.printStackTrace();
 					System.exit(1);

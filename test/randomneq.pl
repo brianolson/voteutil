@@ -7,7 +7,7 @@ $indexnames = 0;
 $namelen = 6;
 
 while ( $arg = shift ) {
-	if ( $arg eq "-n" ) {
+	if ( $arg eq "-n" || $arg eq "-v" ) {
 		$num = shift;
 	} elsif ( $arg eq "--numnames" || $arg eq "-nnames" || $arg eq "-c" ) {
 		$nnames = shift;

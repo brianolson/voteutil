@@ -33,6 +33,7 @@ public class NamedIRV extends NameVotingSystem {
 		public double fractions = 0.0;
 		
 		public boolean active = true;
+
 		public ArrayList votes = new ArrayList();
 		public TallyState( String nin ) {
 			name = nin;
@@ -122,6 +123,9 @@ public class NamedIRV extends NameVotingSystem {
 		return getWinners(null);
 	}
 	public NameVote[] getWinners(StringBuffer explain) {
+		if ( explain != null ) {
+			winners = null;
+		}
 		if ( winners != null ) {
 			return winners;
 		}
@@ -218,6 +222,10 @@ public class NamedIRV extends NameVotingSystem {
 		}
 		return winners;
 	}
+
+	/** Used in htmlSummary. Default "0.00" */
+	public static java.text.DecimalFormat ratingFormat = new java.text.DecimalFormat( "0.##" );
+
 	public StringBuffer htmlSummary( StringBuffer sb ) {
 		NameVote[] t;
 		t = getWinners();
@@ -229,11 +237,7 @@ public class NamedIRV extends NameVotingSystem {
 			sb.append( "<tr><td>" );
 			sb.append( t[i].name );
 			sb.append( "</td><td>" );
-			if ( Math.round( t[i].rating ) == t[i].rating ) {
-				sb.append( (long)(t[i].rating) );
-			} else {
-				sb.append( t[i].rating );
-			}
+			ratingFormat.format( t[i].rating, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
 			sb.append( "</td></tr>" );
 		}
 		sb.append( "</table>" );
@@ -278,7 +282,7 @@ public class NamedIRV extends NameVotingSystem {
 							}
 							sb.append( tv[i].name );
 							sb.append( "</td><td>" );
-							sb.append( tv[i].fractions );
+							ratingFormat.format( tv[i].fractions, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
 							sb.append( "</td>" );
 						}
 					}

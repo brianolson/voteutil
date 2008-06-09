@@ -85,7 +85,6 @@ int RawRating_voteStoredIndexVoteNode( RawRating* it, StoredIndexVoteNode* votes
 	return 0;
 }
 static void RawRating_calcWinners( RawRating* it ) {
-	int notdone = 1;
 	int i;
 	it->winners = (NameVote*)malloc(sizeof(NameVote)*it->tlen);
 	assert( it->winners != NULL );
@@ -93,21 +92,7 @@ static void RawRating_calcWinners( RawRating* it ) {
 		it->winners[i].name = indexName( it->ni, i );
 		it->winners[i].rating = it->tally[i];
 	}
-	// sort
-	while ( notdone ) {
-		notdone = 0;
-		for ( i = 1; i < it->tlen; i++ ) {
-			if ( it->winners[i].rating > it->winners[i-1].rating ) {
-				float rating = it->winners[i].rating;
-				const char* name = it->winners[i].name;
-				it->winners[i].rating = it->winners[i-1].rating;
-				it->winners[i].name = it->winners[i-1].name;
-				it->winners[i-1].rating = rating;
-				it->winners[i-1].name = name;
-				notdone = 1;
-			}
-		}
-	}
+	sortNameVotes( it->winners, it->tlen );
 }
 int RawRating_getWinners( RawRating* it, int numVotes, NameVote** winnersP ) {
 	int i;

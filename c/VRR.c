@@ -253,7 +253,6 @@ static void countDefeats( VRR* it, int* defeatCount ) {
 }
 void VRR_makeWinners( VRR* it, int* defeatCount ) {
 	int i;
-	int notdone;
 	if ( it->winners != NULL ) {
 		free( it->winners );
 		it->winners = NULL;
@@ -264,23 +263,7 @@ void VRR_makeWinners( VRR* it, int* defeatCount ) {
 		it->winners[i].name = indexName( it->ni, i );
 		it->winners[i].rating = 0.0 - defeatCount[i];
 	}
-	// sort
-	notdone = 1;
-	while ( notdone ) {
-		notdone = 0;
-		for ( i = 1; i < it->numc; i++ ) {
-			if ( it->winners[i-1].rating < it->winners[i].rating ) {
-				float rating; const char* name;
-				rating = it->winners[i].rating;
-				name = it->winners[i].name;
-				it->winners[i].rating = it->winners[i-1].rating;
-				it->winners[i].name = it->winners[i-1].name;
-				it->winners[i-1].rating = rating;
-				it->winners[i-1].name = name;
-				notdone = 1;
-			}
-		}
-	}
+	sortNameVotes( it->winners, it->numc );
 }
 static int VRR_returnWinners( VRR* it, int winnersLength, NameVote** winnersP ) {
 	if ( *winnersP != NULL && winnersLength > 0 ) {
@@ -358,8 +341,12 @@ int VRR_getWinners( VRR* it, int winnersLength, NameVote** winnersP ) {
 }
 int VRR_getWinnersCSSD( VRR* it, int winnersLength, NameVote** winnersP ) {
 	int* defeatCount;
+	int result;
 
-	int result = VRR_plainCondorcet( it, winnersLength, winnersP, &defeatCount );
+	if ( it->numc <= 0 ) {
+		return -1;
+	}
+	result = VRR_plainCondorcet( it, winnersLength, winnersP, &defeatCount );
 	if ( result >= 0 ) {
 		return result;
 	}
@@ -367,8 +354,12 @@ int VRR_getWinnersCSSD( VRR* it, int winnersLength, NameVote** winnersP ) {
 }
 int VRR_getWinnersRankedPairs( VRR* it, int winnersLength, NameVote** winnersP ) {
 	int* defeatCount;
+	int result;
 	
-	int result = VRR_plainCondorcet( it, winnersLength, winnersP, &defeatCount );
+	if ( it->numc <= 0 ) {
+		return -1;
+	}
+	result = VRR_plainCondorcet( it, winnersLength, winnersP, &defeatCount );
 	if ( result >= 0 ) {
 		return result;
 	}

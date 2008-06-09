@@ -17,6 +17,10 @@ public class NamedVRR extends NameVotingSystem {
 	protected NameVote[] winners = null;
 	/** intermediate count calculated during getWinners */
 	protected int defeatCount[] = null;
+	/** Set by htmlExplain
+	 @see htmlExplain(StringBuffer)
+	 */
+	protected StringBuffer explain = null;
 
 	/**
 	 Checks arguments to modify this VRR.
@@ -148,7 +152,7 @@ public class NamedVRR extends NameVotingSystem {
 		int[] tally = getTallyArray( they );
 		defeatCount = new int[numc];
 
-		Condorcet.countDefeats( numc, tally, defeatCount );
+		countDefeats( numc, tally, defeatCount );
 		for ( int i = 0; i < numc; i++ ) {
 			if ( defeatCount[i] == 0 ) {
 				// we have a winner
@@ -268,6 +272,12 @@ public class NamedVRR extends NameVotingSystem {
 		sb.append( "</table>" );
 		return sb;
 	}
+	public StringBuffer htmlExplain( StringBuffer sb ) {
+		explain = sb;
+		sb = htmlSummary( sb );
+		explain = null;
+		return sb;
+	}
 	public String name() {
 		return "Virtual Round Robin";
 	}
@@ -345,14 +355,23 @@ D z z z 0
 	 */
 	public boolean margins = false;
 
-	/** Cycle resolution. */
+	static class minij {
+		int ihi;
+		int ilo;
+	}
+	
+	/** Cycle resolution.
+	 I believe this correctly implements Cloneproof Schwartz Set Dropping, aka the Schulze method.
+	 http://wiki.electorama.com/wiki/Schulze_method
+	 */
 	public NameVote[] getWinnersCSSD( Count[] they, int[] tally ) {
 		// cloneproof schwartz set dropping
 		// which ought to be the same as above "beatpath" method, but a new implementation
-		int j,k;
 		int numc = they.length;
-		int[] ss = Condorcet.getSchwartzSet( numc, tally, defeatCount, debugLog );
-		int mindj, mindk, mind; // minimum defeat, index and strength
+		int[] ss = getSchwartzSet( numc, tally, defeatCount, debugLog );
+		int mind; // minimum defeat, index and strength
+		minij[] mins = new minij[numc];
+		mins[0] = new minij();
 		
 		boolean notdone = true;
 		int tie = 0;
@@ -360,59 +379,65 @@ D z z z 0
 		while ( notdone ) {
 			notdone = false;
 			mind = Integer.MAX_VALUE;
-			mindj = -1;
-			mindk = -1;
 			tie = 0;
+			if ( explain != null ) {
+				assert(ss.length > 0);
+				explain.append("<p>Top choices: ");
+				explain.append(they[ss[0]].name);
+				for ( int i= 1; i < ss.length; ++i ) {
+					explain.append(", ");
+					explain.append(they[ss[i]].name);
+				}
+				explain.append("</p>\n");
+			}
 			// find weakest defeat between members of schwartz set
 			for ( int ji = 0; ji < ss.length - 1; ji++ ) {
+				int j;
 				j = ss[ji];
 				for ( int ki = ji + 1; ki < ss.length; ki++ ) {
-					k = ss[ki];
+					int k;
 					int vj, vk;
+					int ihi, ilo;
+					int vhi, vlo;
+					int m;
+
+					k = ss[ki];
 					vk = tally[k*numc + j];	// k beat j vk times // OR k prefered to j vk times
 					vj = tally[j*numc + k];	// j beat k vj times // OR j prefered to k vj times
-					if ( vj > vk ) {
-						if ( winningVotes ) {
-							if ( vj < mind ) {
-								mind = vj;
-								mindj = j;
-								mindk = k;
-								tie = 1;
-							} else if ( vj == mind ) {
-								tie++;
-							}
-						} else if ( margins ) {
-							int m = vj - vk;
-							if (m < mind) {
-								mind = m;
-								mindj = j;
-								mindk = k;
-								tie = 1;
-							} else if ( m == mind ) {
-								tie++;
-							}
+					if ((vk == -1) && (vj == -1)) {
+						continue;
+					}
+					if ( vk > vj ) {
+						ihi = k;
+						ilo = j;
+						vhi = vk;
+						vlo = vj;
+					} else {
+						ihi = j;
+						ilo = k;
+						vhi = vj;
+						vlo = vk;
+					}
+					if ( winningVotes ) {
+						m = vhi;
+					} else if ( margins ) {
+						m = vhi - vlo;
+					} else {
+						m = 100000000;
+						assert(false);
+					}
+					if ( m < mind ) {
+						tie = 1;
+						mind = m;
+						mins[0].ihi = ihi;
+						mins[0].ilo = ilo;
+					} else if ( m == mind ) {
+						if ( mins[tie] == null ) {
+							mins[tie] = new minij();
 						}
-					} else if ( vk > vj ) {
-						if ( winningVotes ) {
-							if ( vk < mind ) {
-								mind = vk;
-								mindj = j;
-								mindk = k;
-								tie = 1;
-							} else if ( vk == mind ) {
-								tie++;
-							}
-						} else if ( margins ) {
-							int m = vk - vj;
-							if (m < mind) {
-								mind = m;
-								mindj = j;
-								mindk = k;
-								tie = 1;
-							} else if ( m == mind ) {
-								tie++;
-							}
-						}
+						mins[tie].ihi = ihi;
+						mins[tie].ilo = ilo;
+						tie++;
 					}
 				}
 			}
@@ -425,24 +450,42 @@ D z z z 0
 			// all are tied
 			if ( tie == ss.length) {
 				if ( debugLog != null ) {
-					debugLog.append("tie==ss.length, mind=").append(mind).append(", mindj=").append(mindj).append(", mindk=").append(mindk).append('\n');
+					debugLog.append("tie==ss.length, mind=").append(mind).append('\n');
 				}
 				return winners = makeWinners( they, defeatCount );
 			}
-			tally[mindk*numc + mindj] = 0;
-			tally[mindj*numc + mindk] = 0;
-			if ( debugLog != null ) {
-				debugLog.append( mindk ).append( '/' ).append( mindj ).append(" = 0\n");
-				//htmlTable( debugLog, numc, tally, "intermediate", null );
+			for ( int i = 0; i < tie; ++i ) {
+				int mindk = mins[i].ihi;
+				int mindj = mins[i].ilo;
+				if ( debugLog != null ) {
+					debugLog.append( mindk ).append( '/' ).append( mindj ).append(" = 0\n");
+					//htmlTable( debugLog, numc, tally, "intermediate", null );
+				}
+				if ( explain != null ) {
+					explain.append("<p>Weakest defeat is ");
+					explain.append(they[mindk].name);
+					explain.append(" (");
+					explain.append(tally[mindk*numc + mindj]);
+					explain.append(") v ");
+					explain.append(they[mindj].name);
+					explain.append(" (");
+					explain.append(tally[mindj*numc + mindk]);
+					explain.append("). ");
+					explain.append(they[mindj].name);
+					explain.append(" has one fewer defeat.</p>\n");
+				}
+				tally[mindk*numc + mindj] = -1;
+				tally[mindj*numc + mindk] = -1;
+				defeatCount[mindj]--;
 			}
-			ss = Condorcet.getSchwartzSet( numc, tally, defeatCount, debugLog );
+			ss = getSchwartzSet( numc, tally, defeatCount, debugLog );
 			if ( ss.length == 1 ) {
 				return winners = makeWinners( they, defeatCount );
 			}
 			if ( debugLog != null ) {
 				debugLog.append("ss={ ");
 				debugLog.append( ss[0] );
-				for ( j = 1; j < ss.length; j++ ) {
+				for ( int j = 1; j < ss.length; j++ ) {
 					debugLog.append(", ");
 					debugLog.append( ss[j] );
 				}
@@ -452,7 +495,191 @@ D z z z 0
 		}
 		return winners = makeWinners( they, defeatCount );
 	}
-	
+
+	public static void countDefeats( int numc, int[] tally, int[] defeatCount ) {
+		/* ndefeats is "numc choose 2" or ((numc !)/((2 !)*((numc - 2)!))) */
+		int j,k;
+		
+		for ( j = 0; j < numc; j++ ) {
+			defeatCount[j] = 0;
+		}
+		for ( j = 0; j < numc; j++ ) {
+			for ( k = j + 1; k < numc; k++ ) {
+				int vk, vj;
+				vk = tally[k*numc + j];	// k beat j vk times // OR k prefered to j vk times
+				vj = tally[j*numc + k];	// j beat k vj times // OR j prefered to k vj times
+				if ( vj > vk ) {
+					defeatCount[k]++;
+				} else if ( vj < vk ) {
+					defeatCount[j]++;
+				}
+			}
+		}
+	}
+
+	public static int[] getSchwartzSet( int numc, int[] tally, int[] defeatCount, StringBuffer debugsb ) {
+		countDefeats( numc, tally, defeatCount );
+		// start out set with first choice (probabbly replace it)
+		int j,k;
+		int mindefeats = defeatCount[0];
+		int numWinners = 1;
+		int choiceIndecies[] = new int[numc];
+		choiceIndecies[0] = 0;
+		for ( j = 1; j < numc; j++ ) {
+			if ( defeatCount[j] < mindefeats ) {
+				choiceIndecies[0] = j;
+				numWinners = 1;
+				mindefeats = defeatCount[j];
+			} else if ( defeatCount[j] == mindefeats ) {
+				choiceIndecies[numWinners] = j;
+				numWinners++;
+			}
+		}
+		if ( mindefeats != 0 ) {
+			// the best there is was defeated by some choice, make sure that is added to the set
+			for ( int i = 0; i < numWinners; i++ ) {
+				// foreach k in set of least defeated ...
+				k = choiceIndecies[i];
+				for ( j = 0; j < numc; j++ ) if ( k != j ) {
+					int vk, vj;
+					vk = tally[k*numc + j];	// k beat j vk times // OR k prefered to j vk times
+					vj = tally[j*numc + k];	// j beat k vj times // OR j prefered to k vj times
+					if ( vj > vk ) {
+						// j defeats k, j must be in the set
+						boolean gotj = false;
+						for ( int si = 0; si < numWinners; si++ ) {
+							if ( choiceIndecies[si] == j ) {
+								gotj = true;
+								break;
+							}
+						}
+						if ( ! gotj ) {
+							choiceIndecies[numWinners] = j;
+							numWinners++;
+						}
+					}
+				}
+			}
+		}
+		int[] sset = new int[numWinners];
+		for ( j = 0; j < numWinners; j++ ) {
+			sset[j] = choiceIndecies[j];
+		}
+		if ( ! verifySchwartzSet( numc, tally, sset, debugsb ) ) {
+			System.err.println("getSchwartzSet is returning an invalid Schwartz set!");
+			if ( debugsb != null ) {
+				htmlTable( debugsb, numc, tally, "tally not met by schwartz set", null );
+				debugsb.append( "bad sset: " );
+				debugsb.append( sset[0] );
+				for ( j = 1; j < sset.length; j++ ) {
+					debugsb.append(", ");
+					debugsb.append(sset[j]);
+				}
+			}
+		}
+		return sset;
+	}
+	/** Verify set to have Schwartz Set properties.
+	 <ol><li>every member of the set beats every choice not in the set</li>
+	 <li>no member of the set is beaten by every other member of the set</li></ol>
+	 @param ss a candidate Schwartz Set
+	 @return true if ss is a Schwartz Set */
+	public static boolean verifySchwartzSet( int numc, int[] tally, int[] ss, StringBuffer debugsb ) {
+		for ( int i = 0; i < ss.length; i++ ) {
+			int m;
+			m = ss[i];
+			// check for defeats by choices outside the set
+			for ( int j = 0; j < numc; j++ ) {
+				boolean notinset;
+				notinset = true;
+				for ( int k = 0; k < ss.length; k++ ) {
+					if ( ss[k] == j ) {
+						notinset = false;
+						break;
+					}
+				}
+				if ( notinset ) {
+					int vm, vj;
+					vm = tally[m*numc + j];	// m beat j vm times // OR m prefered to j vm times
+					vj = tally[j*numc + m];	// j beat m vj times // OR j prefered to m vj times
+					if ( vj > vm ) {
+						if ( debugsb != null ) {
+							debugsb.append("choice ");
+							debugsb.append(m);
+							debugsb.append(" in bad schwartz set defeated by ");
+							debugsb.append(j);
+							debugsb.append(" not in set\n");
+						}
+						return false;
+					}
+				}
+			}
+			// check if defated by all choices inside the set
+			int innerDefeats = 0;
+			for ( int k = 0; k < ss.length; k++ ) {
+				int j;
+				j = ss[k];
+				if ( m != j ) {
+					int vm, vj;
+					vm = tally[m*numc + j];	// m beat j vm times // OR m prefered to j vm times
+					vj = tally[j*numc + m];	// j beat m vj times // OR j prefered to m vj times
+					if ( vj > vm ) {
+						innerDefeats++;
+					}
+				}
+			}
+			if ( (innerDefeats > 0) && (innerDefeats == ss.length - 1) ) {
+				if ( debugsb != null ) {
+					debugsb.append("choice ");
+					debugsb.append(m);
+					debugsb.append(" in bad schwartz is defeated by all in set.\n");
+				}
+				return false;
+			}
+		}
+		// not disproven by exhaustive test, thus it's good
+		return true;
+	}
+
+	public static StringBuffer htmlTable( StringBuffer sb, int numc, int[] arr, String title, String names[] ) {
+		if ( names != null ) {
+			sb.append( "<table border=\"1\"><tr><th></th><th colspan=\"" );
+		} else {
+			sb.append( "<table border=\"1\"><tr><th>Choice Index</th><th colspan=\"");
+		}
+		sb.append( numc );
+		sb.append("\">");
+		sb.append( title );
+		sb.append("</th></tr>\n" );
+		for ( int i = 0; i < numc; i++ ) {
+			sb.append("<tr><td>");
+			if ( names != null ) {
+				sb.append( names[i] );
+			} else {
+				sb.append( i );
+			}
+			sb.append("</td>");
+			for ( int j = 0; j < numc; j++ ) {
+				if ( (i == j) && (arr[i*numc + j] == 0) ) {
+					sb.append("<td bgcolor=\"#ffffff\"></td>");
+				} else {
+					if ( arr[i*numc + j] > arr[j*numc + i] ) {
+						sb.append("<td bgcolor=\"#bbffbb\">");
+					} else if ( arr[i*numc + j] < arr[j*numc + i] ) {
+						sb.append("<td bgcolor=\"#ffbbbb\">");
+					} else {
+						sb.append("<td>");
+					}
+					sb.append(arr[i*numc + j]);
+					sb.append("</td>");
+				}
+			}
+			sb.append("</tr>\n");
+		}
+		sb.append("</table>\n");
+		return sb;
+	}
+
 	static {
 		registerImpl( "VRR", NamedVRR.class );
 	}

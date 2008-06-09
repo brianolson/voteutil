@@ -6,11 +6,15 @@ UNAME=$(shell uname)
 
 include make/${UNAME}
 
-CFLAGS+=-g -Wall -ansi -pedantic -std=c99 -MMD
-#CFLAGS+=-O2 -Wall
-LDFLAGS+=-g
+GOPT=-g
+#GOPT=-O2
+#GOPT=-g -pg
 
-OBJS := NamedVotingSystem.o IRNR.o RawRating.o VRR.o IRV.o Histogram.o STV.o NChooseKSlates.o
+CFLAGS+=${GOPT} -Wall -ansi -pedantic -std=c99 -MMD
+LDFLAGS+=${GOPT} -lz
+
+OBJS := NamedVotingSystem.o IRNR.o RawRating.o VRR.o IRV.o Histogram.o STV.o
+OBJS += NChooseKSlates.o RoundScore.o
 
 all:	libvote.a countvotes permuteutil
 

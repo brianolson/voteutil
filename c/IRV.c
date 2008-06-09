@@ -1,16 +1,9 @@
 #include "IRV.h"
+#include "RoundScore.h"
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
 
-/*
-
-struct IRV {
-	StoredIndexVoteNode* storedVotes;
-	double* tally;
-};
-typedef struct IRV IRV;
-*/
 IRV* newIRV() {
 	IRV* toret = (IRV*)malloc( sizeof(IRV) );
 	if ( toret == NULL ) { return toret; }
@@ -55,18 +48,6 @@ typedef struct TallyState {
 	StoredIndexVoteNode* bucket;
 } TallyState;
 
-typedef struct RoundPart {
-	double tally;
-	const char* name;
-	boolean active;
-} RoundPart;
-typedef struct RoundScore {
-	struct RoundScore* next;
-	RoundPart they[1];
-} RoundScore;
-RoundScore* newRoundScore(int numc) {
-	return (RoundScore*)malloc( sizeof(RoundScore) + (sizeof(RoundPart) * (numc-1)) );
-}
 
 static __inline int min( int a, int b ) {
 	if ( a < b ) return a; return b;
@@ -308,50 +289,11 @@ void IRV_htmlExplain( IRV* it, FILE* fout ) {
 	}
 	numw = IRV_getWinnersInternal( it, 0, &winners, &rounds );
 	if ( numw <= 0 ) {
+		deleteRoundScore( rounds );
 		return;
 	}
-	{
-		RoundScore* cur;
-		int nrounds = 0;
-		int i;
-		cur = rounds;
-		while ( cur != NULL ) {
-			nrounds++;
-			cur = cur->next;
-		}
-		if ( nrounds == 0 ) {
-			return;
-		}
-		fprintf(fout, "<table border=\"1\"><tr>");
-		for ( i = 0; i < nrounds; ++i ) {
-			fprintf(fout, "<th colspan=\"2\">Round %d</th>", i + 1 );
-		}
-		fprintf(fout, "</tr>\n<tr>");
-		for ( i = 0; i < nrounds; ++i ) {
-			fprintf(fout, "<th>Name</th><th>Count</th>" );
-		}
-		fprintf(fout, "</tr>\n" );
-		for ( i = 0; i < numw; ++i ) {
-			fprintf(fout, "<tr>" );
-			cur = rounds;
-			while ( cur != NULL ) {
-				int j;
-				for ( j = 0; j < numw; ++j ) {
-					if ( cur->they[j].name == winners[i].name ) {
-						if ( cur->they[j].active ) {
-							fprintf(fout, "<td>%s</td><td>%f</td>", cur->they[j].name, cur->they[j].tally );
-						} else {
-							fprintf(fout, "<td style=\"color:#999999\">%s</td><td>%f</td>", cur->they[j].name, cur->they[j].tally );
-						}
-						break;
-					}
-				}
-				cur = cur->next;
-			}
-			fprintf(fout, "</tr>\n" );
-		}
-		fprintf(fout, "</table>\n" );
-	}
+	RoundScore_HTMLTable( rounds, fout, it->winners );
+	deleteRoundScore( rounds );
 	printWinners( fout, winners, numw );
 }
 void IRV_print( IRV* it, FILE* fout ) {
