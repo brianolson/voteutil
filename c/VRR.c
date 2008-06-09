@@ -450,7 +450,7 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 					ilo = j;
 					vhi = vk;
 					vlo = vj;
-				} else if ( vj > vk ) {
+				} else /*if ( vj > vk )*/ {
 					ihi = j;
 					ilo = k;
 					vhi = vj;
