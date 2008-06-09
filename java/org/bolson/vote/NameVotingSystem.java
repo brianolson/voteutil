@@ -179,13 +179,23 @@ public abstract class NameVotingSystem {
 		return (htmlExplain( new StringBuffer() )).toString();
 	}
 	
+	/**
+	 Common storage of a vote-part applicable to all children of NameVotingSystem.
+	 */
 	public static class NameVote implements Comparable {
+		/** Name of a choice being voted on. */
 		public String name;
+		/** Preference toward choice being voted on. Higher values better. May be NaN. */
 		public float rating;
+
 		public NameVote( String nin, float rin ) {
 			name = nin;
 			rating = rin;
 		}
+		
+		/**
+		 When used with java.util.Arrays.sort on a NameVote[], results in highest rating first, with ties broken by name sort order.
+		 */
 		public int compareTo( Object o ) throws ClassCastException {
 			NameVote b = (NameVote)o;
 			if ( rating < b.rating ) {
@@ -202,19 +212,36 @@ public abstract class NameVotingSystem {
 	}
 
 	/**
-	 More compact representation for methods that need to store copies of all votes.
+	 <p>More compact representation for methods that need to store copies of all votes.</p>
+	 
+	 <p>Unlike the common usage of NameVote[], this class contains arrays because JVMs
+	 handle primitive-arrays much better than Object arrays.<br />
+	 {int;float;}[N] takes a lot more space than {int[N];float[N];}</p>
 	 @see org.bolson.vote.NameIndex
 	 */
 	public static class IndexVoteSet {
+		/** Indexes into a set of choices.
+		 Mapping indexes to choices to be done by method implementation or NameIndex object.
+		 */
 		public int[] index;
+		/** Ratings corresponding to indexes. Higher better. May be NaN. */
 		public float[] rating;
+		/** Allocate an IndexVoteSet.
+		 @param size number of indecies and ratings to allocate
+		 */
 		public IndexVoteSet(int size) {
 			index = new int[size];
 			rating = new float[size];
 		}
 	}
 
+	/**
+	 Calls natural compareTo but results in reversed sort order.
+	 */
 	public static class ReverseComparator implements java.util.Comparator {
+		/**
+		 Calls b.compareTo(a) to result in reversed sort order.
+		 */
 		public int compare( Object a, Object b ) throws ClassCastException {
 			return ((Comparable)b).compareTo( a );
 		}
@@ -317,6 +344,7 @@ public abstract class NameVotingSystem {
 	public void voteNameEqStr( String cd ) {
 		voteRating( nameEqStrToVoteArray( cd ));
 	}
+	/** Sorts in place, leaving highest rating first, alphabetical on tie-rating. */
 	public static void sort( NameVote[] they ) {
 		java.util.Arrays.sort( they );
 	}

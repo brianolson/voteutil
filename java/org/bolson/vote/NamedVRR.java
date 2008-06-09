@@ -18,7 +18,7 @@ public class NamedVRR extends NameVotingSystem {
 	/** intermediate count calculated during getWinners */
 	protected int defeatCount[] = null;
 	/** Set by htmlExplain
-	 @see htmlExplain(StringBuffer)
+	 @see #htmlExplain(StringBuffer)
 	 */
 	protected StringBuffer explain = null;
 
