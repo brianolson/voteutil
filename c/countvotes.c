@@ -186,7 +186,9 @@ int main( int argc, char** argv ) {
 #endif
 		} else if ( (!strcmp( argv[i], "--help" )) ||
 				    (!strcmp( argv[i], "-h" )) ||
-				    (!strcmp( argv[i], "--list" )) ) {
+				    (!strcmp( argv[i], "-help" )) ||
+				    (!strcmp( argv[i], "--list" )) ||
+				    (!strcmp( argv[i], "-list" )) ) {
 			puts(helptext);
 			listMethods(stdout);
 			exit(0);
