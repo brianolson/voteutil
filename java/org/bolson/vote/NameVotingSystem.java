@@ -200,6 +200,20 @@ public abstract class NameVotingSystem {
 			return rating == b.rating && ((name == null && b.name == null) || name.equals(b.name));
 		}
 	}
+
+	/**
+	 More compact representation for methods that need to store copies of all votes.
+	 @see org.bolson.vote.NameIndex
+	 */
+	public static class IndexVoteSet {
+		public int[] index;
+		public float[] rating;
+		public IndexVoteSet(int size) {
+			index = new int[size];
+			rating = new float[size];
+		}
+	}
+
 	public static class ReverseComparator implements java.util.Comparator {
 		public int compare( Object a, Object b ) throws ClassCastException {
 			return ((Comparable)b).compareTo( a );

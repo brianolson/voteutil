@@ -15,8 +15,12 @@ Instant Runoff Normalized Ratings.
 */
 public class NamedIRNR extends NameVotingSystem {
 	/** Holds each passed in vote.
-	 This would be ArrayList<NameVote[]> if I broke Java 1.4 compatibility. */
+	 This would be ArrayList<IndexVoteSet> if I broke Java 1.4 compatibility. */
 	protected ArrayList votes = new ArrayList();
+	/** ArrayList<String> for lookup of name from index. */
+	protected ArrayList indexNames = new ArrayList();
+	/** ArrayList<TallyState> for lookup by index. */
+	protected ArrayList indexTS = new ArrayList();
 	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
 	protected HashMap names = new HashMap();
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
@@ -29,16 +33,23 @@ public class NamedIRNR extends NameVotingSystem {
 		if ( vote == null ) {
 			return;
 		}
-		votes.add( vote );
+		IndexVoteSet iv = new IndexVoteSet(vote.length);
 		for ( int i = 0; i < vote.length; i++ ) {
 			TallyState ts;
 			ts = (TallyState)names.get( vote[i].name );
 			if ( ts != null ) {
 				ts.count++;
 			} else {
-				names.put( vote[i].name, new TallyState( vote[i].name ) );
+				int ni = names.size();
+				ts = new TallyState( vote[i].name, ni );
+				names.put( vote[i].name, ts );
+				indexNames.add( vote[i].name );
+				indexTS.add( ts );
 			}
+			iv.index[i] = ts.index;
+			iv.rating[i] = vote[i].rating;
 		}
+		votes.add( iv );
 		winners = null;
 	}
 	
@@ -49,17 +60,19 @@ public class NamedIRNR extends NameVotingSystem {
 		public String name;
 		public double tally;
 		public boolean active;
+		public int index;
 		/** count is the number of ballots that include this name */
 		public int count = 1;
-		TallyState( String nin ) {
+		TallyState( String nin, int ii ) {
 			name = nin;
+			index = ii;
 		}
 		/**
 		 Copy state for later verbose round descriptions.
 		 fractions usage in copy is full count, not just fractions.
 		 */
 		public TallyState stateCopy() {
-			TallyState x = new TallyState(name);
+			TallyState x = new TallyState(name, index);
 			x.tally = tally;
 			x.active = active;
 			x.count = count;
@@ -121,21 +134,21 @@ public class NamedIRNR extends NameVotingSystem {
 			}
 			// sum up into tally
 			for ( int v = 0; v < votes.size(); v++ ) {
-				NameVote[] ot;
+				IndexVoteSet ot;
 				double ts;
 				boolean hasAny;
 				ts = 0.0;
-				ot = (NameVote[])votes.get( v );
+				ot = (IndexVoteSet)votes.get( v );
 				hasAny = false;
-				for ( int c = 0; c < ot.length; c++ ) {
+				for ( int c = 0; c < ot.index.length; c++ ) {
 					TallyState tts;
-					tts = (TallyState)names.get( ot[c].name );
-					if ( tts.active && ! Float.isNaN( ot[c].rating ) ) {
+					tts = (TallyState)indexTS.get(ot.index[c]);
+					if ( tts.active && ! Float.isNaN( ot.rating[c] ) ) {
 						hasAny = true;
 						if ( rmsnorm ) {
-							ts += ot[c].rating * ot[c].rating;
+							ts += ot.rating[c] * ot.rating[c];
 						} else {
-							ts += Math.abs(ot[c].rating);
+							ts += Math.abs(ot.rating[c]);
 						}
 					}
 				}
@@ -143,12 +156,12 @@ public class NamedIRNR extends NameVotingSystem {
 					if ( rmsnorm ) {
 						ts = Math.sqrt( ts );
 					}
-					for ( int c = 0; c < ot.length; c++ ) {
+					for ( int c = 0; c < ot.index.length; c++ ) {
 						TallyState tts;
-						tts = (TallyState)names.get( ot[c].name );
-						if ( tts.active && ! Float.isNaN( ot[c].rating ) ) {
+						tts = (TallyState)indexTS.get(ot.index[c]);
+						if ( tts.active && ! Float.isNaN( ot.rating[c] ) ) {
 							double tp;
-							tp = ot[c].rating / ts;
+							tp = ot.rating[c] / ts;
 							if ( ! Double.isNaN( tp ) ) {
 								tts.tally += tp;
 							}
