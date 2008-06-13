@@ -19,8 +19,8 @@ $n = 1;
 
 $tmpdir = undef;
 $cleanup = 1;
-$do_correcness = 0;
-$do_perf = 1;
+$do_correcness = 1;
+$do_perf = 0;
 
 while ( $arg = shift ) {
 	if ( $arg eq "-n" ) {
@@ -30,6 +30,19 @@ while ( $arg = shift ) {
 		$cleanup = 0;
 	} elsif ( $arg eq "--keep-temps" ) {
 		$cleanup = 0;
+	} elsif ( $arg eq "--both" ) {
+		$do_perf = 1;
+		$do_correcness = 1;
+	} elsif ( $arg eq "--perf" ) {
+		$do_perf = 1;
+		$do_correcness = 0;
+	} elsif ( $arg eq "--no-perf" ) {
+		$do_perf = 0;
+	} elsif ( $arg eq "--check" ) {
+		$do_correctness = 1;
+		$do_perf = 0;
+	} elsif ( $arg eq "--no-check" ) {
+		$do_correctness = 0;
 	} else {
 		print STDERR "bogus arg \"$arg\"\n";
 		exit 1;
@@ -183,11 +196,11 @@ if ( $do_correcness ) {
 	}
 }
 
-sub test_perf() {
-	($tf, $tfname) = tempfile( DIR => $tmpdir );
-	$numChoices = 20; # int(rand(10)) + 2;
-	@names = randNameSet($numChoices);
-	$numVotes = 100000; # int(rand(100000)) + 10;
+sub test_perf($$) {
+	my $numChoices = shift;
+	my $numVotes = shift;
+	my ($tf, $tfname) = tempfile( DIR => $tmpdir );
+	my @names = randNameSet($numChoices);
 	#print "creating $tfname with $numChoices choics and $numVotes votes\n";
 	for ( $j = 0; $j < $numVotes; $j++ ) {
 		print $tf join( '&', map { $_ . "=" . int(rand(11)) } @names ) . "\n";
@@ -217,30 +230,37 @@ sub test_perf() {
 			$meths{$meth} = 1;
 		}
 	}
-	open FOUT, '>', "_perf.html";
 	@implNames = sort(keys %results);
 	$implHeaders = join("</th><th>", @implNames);
-	print FOUT<<EOF;
+	my $out =<<EOF;
 <p>Times in seconds to count $numVotes votes with $numChoices choices:</p>
 <table border="1"><tr><th></th><th>$implHeaders</th></tr>
 EOF
 	foreach $meth ( keys %meths ) {
-		print FOUT "<tr><td>$meth</td>";
+		$out .= "<tr><td>$meth</td>";
 		foreach $iname ( @implNames ) {
 			$dt = $results{$iname}->{$meth};
 			if ( defined $dt ) {
-				print FOUT "<td>$dt</td>";
+				$out .= "<td>$dt</td>";
 			} else {
-				print FOUT "<td></td>";
+				$out .= "<td></td>";
 			}
 		}
 	}
-	print FOUT "</table>\n";
-	close FOUT;
+	$out .= "</table>\n";
+	return $out;
+}
+
+if ( $do_correctness ) {
+	test_correctness();
 }
 
 if ( $do_perf ) {
-	test_perf();
+	local $out = test_perf(20, 100000);
+	$out .= test_perf(100, 10000);
+	open FOUT, '>', '_perf.html';
+	print FOUT $out;
+	close FOUT;
 }
 
 if ( ($cleanup) && (! $anybad) ) {
