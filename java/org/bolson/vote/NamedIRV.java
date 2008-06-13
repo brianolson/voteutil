@@ -13,11 +13,16 @@ import java.util.HashMap;
 public class NamedIRV extends NameVotingSystem {
 	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
 	protected HashMap they = new HashMap();
+	/** ArrayList<String> for lookup of name from index. */
+	protected ArrayList indexNames = new ArrayList();
+	/** ArrayList<TallyState> for lookup by index. */
+	protected ArrayList indexTS = new ArrayList();
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
 	protected NameVote[] winners = null;
 	/** Holds each passed in vote.
-	 This would be ArrayList<NameVote[]> if I broke Java 1.4 compatibility. */
+	 This would be ArrayList<IndexVoteSet> if I broke Java 1.4 compatibility. */
 	protected ArrayList votes = new ArrayList();
+	/** ArrayList<IndexVoteSet> */
 	protected ArrayList tiedVotes = new ArrayList();
 
 	public NamedIRV() {
@@ -28,13 +33,17 @@ public class NamedIRV extends NameVotingSystem {
 	 */
 	protected static class TallyState {
 		public String name;
+		public int index;
 		
-		/** the sum of partial votes from cast ties */
+		/** The sum of partial votes from cast ties.
+			Total count is (votes.size() + fractions) */
 		public double fractions = 0.0;
 		
 		public boolean active = true;
 
+		/** ArrayList<IndexVoteSet> */
 		public ArrayList votes = new ArrayList();
+
 		public TallyState( String nin ) {
 			name = nin;
 		}
@@ -55,6 +64,9 @@ public class NamedIRV extends NameVotingSystem {
 		TallyState v = (TallyState)they.get( name );
 		if ( v == null ) {
 			v = new TallyState( name );
+			v.index = they.size();
+			indexNames.add( name );
+			indexTS.add( v );
 			they.put( name, v );
 		}
 		return v;
@@ -63,25 +75,28 @@ public class NamedIRV extends NameVotingSystem {
 		if ( vote == null || vote.length == 0 ) {
 			return;
 		}
-		winners = null;
+		IndexVoteSet iv = new IndexVoteSet(vote.length);
 		for ( int i = 0; i < vote.length; i++ ) {
 			// causes creation of TallyState for name if not already existing
 			TallyState v = get( vote[i].name );
+			iv.index[i] = v.index;
+			iv.rating[i] = vote[i].rating;
 		}
-		votes.add( vote );
+		votes.add( iv );
+		winners = null;
 	}
-	protected void bucketize( NameVote[] vote ) {
+	protected void bucketize( IndexVoteSet vote ) {
 		float max = Float.NaN;
 		int tied = 1;
 		int i = 0;
 		TallyState v = null;
 		TallyState maxv = null;
 		// find an active one and initialize max
-		while ( i < vote.length ) {
-			v = get( vote[i].name );
+		while ( i < vote.index.length ) {
+			v = (TallyState)indexTS.get(vote.index[i]);
 			if ( v.active ) {
 				maxv = v;
-				max = vote[i].rating;
+				max = vote.rating[i];
 				i++;
 				break;
 			}
@@ -91,15 +106,15 @@ public class NamedIRV extends NameVotingSystem {
 			// none of the names in this vote are active
 			return;
 		}
-		for ( ; i < vote.length; i++ ) {
-			v = get( vote[i].name );
+		for ( ; i < vote.index.length; i++ ) {
+			v = (TallyState)indexTS.get(vote.index[i]);
 			if ( ! v.active ) {
 				// ignore
-			} else if ( vote[i].rating > max ) {
-				max = vote[i].rating;
+			} else if ( vote.rating[i] > max ) {
+				max = vote.rating[i];
 				maxv = v;
 				tied = 1;
-			} else if ( vote[i].rating == max ) {
+			} else if ( vote.rating[i] == max ) {
 				tied++;
 			}
 		}
@@ -107,9 +122,9 @@ public class NamedIRV extends NameVotingSystem {
 			maxv.votes.add( vote );
 		} else {
 			double fract = 1.0 / tied;
-			for ( i = 0; i < vote.length; i++ ) {
-				if ( vote[i].rating == max ) {
-					v = get( vote[i].name );
+			for ( i = 0; i < vote.index.length; i++ ) {
+				if ( vote.rating[i] == max ) {
+					v = (TallyState)indexTS.get(vote.index[i]);
 					if ( v.active ) {
 						v.fractions += fract;
 					}
@@ -144,7 +159,7 @@ public class NamedIRV extends NameVotingSystem {
 		}
 		java.util.Iterator vi = votes.iterator();
 		while ( vi.hasNext() ) {
-		    bucketize( (NameVote[])vi.next() );
+		    bucketize( (IndexVoteSet)vi.next() );
 		}
 		winners = new NameVote[tv.length];
 		ArrayList rounds = null;  // ArrayList<TallyState[]>
@@ -191,7 +206,7 @@ public class NamedIRV extends NameVotingSystem {
 			if ( numActive > 1 ) {
 				// redistribute disqualified votes
 				while ( tv[mini].votes.size() > 0 ) {
-					bucketize( (NameVote[])tv[mini].votes.remove(tv[mini].votes.size()-1) );
+					bucketize( (IndexVoteSet)tv[mini].votes.remove(tv[mini].votes.size()-1) );
 				}
 				for ( i = 0; i < tv.length; i++ ) {
 					if ( tv[i].active ) {
@@ -201,7 +216,7 @@ public class NamedIRV extends NameVotingSystem {
 				ArrayList oldTied = tiedVotes;
 				tiedVotes = new ArrayList();
 				while ( oldTied.size() > 0 ) {
-					bucketize( (NameVote[])oldTied.remove(oldTied.size()-1) );
+					bucketize( (IndexVoteSet)oldTied.remove(oldTied.size()-1) );
 				}
 			}
 		}
