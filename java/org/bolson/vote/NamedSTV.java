@@ -20,6 +20,8 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 	protected int seats = 1;
 	/** HashMap<String,TallyState> map from choice names to the TallyState about them. */
 	protected HashMap they = new HashMap();
+	/** ArrayList<TallyState> for lookup by index. */
+	protected ArrayList indexTS = new ArrayList();
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
 	protected NameVote[] winners = null;
 	/** ArrayList<WeightedVote> record of all votes passed in. */
@@ -38,28 +40,28 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 	 Wrapper for a NameVote[] vote so that it can be deweighted during intermediate steps of STV.
 	 */
 	protected static class WeightedVote {
-		NameVote[] vote;
+		public int[] index;
+		public float[] rating;
 		double weight = 1.0;
 		int end;
-		public WeightedVote( NameVote[] v ) {
-			vote = v;
-			java.util.Arrays.sort( vote );
-			end = vote.length - 1;
+		public WeightedVote( int size ) {
+			index = new int[size];
+			rating = new float[size];
 		}
 		public void reset() {
 			weight = 1.0;
-			end = vote.length - 1;
+			end = index.length - 1;
 		}
 
 		/**
 			@return dead vote amount, to be removed from total for quota calculation. This might always be 1.0 or 0.0 ?
 		*/
-		public double vote( HashMap they ) {
+		public double vote( ArrayList indexTS ) {
 			TallyState ts;
 			int i;
 			i = end - 1;
 			while ( i >= 0 ) {
-				ts = (TallyState)they.get( vote[i].name );
+				ts = (TallyState)indexTS.get( index[i] );
 				if ( ts.active ) break;
 				// found a new end.
 				end = i;
@@ -71,7 +73,7 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 			}
 			double tw = 1.0;
 			for ( i = 0; i < end; i++ ) {
-				ts = (TallyState)they.get( vote[i].name );
+				ts = (TallyState)indexTS.get( index[i] );
 				if ( ! ts.active ) {
 					// skip it, do nothing.
 				} else if ( ts.weight >= tw ) {
@@ -88,18 +90,40 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 				}
 			}
 			i = end;
-			ts = (TallyState)they.get( vote[i].name );
+			ts = (TallyState)indexTS.get( index[i] );
 			while ( ! ts.active ) {
 				i--;
 				if ( i < 0 ) {
 					// no place left to dump this vote weight
 					return tw;
 				}
-				ts = (TallyState)they.get( vote[i].name );
+				ts = (TallyState)indexTS.get( index[i] );
 			}
 			ts.tally += tw;
 			ts.deadEndTally += tw;
 			return 0.0;
+		}
+		
+		/**
+		 Setup operation which makes ratings in sorted order for easier counting later.
+		 Implemented as bubble-sort out of laziness and it's good enough because ballots are probably pretty short.
+		 */
+		public void sort() {
+			boolean notdone = true;
+			while ( notdone ) {
+				notdone = false;
+				for ( int i = 0; i < index.length - 1; ++i ) {
+					if ( rating[i] < rating[i+1] ) {
+						int ti = index[i];
+						float tr = rating[i];
+						index[i] = index[i+1];
+						rating[i] = rating[i+1];
+						index[i+1] = ti;
+						rating[i+1] = tr;
+						notdone = true;
+					}
+				}
+			}
 		}
 	} /* class WeightedVote */
 	
@@ -111,6 +135,7 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 	 */
 	protected static class TallyState {
 		public String name;
+		public int index;
 		public double tally = 0.0;
 
 		/** subset of votes that this is the last ranked choice for. */
@@ -159,7 +184,9 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		TallyState v = (TallyState)they.get( name );
 		if ( v == null ) {
 			v = new TallyState( name );
+			v.index = they.size();
 			they.put( name, v );
+			indexTS.add( v );
 		}
 		return v;
 	}
@@ -170,12 +197,16 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		if ( vote == null || vote.length == 0 ) {
 			return;
 		}
-		winners = null;
+		WeightedVote wv = new WeightedVote( vote.length );
 		for ( int i = 0; i < vote.length; i++ ) {
 			// causes creation of TallyState for name if not already existing
 			TallyState v = get( vote[i].name );
+			wv.index[i] = v.index;
+			wv.rating[i] = vote[i].rating;
 		}
-		votes.add( new WeightedVote( vote ) );
+		wv.sort();
+		votes.add( wv );
+		winners = null;
 	}
 	/**
 	 Allows use of java.util.Arrays.sort(Object[],java.util.Comparator) on arrays of TallyState.
@@ -246,7 +277,7 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 				while ( vi.hasNext() ) {
 					WeightedVote twv = (WeightedVote)vi.next();
 					twv.weight = 1.0;
-					totalweight += 1.0 - twv.vote( they );
+					totalweight += 1.0 - twv.vote( indexTS );
 				}
 				q = quota( quotaStyle, totalweight, seats - winpos );
 				java.util.Arrays.sort( tv, theTSC );
