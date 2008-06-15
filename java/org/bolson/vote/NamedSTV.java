@@ -43,14 +43,12 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		public int[] index;
 		public float[] rating;
 		double weight = 1.0;
-		int end;
 		public WeightedVote( int size ) {
 			index = new int[size];
 			rating = new float[size];
 		}
 		public void reset() {
 			weight = 1.0;
-			end = index.length - 1;
 		}
 
 		/**
@@ -59,20 +57,8 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		public double vote( ArrayList indexTS ) {
 			TallyState ts;
 			int i;
-			i = end - 1;
-			while ( i >= 0 ) {
-				ts = (TallyState)indexTS.get( index[i] );
-				if ( ts.active ) break;
-				// found a new end.
-				end = i;
-				i--;
-			}
-			if ( end == 0 ) {
-				// all votes here are inactive.
-				return 1.0;
-			}
 			double tw = 1.0;
-			for ( i = 0; i < end; i++ ) {
+			for ( i = 0; i < index.length; i++ ) {
 				ts = (TallyState)indexTS.get( index[i] );
 				if ( ! ts.active ) {
 					// skip it, do nothing.
@@ -89,7 +75,7 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 					return 0.0;
 				}
 			}
-			i = end;
+			i = index.length - 1;
 			ts = (TallyState)indexTS.get( index[i] );
 			while ( ! ts.active ) {
 				i--;
@@ -234,6 +220,86 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 			return o instanceof TallyStateComparator;
 		}
 	}
+	
+	/** Used in htmlSummary. Default "0.00" */
+	public static java.text.DecimalFormat ratingFormat = new java.text.DecimalFormat( "0.##" );
+	public static void p2f(double f, StringBuffer sb) {
+		ratingFormat.format( f, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
+	}
+	protected static class RoundTemp {
+		public String name;
+		public double tally;
+		public double deadEndTally;
+		public double weight;
+		//public boolean active;
+		public RoundTemp(String n, double t, double det, double w) {
+			name = n;
+			tally = t;
+			deadEndTally = det;
+			weight = w;
+		}
+	}
+
+	public StringBuffer makeRoundsHTML( StringBuffer explain, ArrayList rounds, NameVote[] winners ) {
+		explain.append("<table border=\"1\"><tr><th rowspan=\"2\">Name</th>");
+		for ( int i = 0; i < rounds.size(); ++i ) {
+			explain.append("<th colspan=\"3\">Round ");
+			explain.append(i+1);
+			explain.append("</th>");
+		}
+		explain.append("</tr>\n<tr>");
+		for ( int i = 0; i < rounds.size(); ++i ) {
+			explain.append("<th>Tally</th><th>Dead</th><th>Weight</th>");
+		}
+		explain.append("</tr>\n");
+		for ( int c = 0; c < winners.length; ++c ) {
+			explain.append("<tr><td>");
+			explain.append(winners[c].name);
+			explain.append("</td>");
+			for ( int r = 0; r < rounds.size(); ++r ) {
+				RoundTemp[] round = (RoundTemp[])rounds.get(r);
+				RoundTemp tr = null;
+				for ( int i = 0; i < round.length; ++i ) {
+					if ( winners[c].name.equals(round[i].name) ) {
+						tr = round[i];
+						break;
+					}
+				}
+				if ( tr == null ) {
+					explain.append("<td></td><td></td><td></td>");
+				} else {
+					explain.append("<td>");
+					p2f( tr.tally, explain );
+					explain.append("</td><td>");
+					p2f( tr.deadEndTally, explain );
+					explain.append("</td><td>");
+					p2f( tr.weight, explain );
+					explain.append("</td>");
+				}
+			}
+			explain.append("</tr>\n");
+		}
+		explain.append("<tr><td></td>");
+		for ( int r = 0; r < rounds.size(); ++r ) {
+			RoundTemp[] round = (RoundTemp[])rounds.get(r);
+			RoundTemp tr = null;
+			for ( int i = 0; i < round.length; ++i ) {
+				if ( round[i].name == null ) {
+					tr = round[i];
+					break;
+				}
+			}
+			explain.append("<td colspan=\"3\">Total Vote: ");
+			p2f( tr.tally, explain );
+			explain.append("<br>Quota: ");
+			p2f( tr.deadEndTally, explain );
+			explain.append("</th>");
+		}
+		explain.append("</tr>\n");
+		explain.append("</table>\n");
+		return explain;
+	}
+	
 	// no data, just function, only ever need one of these.
 	protected static TallyStateComparator theTSC = new TallyStateComparator();
 	/**
@@ -241,6 +307,14 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 	 @return total ranking of all choices. [0..seats-1] are elected.
 	 */
 	public NameVote[] getWinners() {
+		return getWinners( null );
+	}
+	/**
+	 Run STV over accumulated votes and return results.
+	 @param explain appends HTML explanation into this StringBuffer
+	 @return total ranking of all choices. [0..seats-1] are elected.
+	 */
+	public NameVote[] getWinners( StringBuffer explain ) {
 		if ( winners != null ) {
 			return winners;
 		}
@@ -248,12 +322,14 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		TallyState[] tv = new TallyState[they.size()];
 		int i = 0;
 		java.util.Iterator ti = they.values().iterator();
-		int numActive = 0;
 		int winpos = 0;
+		ArrayList rounds = null;
+		if ( explain != null ) {
+			rounds = new ArrayList();
+		}
 		while ( ti.hasNext() ) {
 			TallyState ts = (TallyState)ti.next();
 			ts.active = true;
-			numActive++;
 			tv[i] = ts;
 			tv[i].weight = 1.0;
 			i++;
@@ -265,11 +341,13 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 			do {
 				newelected = false;
 				numelected = 0;
+				int numActive = 0;
 				for ( i = 0; i < tv.length; i++ ) {
 					if ( tv[i].active ) {
 						tv[i].elected = false;
 						tv[i].tally = 0.0;
 						tv[i].deadEndTally = 0.0;
+						numActive++;
 					}
 				}
 				java.util.Iterator vi = votes.iterator();
@@ -281,8 +359,11 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 				}
 				q = quota( quotaStyle, totalweight, seats - winpos );
 				java.util.Arrays.sort( tv, theTSC );
-				if ( debug ) {
-					debugLog.append("<table border=\"1\"><tr><th>Name</th><th>Tally</th><th>Dead End Tally</th><th>Weight</th></tr>");
+				RoundTemp tr[] = null;
+				int tri = 0;
+				if ( explain != null ) {
+					tr = new RoundTemp[numActive+1];
+					rounds.add( tr );
 				}
 				for ( i = 0; i < tv.length; i++ ) {
 					if ( tv[i].active ) {
@@ -298,36 +379,16 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 						} else if ( tv[i].elected && tv[i].tally < q ) {
 							System.err.println("choice \"" + tv[i].name + "\" was marked elected but now below quota " + q + " with tally " + tv[i].tally );
 						}
-						if ( debug ) {
-							debugLog.append("<tr><td>");
-							debugLog.append(tv[i].name);
-							debugLog.append("</td><td>");
-							debugLog.append(tv[i].tally);
-							debugLog.append("</td><td>");
-							debugLog.append(tv[i].deadEndTally);
-							debugLog.append("</td><td>");
-							debugLog.append(tv[i].weight);
-							debugLog.append("</td></tr>\n");
+						if ( explain != null ) {
+							tr[tri] = new RoundTemp(tv[i].name, tv[i].tally, tv[i].deadEndTally, tv[i].weight);
+							++tri;
 						}
 					}
 				}
-				if ( debug ) {
-					debugLog.append("<tr><td colspan=\"4\" align=\"center\">total vote: ");
-					debugLog.append(totalweight);
-					debugLog.append(", quota: ");
-					debugLog.append(q);
-					debugLog.append("</td></tr></table>\n");
+				if ( explain != null ) {
+					// dummy entry to store global stats
+					tr[tri] = new RoundTemp(null, totalweight, q, Double.NaN);
 				}
-				/*
-				// recount having deweighted winners
-				totalweight = 0.0;
-				vi = votes.iterator();
-				while ( vi.hasNext() ) {
-					WeightedVote twv = (WeightedVote)vi.next();
-					twv.weight = 1.0;
-					totalweight += 1.0 - twv.vote( they );
-				}
-				*/
 			} while ( newelected && numelected < seats );
 			if ( numelected == seats ) {
 				break;
@@ -346,7 +407,10 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 				tv[mini].active = false;
 			} else {
 				System.err.println("no min to disqualify!");
-				return null;
+				for ( i = 0; i < tv.length; i++ ) {
+					System.err.println(tv[i].name + "(" + (tv[i].active ? "active" : "      " ) + ")=" + tv[i].tally);
+				}
+				break;
 			}
 		}
 		java.util.Arrays.sort( tv, theTSC );
@@ -354,14 +418,12 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		for ( i = 0; i < tv.length; i++ ) {
 			winners[i] = new NameVote( tv[i].name, (float)(tv[i].tally) );
 		}
+		if ( explain != null ) {
+			makeRoundsHTML( explain, rounds, winners );
+		}
 		return winners;
 	}
-	public StringBuffer htmlSummary( StringBuffer sb ) {
-		NameVote[] t;
-		t = getWinners();
-		if ( t == null || t.length == 0 || t[0] == null ) {
-			return sb;
-		}
+	protected StringBuffer htmlResultTable( StringBuffer sb, NameVote[] t ) {
 		sb.append( "<table border=\"1\"><tr><th>Name</th><th>Best STV Count</th></tr>" );
 		for ( int i = 0; i < t.length; i++ ) {
 			if ( i < seats ) {
@@ -376,6 +438,22 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		}
 		sb.append( "</table>" );
 		return sb;
+	}
+	public StringBuffer htmlSummary( StringBuffer sb ) {
+		NameVote[] t;
+		t = getWinners();
+		if ( t == null || t.length == 0 || t[0] == null ) {
+			return sb;
+		}
+		return htmlResultTable( sb, t );
+	}
+	public StringBuffer htmlExplain( StringBuffer sb ) {
+		NameVote[] t;
+		t = getWinners( sb );
+		if ( t == null || t.length == 0 || t[0] == null ) {
+			return sb;
+		}
+		return htmlResultTable( sb, t );
 	}
 	public String name() {
 		return "Single Transferrable Vote";

@@ -16,7 +16,7 @@ public class countvotes {
 	public static final String[] usage = {
 		"countvotes [--urlencoded|--whitespace|--votespec][--histMax n][--histMin n][-m method.class.name]",
 		"\t[-i votedata|-igz gzipped-votedata]",
-		"\t[--dump][--disable-all][--enable-all]",
+		"\t[--dump][--disable-all][--enable-all][--seats n]",
 		"\t[--disable method][--enable method][--explain][--full-html|--no-full-html|--text|--short]",
 		"\t[--histMax n][--histMin n]",
 		"\t[-- args to methods [debug]] < votedata"
@@ -59,6 +59,7 @@ public class countvotes {
 		int outmode = OUT_FULL_HTML;
 		boolean explain = false;
 		PrintWriter out = null;
+		int seats = 1;
 		
 		NamedHistogram histInstance = null;
 		NameVotingSystem firstWinner = null;
@@ -119,6 +120,12 @@ public class countvotes {
 					System.err.println("bogus --enable: " + argv[i] );
 					System.exit(1);
 				}
+			} else if ( argv[i].equals("--seats") ) {
+				i++;
+				seats = Integer.parseInt(argv[i]);
+				countClasses = new Vector();
+				countClasses.add( "org.bolson.vote.NamedSTV" );
+				countClasses.add( "org.bolson.vote.NamedHistogram" );
 			} else if ( argv[i].equals("--urlencoded") ) {
 				mode = MODE_URL;
 			} else if ( argv[i].equals("--whitespace") ) {
@@ -204,6 +211,12 @@ public class countvotes {
 			out.println("debug:");
 		}
 		NameVotingSystem[] vs;
+		String initArgs[] = null;
+		if ( seats != 1 ) {
+			initArgs = new String[2];
+			initArgs[0] = "seats";
+			initArgs[1] = Integer.toString( seats );
+		}
 		if ( countClasses.size() > 0 ) {
 			vs = new NameVotingSystem[countClasses.size()];
 			for ( int i = 0; i < vs.length; i++ ) {
@@ -220,6 +233,9 @@ public class countvotes {
 					if ( vs[i] == null ) {
 						System.err.println( cn + " failed to instantiate");
 						return;
+					}
+					if ( initArgs != null ) {
+						vs[i].init( (String[])initArgs.clone() );
 					}
 				}
 			}

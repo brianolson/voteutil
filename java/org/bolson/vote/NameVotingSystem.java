@@ -31,8 +31,8 @@ public abstract class NameVotingSystem {
 	Default implementation sets debug to true if it sees "debug".
 	Skip past null entries, which may have been yanked by a subclass.
 	Unless there's an error, subclass's last line should be "return super.init( argv );"
-	Multi-seat capable implementations should accept an option pair  ("seats", &lt;int&gt;) to set the number of seats.
-	@param argv array of options, just like main()
+	Multi-seat capable implementations should accept an option pair  ("seats", "<i>int</i>") to set the number of seats.
+	@param argv array of options, just like main(). Is destroyed by call.
 	@return 0 on success
 	*/
 	public int init( String[] argv ) {
