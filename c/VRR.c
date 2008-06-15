@@ -451,6 +451,8 @@ static int VRR_CSSD( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 					vhi = vk;
 					vlo = vj;
 				} else /*if ( vj > vk )*/ {
+					// A tie is indeed a weak defeat, probably the weakest, and
+					// it doesn't matter in which direction it is considered for deletion.
 					ihi = j;
 					ilo = k;
 					vhi = vj;

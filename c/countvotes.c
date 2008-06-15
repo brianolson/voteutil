@@ -6,7 +6,7 @@
 
 const char* helptext = "countvotes [--dump][--debug][--preindexed]\n"
 "\t[--full-html|--no-full-html|--no-html-head]\n"
-"\t[--disable-all][--enable-all]\n"
+"\t[--disable-all][--enable-all][--seats n]\n"
 "\t[--rankings][--help|-h|--list][--explain]\n"
 "\t[-o filename|--out filenam]\n"
 "\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"

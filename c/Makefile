@@ -29,12 +29,8 @@ countvotes.o:	CFLAGS+=${COMPILE_POSTGRES}
 
 permuteutil:	libvote.a permuteutil.o
 
-## ALTERNATE BUILD LINES
-#cc -g -Wall -DHAVE_POSTGRES countvotes.c -I/Library/PostgreSQL/include -L/Library/PostgreSQL/lib -lpq -L. -lvote
-#cc -g -Wall countvotes.c -L. -lvote
-
-## MY TEST RUN LINE
-#time ./countvotes --pg "user=poll dbname=poll" --query "SELECT vote FROM votes WHERE pid = 10;" --dump
+opt:
+	${MAKE} GOPT=-O2
 
 clean:
 	rm -rf *.o libvote.a countvotes
