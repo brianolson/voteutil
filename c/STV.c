@@ -1,7 +1,8 @@
 #include "STV.h"
-#include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 static int initSTV( STV* toret ) {
 	toret->storedVotes = NULL;
@@ -32,6 +33,7 @@ void STV_setSeats( STV* it, int seats ) {
 
 int STV_voteRating( STV* it, int numVotes, const NameVote* votes ) {
 	it->storedVotes = newStoredIndexVoteNodeFromVotes( numVotes, votes, it->storedVotes, it->ni );
+	StoredIndexVoteNode_sort( it->storedVotes );
 	it->numVotes++;
 	if ( it->winners != NULL ) {
 		free( it->winners );
@@ -40,6 +42,7 @@ int STV_voteRating( STV* it, int numVotes, const NameVote* votes ) {
 	return 0;
 }
 int STV_voteStoredIndexVoteNode( STV* it, StoredIndexVoteNode* votes ) {
+	StoredIndexVoteNode_sort( votes );
 	votes->next = it->storedVotes;
 	it->storedVotes = votes;
 	it->numVotes++;
@@ -56,17 +59,179 @@ typedef unsigned char boolean;
 static __inline int min( int a, int b ) {
 	if ( a < b ) return a; return b;
 }
-int STV_getWinners( STV* it, int wlen, NameVote** winnersP ) {
+#define STATUS_DEAD 0
+#define STATUS_ACTIVE 1
+#define STATUS_ELECTED 2
+typedef struct TallyStatus {
+	double tally;
+	double weight;
+	int status;
+} TallyStatus;
+
+typedef struct RoundScore {
+	struct RoundScore* next;
+	double quota;
+	double deadVote;
+	TallyStatus ts[1];
+} RoundScore;
+static RoundScore* newRoundScore(int numc) {
+	RoundScore* it = (RoundScore*)malloc( sizeof(RoundScore) + sizeof(TallyStatus)*(numc-1) );
+	it->next = NULL;
+	return it;
+}
+
+static double internalRecount( STV* it, TallyStatus* tally ) {
+	StoredIndexVoteNode* cur;
+	int i, j;
+	double deadVotes = 0.0;
+	
+	cur = it->storedVotes;
+	while ( cur != NULL ) {
+		//int maxi;
+		//float max;
+		int tie;
+		double tieWeight;
+		double weight = 1.0;
+		double dw;
+		i = 0;
+		while ( (i < cur->numVotes) && (weight > 0.0) ) {
+			if ( tally[cur->vote[i].index].status == STATUS_DEAD ) {
+			} else {
+				tieWeight = 1.0;
+				tie = 1;
+				j = i + 1;
+				while ( (j < cur->numVotes) &&
+					   (cur->vote[j].rating == cur->vote[i].rating) ) {
+					if ( tally[cur->vote[j].index].status == STATUS_DEAD ) {
+					} else if ( tally[cur->vote[j].index].status == STATUS_ACTIVE ) {
+						tieWeight += 1.0;
+					} else {
+						assert( tally[cur->vote[j].index].status == STATUS_ELECTED );
+						tieWeight += tally[cur->vote[j].index].weight;
+					}
+					j++;
+				}
+				if ( tie == 1 ) {
+					if ( tally[cur->vote[i].index].status == STATUS_ACTIVE ) {
+						tally[cur->vote[i].index].tally += weight;
+						weight = 0.0;
+					} else {
+						assert( tally[cur->vote[i].index].status == STATUS_ELECTED );
+						dw = tally[cur->vote[i].index].weight * weight;
+						tally[cur->vote[i].index].tally += dw;
+						weight -= dw;
+					}
+				} else {
+					double weightLoss = 0.0;
+					j = i;
+					while ( (j < cur->numVotes) &&
+						   (cur->vote[j].rating == cur->vote[i].rating) ) {
+						if ( tally[cur->vote[j].index].status == STATUS_DEAD ) {
+						} else if ( tally[cur->vote[j].index].status == STATUS_ACTIVE ) {
+							dw = weight * ( 1.0 / tieWeight );
+							tally[cur->vote[j].index].tally += dw;
+							weightLoss += dw;
+						} else {
+							assert( tally[cur->vote[j].index].status == STATUS_ELECTED );
+							dw = weight * (tally[cur->vote[j].index].weight / tieWeight);
+							tally[cur->vote[j].index].tally += dw;
+							weightLoss += dw;
+						}
+						j++;
+					}
+					weight -= weightLoss;
+				}
+			}
+			i++;
+		}
+		if ( weight > 0.0 ) {
+			deadVotes += weight;
+		}
+		cur = cur->next;
+	}
+	return deadVotes;
+}
+/*
+ sum(votes_for_c)*deweight_c == quota
+	aka
+ deweight_c = quota / sum(vote_for_c)
+ 
+ first place:
+	vote_for_c = deweight_c
+ second place:
+	vote_for_c2 = deweight_c * deweight_c2
+ third place:
+	vote_for_c3 = deweight_c * deweight_c2 * deweight_c3
+ 
+ There's probably a closed form linear algebra solution to this, but it might
+ inlvolve a matrix ((n+1) choose (seats)) columns wide.
+ 
+ So instead, iterate.
+ Stop when enough are elected or if there isn't enough extra vote in the top N to elect an (N+1)th.
+ */
+static int settleWinners( STV* it, TallyStatus* tally, double quota ) {
+	int winnersFound = 0;
+	int numc = it->ni->nextIndex;
+	int i;
+	double max = 0.0, submax;
+	int maxi, submaxi;
+	int tie = -1, subtie;
+	double surplus;
+	while ( winnersFound < it->seats ) {
+		int newWinners;
+		newWinners = 0;
+		i = 0;
+		// find first active
+		surplus = 0.0;
+		maxi = -1;
+		for ( i = 0; i < numc; ++i ) {
+			if ( tally[i].status == STATUS_ELECTED ) {
+				surplus += tally[i].tally - quota;
+			} else if ( tally[i].status == STATUS_ACTIVE ) {
+				if ( (maxi == -1) || (tally[i].tally > max) ) {
+					submaxi = maxi;
+					submax = max;
+					subtie = tie;
+					maxi = i;
+					max = tally[i].tally;
+					tie = 1;
+				} else if ( tally[i].tally == max ) {
+					tie++;
+				}
+				if ( tally[i].tally > quota ) {
+					newWinners++;
+				}
+			}
+		}
+		if ( maxi == -1 ) {
+			// nothing active
+			return winnersFound;
+		}
+		if ( ((max + surplus) < quota) || (winnersFound + newWinners > it->seats) ) {
+			// bail and try a DQ phase
+			return winnersFound;
+		}
+		for ( i = 0; i < numc; ++i ) {
+			if ( tally[i].tally > quota ) {
+				tally[i].status = STATUS_ELECTED;
+				winnersFound++;
+				tally[i].weight = quota / tally[i].tally;
+				surplus += tally[i].tally - quota;
+			}
+		}
+	}
+	return winnersFound;
+}
+
+static int STV_getWinnersInternal( STV* it, int wlen, NameVote** winnersP, RoundScore** roundsP ) {
 	int numActive;
 	int numWinners;
 	int i;
-	double* tally;
-	boolean* active;
-	float* voterWeight;
-	int* curvote;
 	int numc = it->ni->nextIndex;
-	StoredIndexVoteNode* cur;
+	int deadVotes;
 	double quota;
+	TallyStatus* ts;
+	RoundScore* rounds = NULL;
 
 	if ( winnersP == NULL ) {
 		return -1;
@@ -77,120 +242,79 @@ int STV_getWinners( STV* it, int wlen, NameVote** winnersP ) {
 	}
 	numActive = numc;
 	numWinners = 0;
-	it->winners = (NameVote*)malloc( sizeof(NameVote)*numc );
-	tally = (double*)malloc( sizeof(double)*numc );
-	assert( tally != NULL );
-	active = (boolean*)malloc( sizeof(boolean)*numc );
-	assert( active != NULL );
-	for ( i = 0; i < numc; i++ ) {
-		active[i] = true;
-	}
 
-	voterWeight = (float*)malloc( sizeof(float)*it->numVotes );
-	assert( voterWeight != NULL );
-	curvote = (int*)malloc( sizeof(int)*it->numVotes );
-	assert( curvote != NULL );
-	for ( i = 0; i < it->numVotes; i++ ) {
-		voterWeight[i] = 1.0f;
+	it->winners = (NameVote*)malloc( sizeof(NameVote)*numc );
+	assert( it->winners != NULL );
+	ts = (TallyStatus*)malloc( sizeof(TallyStatus)*numc );
+	assert( ts != NULL );
+
+	for ( i = 0; i < numc; i++ ) {
+		ts[i].weight = 1.0;
+		ts[i].status = STATUS_ACTIVE;
 	}
+	
 	quota = it->numVotes / ( it->seats + 1.0 );
 
-	while ( numActive > 1 && numWinners < it->seats ) {
-		int voteri;
-		cur = it->storedVotes;
-		voteri = 0;
+	while ( numActive > 1 && numWinners < it->seats && numActive > it->seats ) {
+		// reset tally
 		for ( i = 0; i < numc; i++ ) {
-			tally[i] = 0.0;
-		}
-
-		// recount votes
-		while ( cur != NULL ) {
-			int maxi;
-			float max;
-			for ( i = 0; ! active[cur->vote[i].index] && i < cur->numVotes; i++ ) {
+			if ( ts[i].status != STATUS_DEAD ) {
+				ts[i].tally = 0.0;
 			}
-			if ( i == cur->numVotes ) {
-				// exhausted ballot, nothing to vote
+		}
+		if ( roundsP != NULL ) {
+			if ( rounds == NULL ) {
+				rounds = newRoundScore( numc );
+				*roundsP = rounds;
 			} else {
-				max = cur->vote[i].rating;
-				maxi = cur->vote[i].index;
-				i++;
-				for ( ; i < cur->numVotes; i++ ) {
-					if ( active[cur->vote[i].index] && cur->vote[i].rating > max ) {
-						maxi = cur->vote[i].index;
-						max = cur->vote[i].rating;
+				rounds->next = newRoundScore( numc );
+				rounds = rounds->next;
+			}
+		}
+		
+		deadVotes = internalRecount( it, ts );
+		for ( i = 0; i < numc; i++ ) {
+			if ( ts[i].status == STATUS_ELECTED ) {
+				assert(ts[i].tally >= quota);
+			}
+		}
+		quota = (it->numVotes - deadVotes) / ( it->seats + 1.0 );
+		numWinners = settleWinners( it, ts, quota );
+		assert(numWinners <= it->seats);
+		
+		if ( rounds != NULL ) {
+			memcpy(rounds->ts, ts, sizeof(TallyStatus) * numc);
+			rounds->quota = quota;
+			rounds->deadVote = deadVotes;
+		}
+		if ( numWinners < it->seats ) {
+			double min = 0.0;
+			int mini = -1;
+			int tied = 1;
+			for ( i = 0; i < numc; ++i ) {
+				if ( ts[i].status != STATUS_DEAD ) {
+					if ( (mini == -1) || (ts[i].tally < min) ) {
+						min = ts[i].tally;
+						mini = i;
+						tied = 1;
+					} else if ( ts[i].tally == min ) {
+						tied++;
 					}
 				}
-				curvote[voteri] = maxi;
-				tally[maxi] += voterWeight[voteri];
 			}
-			cur = cur->next;
-			voteri++;
-		}
-		// commit winners or disqualify losers
-		{
-			double min, max;
-			int mintied, maxtied;
-			for ( i = 0; ! active[i] && i < numc; i++ ) {
+			assert(mini != -1);
+			if ( numActive - tied < it->seats ) {
+				// fail!
+				fprintf(stderr, "STV failed, too many tied for disqualification\n");
 			}
-			max = min = tally[i];
-			maxtied = mintied = 1;
-			i++;
-			for ( ; i < numc; i++ ) {
-				if ( ! active[i] ) {
-					continue;
-				}
-				if ( tally[i] < min ) {
-					min = tally[i];
-					mintied = 1;
-				} else if ( tally[i] == min ) {
-					mintied++;
-				}
-				if ( tally[i] > max ) {
-					max = tally[i];
-					maxtied = 1;
-				} else if ( tally[i] == max ) {
-					maxtied++;
-				}
-			}
-			if ( maxtied == numActive ) {
-				// last N are tied, return them all
-				break;
-			}
-			if ( max > quota ) {
-				double deweight = 1.0 - (quota / max);
-				// promote winner(s)
-				for ( i = 0; i < numc; i++ ) {
-					if ( tally[i] == max ) {
-						int v;
-						// deweight by satisfaction
-						for ( v = 0; v < it->numVotes; v++ ) {
-							if ( curvote[v] == i ) {
-								voterWeight[v] *= deweight;
-							}
-						}
-						// record winner
-						active[i] = false;
-						numActive--;
-						it->winners[numWinners].name = indexName( it->ni, i );
-						it->winners[numWinners].rating = tally[i];
-						if ( debug ) {
-							printf("STV winner \"%s\" = %f<br>\n", indexName( it->ni, i ), tally[i] );
-						}
-						numWinners++;
-					}
-				}
-			} else {
-				// disqualify loser(s)
-				for ( i = 0; i < numc; i++ ) {
-					if ( tally[i] == min ) {
-						active[i] = false;
-						numActive--;
-						it->winners[numWinners+numActive].name = indexName( it->ni, i );
-						it->winners[numWinners+numActive].rating = tally[i];
-						if ( debug ) {
-							printf("STV dq \"%s\" = %f<br>\n", indexName( it->ni, i ), tally[i] );
-						}
+			for ( i = 0; i < numc; i++ ) {
+				if ( ts[i].tally == min ) {
+					ts[i].status = STATUS_DEAD;
+					numActive--;
+					it->winners[numActive].name = indexName( it->ni, i );
+					it->winners[numActive].rating = ts[i].tally;
+					if ( debug ) {
+						printf("STV dq \"%s\" = %f<br>\n", indexName( it->ni, i ), ts[i].tally );
 					}
 				}
 			}
@@ -201,16 +325,14 @@ int STV_getWinners( STV* it, int wlen, NameVote** winnersP ) {
 	}
 	// record holdouts
 	for ( i = 0; i < numc; i++ ) {
-		if ( active[i] == true ) {
+		if ( ts[i].status != STATUS_DEAD ) {
 			numActive--;
-			it->winners[numWinners+numActive].name = indexName( it->ni, i );
-			it->winners[numWinners+numActive].rating = tally[i];
+			it->winners[numActive].name = indexName( it->ni, i );
+			it->winners[numActive].rating = ts[i].tally;
 		}
 	}
-	free( active );
-	free( tally );
-	free( curvote );
-	free( voterWeight );
+	sortNameVotes( it->winners, numc );
+	free( ts );
 returnsolution:
 	if ( *winnersP != NULL && wlen > 0 ) {
 		// copy into provided return space
@@ -225,6 +347,9 @@ returnsolution:
 		return numc;
 	}
 }
+int STV_getWinners( STV* it, int wlen, NameVote** winnersP ) {
+	return STV_getWinnersInternal( it, wlen, winnersP, NULL );
+}
 void STV_htmlSummary( STV* it, FILE* fout ) {
 	int numw;
 	NameVote* winners;
@@ -234,6 +359,68 @@ void STV_htmlSummary( STV* it, FILE* fout ) {
 	if ( numw <= 0 ) {
 		return;
 	}
+	fprintf( fout, "<table border=\"1\"><tr><th>Name</th><th>Best STV Count</th></tr>" );
+	for ( i = 0; i < numw; i++ ) {
+		fprintf( fout, "<tr bgcolor=\"%s\"><td>%s</td><td>%d</td></tr>", (i < it->seats) ? "#ccffcc" : "#ffcccc", winners[i].name, (int)(winners[i].rating) );
+	}
+	fprintf( fout, "</table>\n");
+}
+static const char greyStyle[] = " style=\"color:#999999;\"";
+static const char greenStyle[] = " style=\"color:#00cc00;\"";
+void STV_htmlExplain( STV* it, FILE* fout ) {
+	int numw;
+	NameVote* winners;
+	int i, c, numc;
+	RoundScore* rounds = NULL;
+	RoundScore* cr;
+	int numrounds = 0;
+	
+	numc = it->ni->nextIndex;
+	numw = STV_getWinnersInternal( it, 0, &winners, &rounds );
+	if ( numw <= 0 ) {
+		return;
+	}
+	cr = rounds;
+	while ( cr != NULL ) {
+		numrounds++;
+		cr = cr->next;
+	}
+	fprintf( fout, "<table border=\"1\"><tr><th rowspan=\"2\">Name</th>");
+	for ( i = 0; i < numrounds; ++i ) {
+		fprintf( fout, "<th colspan=\"2\">Round %d</th>", i+1 );
+	}
+	fprintf( fout, "</tr>\n<tr>" );
+	for ( i = 0; i < numrounds; ++i ) {
+		fprintf( fout, "<th>Tally</th><th>Weight</th>" );
+	}
+	fprintf( fout, "</tr>\n" );
+	for ( c = 0; c < numw; ++c ) {
+		cr = rounds;
+		fprintf( fout, "<tr><td>%s</td>", winners[c].name );
+		while ( cr != NULL ) {
+			const char* style;
+			for ( i = 0; i < numc; ++i ) {
+				if ( winners[c].name == indexName( it->ni, i ) ) {
+					break;
+				}
+			}
+			assert(i < numc);
+			style = (cr->ts[i].status == STATUS_DEAD) ? greyStyle :
+				(cr->ts[i].status == STATUS_ELECTED) ? greenStyle : "";
+			fprintf( fout, "<td%s>%.2f</td><td%s>%.2f</td>", style, cr->ts[i].tally, style, cr->ts[i].weight );
+			cr = cr->next;
+		}
+		fprintf( fout, "</tr>\n" );
+	}
+	fprintf( fout, "<tr><td></td>" );
+	cr = rounds;
+	while ( cr != NULL ) {
+		fprintf( fout, "<td colspan=\"2\">Total Vote: %.2f (%.2f dead)<br>Quota: %.2f</td>",
+			it->numVotes - cr->deadVote, cr->deadVote, cr->quota );
+		cr = cr->next;
+	}
+	fprintf( fout, "</tr>\n</table>\n" );
+
 	fprintf( fout, "<table border=\"1\"><tr><th>Name</th><th>Best STV Count</th></tr>" );
 	for ( i = 0; i < numw; i++ ) {
 		fprintf( fout, "<tr bgcolor=\"%s\"><td>%s</td><td>%d</td></tr>", (i < it->seats) ? "#ccffcc" : "#ffcccc", winners[i].name, (int)(winners[i].rating) );
@@ -286,6 +473,7 @@ VirtualVotingSystem* newVirtualSTV() {
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(STV);
 	vr->vvs.setSeats = (vvs_setSeats)STV_setSeats;
+	vr->vvs.htmlExplain = (vvs_htmlSummary)STV_htmlExplain;
 	if ( initSTV( &(vr->rr) ) != 0 ) {
 		free( vr );
 		return NULL;

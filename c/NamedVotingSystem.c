@@ -118,6 +118,26 @@ StoredIndexVoteNode* newStoredIndexVoteNodeFromVotes( int numVotes, const NameVo
 	return toret;
 }
 
+void StoredIndexVoteNode_sort(StoredIndexVoteNode* it) {
+	int i;
+	int notdone = 1;
+	// votes are probably short, bubblesort is easy
+	while ( notdone ) {
+		notdone = 0;
+		for ( i = 0; i < it->numVotes - 1; ++i ) {
+			if ( it->vote[i].rating < it->vote[i+1].rating ) {
+				float trating = it->vote[i].rating;
+				int tindex = it->vote[i].index;
+				it->vote[i].rating = it->vote[i+1].rating;
+				it->vote[i].index = it->vote[i+1].index;
+				it->vote[i+1].rating = trating;
+				it->vote[i+1].index = tindex;
+				notdone = 1;
+			}
+		}
+	}
+}
+
 int denibble( char c ) {
 	if ( c >= '0' && c <= '9' ) {
 		return c - '0';
