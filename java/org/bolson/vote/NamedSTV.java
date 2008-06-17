@@ -293,7 +293,7 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 			p2f( tr.tally, explain );
 			explain.append("<br>Quota: ");
 			p2f( tr.deadEndTally, explain );
-			explain.append("</th>");
+			explain.append("</td>");
 		}
 		explain.append("</tr>\n");
 		explain.append("</table>\n");
