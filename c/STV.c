@@ -53,26 +53,26 @@ int STV_voteStoredIndexVoteNode( STV* it, StoredIndexVoteNode* votes ) {
 	return 0;
 }
 
-typedef unsigned char boolean;
-#define true ((boolean)1)
-#define false ((boolean)0)
 static __inline int min( int a, int b ) {
 	if ( a < b ) return a; return b;
 }
 #define STATUS_DEAD 0
 #define STATUS_ACTIVE 1
 #define STATUS_ELECTED 2
+
+// Per-choice status storage.
 typedef struct TallyStatus {
 	double tally;
 	double weight;
 	int status;
 } TallyStatus;
 
+// Intermediate status storage for htmlExplain
 typedef struct RoundScore {
 	struct RoundScore* next;
 	double quota;
 	double deadVote;
-	TallyStatus ts[1];
+	TallyStatus ts[1];	// actually ts[numc]
 } RoundScore;
 static RoundScore* newRoundScore(int numc) {
 	RoundScore* it = (RoundScore*)malloc( sizeof(RoundScore) + sizeof(TallyStatus)*(numc-1) );
@@ -80,26 +80,37 @@ static RoundScore* newRoundScore(int numc) {
 	return it;
 }
 
-static double internalRecount( STV* it, TallyStatus* tally ) {
+// Count all the votes.
+// Clears TallyStatus before count.
+// Distributes vote weight from each voter to each choice from top-rated down.
+static double internalRecount( STV* it, TallyStatus* tally, double quota ) {
 	StoredIndexVoteNode* cur;
 	int i, j;
 	double deadVotes = 0.0;
-	
+	int numc = it->ni->nextIndex;
+
+	// reset tally
+	for ( i = 0; i < numc; i++ ) {
+		if ( tally[i].status != STATUS_DEAD ) {
+			tally[i].tally = 0.0;
+		}
+	}
+
 	cur = it->storedVotes;
 	while ( cur != NULL ) {
-		//int maxi;
-		//float max;
 		int tie;
 		double tieWeight;
 		double weight = 1.0;
 		double dw;
 		i = 0;
+		// Add weight from this vote to top-rated chioice until this vote has been fully cast.
 		while ( (i < cur->numVotes) && (weight > 0.0) ) {
 			if ( tally[cur->vote[i].index].status == STATUS_DEAD ) {
 			} else {
 				tieWeight = 1.0;
 				tie = 1;
 				j = i + 1;
+				// find any ties
 				while ( (j < cur->numVotes) &&
 					   (cur->vote[j].rating == cur->vote[i].rating) ) {
 					if ( tally[cur->vote[j].index].status == STATUS_DEAD ) {
@@ -112,16 +123,21 @@ static double internalRecount( STV* it, TallyStatus* tally ) {
 					j++;
 				}
 				if ( tie == 1 ) {
+					// no tie, simple case.
 					if ( tally[cur->vote[i].index].status == STATUS_ACTIVE ) {
+						// Vote fully on non-elected choice.
 						tally[cur->vote[i].index].tally += weight;
 						weight = 0.0;
 					} else {
+						// Vote fractionally on elected choices.
 						assert( tally[cur->vote[i].index].status == STATUS_ELECTED );
 						dw = tally[cur->vote[i].index].weight * weight;
 						tally[cur->vote[i].index].tally += dw;
 						weight -= dw;
 					}
 				} else {
+					// There are things tied for the active level in this vote.
+					// Split the vote across the tie-voted choices.
 					double weightLoss = 0.0;
 					j = i;
 					while ( (j < cur->numVotes) &&
@@ -149,8 +165,15 @@ static double internalRecount( STV* it, TallyStatus* tally ) {
 		}
 		cur = cur->next;
 	}
+	// assert some simple sanity checks.
+	for ( i = 0; i < numc; i++ ) {
+		if ( tally[i].status == STATUS_ELECTED ) {
+			assert(tally[i].tally >= quota);
+		}
+	}
 	return deadVotes;
 }
+
 /*
  sum(votes_for_c)*deweight_c == quota
 	aka
@@ -208,16 +231,21 @@ static int settleWinners( STV* it, TallyStatus* tally, double quota ) {
 			return winnersFound;
 		}
 		if ( ((max + surplus) < quota) || (winnersFound + newWinners > it->seats) ) {
-			// bail and try a DQ phase
+			// Highest found can't win yet, or too-many-way tie for winners.
+			// Bail and try a DQ phase.
 			return winnersFound;
 		}
 		for ( i = 0; i < numc; ++i ) {
-			if ( tally[i].tally > quota ) {
+			if ( (tally[i].status == STATUS_ACTIVE) && (tally[i].tally > quota) ) {
 				tally[i].status = STATUS_ELECTED;
 				winnersFound++;
-				tally[i].weight = quota / tally[i].tally;
+				tally[i].weight = 1.00000001 * (quota / tally[i].tally);
 				surplus += tally[i].tally - quota;
 			}
+		}
+		if ( winnersFound < it->seats ) {
+			it->deadVotes = internalRecount( it, tally, quota );
+			quota = (it->numVotes - it->deadVotes) / ( it->seats + 1.0 );
 		}
 	}
 	return winnersFound;
@@ -228,7 +256,6 @@ static int STV_getWinnersInternal( STV* it, int wlen, NameVote** winnersP, Round
 	int numWinners;
 	int i;
 	int numc = it->ni->nextIndex;
-	int deadVotes;
 	double quota;
 	TallyStatus* ts;
 	RoundScore* rounds = NULL;
@@ -256,12 +283,7 @@ static int STV_getWinnersInternal( STV* it, int wlen, NameVote** winnersP, Round
 	quota = it->numVotes / ( it->seats + 1.0 );
 
 	while ( numActive > 1 && numWinners < it->seats && numActive > it->seats ) {
-		// reset tally
-		for ( i = 0; i < numc; i++ ) {
-			if ( ts[i].status != STATUS_DEAD ) {
-				ts[i].tally = 0.0;
-			}
-		}
+		// Setup explain storage, if needed.
 		if ( roundsP != NULL ) {
 			if ( rounds == NULL ) {
 				rounds = newRoundScore( numc );
@@ -272,20 +294,16 @@ static int STV_getWinnersInternal( STV* it, int wlen, NameVote** winnersP, Round
 			}
 		}
 		
-		deadVotes = internalRecount( it, ts );
-		for ( i = 0; i < numc; i++ ) {
-			if ( ts[i].status == STATUS_ELECTED ) {
-				assert(ts[i].tally >= quota);
-			}
-		}
-		quota = (it->numVotes - deadVotes) / ( it->seats + 1.0 );
+		it->deadVotes = internalRecount( it, ts, quota );
+		quota = (it->numVotes - it->deadVotes) / ( it->seats + 1.0 );
 		numWinners = settleWinners( it, ts, quota );
 		assert(numWinners <= it->seats);
 		
+		// Copy status to explain storage, if needed.
 		if ( rounds != NULL ) {
 			memcpy(rounds->ts, ts, sizeof(TallyStatus) * numc);
 			rounds->quota = quota;
-			rounds->deadVote = deadVotes;
+			rounds->deadVote = it->deadVotes;
 		}
 		if ( numWinners < it->seats ) {
 			double min = 0.0;
@@ -350,20 +368,26 @@ returnsolution:
 int STV_getWinners( STV* it, int wlen, NameVote** winnersP ) {
 	return STV_getWinnersInternal( it, wlen, winnersP, NULL );
 }
-void STV_htmlSummary( STV* it, FILE* fout ) {
-	int numw;
-	NameVote* winners;
-	int i;
 
-	numw = STV_getWinners( it, 0, &winners );
-	if ( numw <= 0 ) {
-		return;
-	}
+static void STV_resultTable( STV* it, FILE* fout, NameVote* winners, int numw ) {
+	int i;
 	fprintf( fout, "<table border=\"1\"><tr><th>Name</th><th>Best STV Count</th></tr>" );
 	for ( i = 0; i < numw; i++ ) {
 		fprintf( fout, "<tr bgcolor=\"%s\"><td>%s</td><td>%d</td></tr>", (i < it->seats) ? "#ccffcc" : "#ffcccc", winners[i].name, (int)(winners[i].rating) );
 	}
 	fprintf( fout, "</table>\n");
+}
+
+void STV_htmlSummary( STV* it, FILE* fout ) {
+	int numw;
+	NameVote* winners;
+
+	numw = STV_getWinners( it, 0, &winners );
+	if ( numw <= 0 ) {
+		fprintf( fout, "<p>STV returns no winners.</p>\n" );
+		return;
+	}
+	STV_resultTable( it, fout, winners, numw );
 }
 static const char greyStyle[] = " style=\"color:#999999;\"";
 static const char greenStyle[] = " style=\"color:#00cc00;\"";
@@ -375,25 +399,31 @@ void STV_htmlExplain( STV* it, FILE* fout ) {
 	RoundScore* cr;
 	int numrounds = 0;
 	
-	numc = it->ni->nextIndex;
 	numw = STV_getWinnersInternal( it, 0, &winners, &rounds );
 	if ( numw <= 0 ) {
+		fprintf( fout, "<p>STV returns no winners.</p>\n" );
 		return;
 	}
+
 	cr = rounds;
 	while ( cr != NULL ) {
 		numrounds++;
 		cr = cr->next;
 	}
+	numc = it->ni->nextIndex;
+
+	// Top row. Round numbers.
 	fprintf( fout, "<table border=\"1\"><tr><th rowspan=\"2\">Name</th>");
 	for ( i = 0; i < numrounds; ++i ) {
 		fprintf( fout, "<th colspan=\"2\">Round %d</th>", i+1 );
 	}
 	fprintf( fout, "</tr>\n<tr>" );
+	// Second row. Column labels.
 	for ( i = 0; i < numrounds; ++i ) {
 		fprintf( fout, "<th>Tally</th><th>Weight</th>" );
 	}
 	fprintf( fout, "</tr>\n" );
+	// Data rows, in order of winners.
 	for ( c = 0; c < numw; ++c ) {
 		cr = rounds;
 		fprintf( fout, "<tr><td>%s</td>", winners[c].name );
@@ -412,6 +442,7 @@ void STV_htmlExplain( STV* it, FILE* fout ) {
 		}
 		fprintf( fout, "</tr>\n" );
 	}
+	// Bottom row. Summary data.
 	fprintf( fout, "<tr><td></td>" );
 	cr = rounds;
 	while ( cr != NULL ) {
@@ -421,11 +452,7 @@ void STV_htmlExplain( STV* it, FILE* fout ) {
 	}
 	fprintf( fout, "</tr>\n</table>\n" );
 
-	fprintf( fout, "<table border=\"1\"><tr><th>Name</th><th>Best STV Count</th></tr>" );
-	for ( i = 0; i < numw; i++ ) {
-		fprintf( fout, "<tr bgcolor=\"%s\"><td>%s</td><td>%d</td></tr>", (i < it->seats) ? "#ccffcc" : "#ffcccc", winners[i].name, (int)(winners[i].rating) );
-	}
-	fprintf( fout, "</table>\n");
+	STV_resultTable( it, fout, winners, numw );
 }
 void STV_print( STV* it, FILE* fout ) {
 	int numw;

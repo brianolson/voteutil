@@ -9,6 +9,7 @@ struct STV {
 	NameVote* winners;
 	int numVotes;
 	int seats;
+	double deadVotes;
 };
 typedef struct STV STV;
 
