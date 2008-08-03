@@ -267,7 +267,6 @@ VirtualVotingSystem* newVirtualIRNR() {
 	struct vvsrr* vr = (struct vvsrr*)malloc(sizeof(struct vvsrr));
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(IRNR);
-	toret->close = IRNR_deleteVVS;
 	toret->htmlExplain = (vvs_htmlSummary)IRNR_htmlExplain;
 	toret->it = &vr->rr;
 	return toret;

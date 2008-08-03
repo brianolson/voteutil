@@ -1027,7 +1027,6 @@ VirtualVotingSystem* newVirtualVRR() {
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(VRR);
 	toret->htmlExplain = (vvs_htmlSummary)VRR_htmlExplain;
-	toret->close = VRR_deleteVVS;
 	toret->it = &vr->rr;
 	initVRR(&(vr->rr));
 	return toret;
@@ -1039,7 +1038,6 @@ VirtualVotingSystem* newVirtualRankedPairs() {
 	INIT_VVS_TYPE(VRR);
 	toret->htmlExplain = (vvs_htmlSummary)VRR_htmlExplainRankedPairs;
 	toret->getWinners = (vvs_getWinners)VRR_getWinnersRankedPairs;
-	toret->close = VRR_deleteVVS;
 	toret->it = &vr->rr;
 	initVRR(&(vr->rr));
 	return toret;

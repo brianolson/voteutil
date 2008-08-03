@@ -296,7 +296,6 @@ VirtualVotingSystem* newVirtualHistogram() {
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(Histogram);
 	vr->vvs.setSeats = (vvs_setSeats)Histogram_setSeats;
-	toret->close = Histogram_deleteVVS;
 	toret->it = &vr->rr;
 	initHistogram( &vr->rr );
 	return toret;

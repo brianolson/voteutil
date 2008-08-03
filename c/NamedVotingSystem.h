@@ -160,7 +160,7 @@ struct VirtualVotingSystem {
 
 	void (*setSharedNameIndex)( void* it, NameIndex* ni );
 
-	void (*close)( VirtualVotingSystem* it );// delete
+	void (*close)( void* it );// delete
 
 	// For multi-seat methods. May be NULL.
 	void (*setSeats)( void* it, int seats );
@@ -175,6 +175,7 @@ typedef int (*vvs_getWinners)( void* it, int numVotes, NameVote** winnersP );
 typedef void (*vvs_htmlSummary)( void* it, FILE* fout );
 typedef void (*vvs_setSharedNameIndex)( void* it, NameIndex* ni );
 typedef void (*vvs_print)( void* it, FILE* fout );
+typedef void (*vvs_close)( void* it );
 typedef void (*vvs_setSeats)( void* it, int seats );
 
 #define DECLARE_STD_setSharedNameIndex( type ) void type##_setSharedNameIndex( type* it, NameIndex* ni ) {\
@@ -195,6 +196,7 @@ toret->htmlSummary = (vvs_htmlSummary)type##_htmlSummary; \
 toret->htmlExplain = (vvs_htmlSummary)type##_htmlSummary; \
 toret->print = (vvs_print)type##_print;\
 toret->setSharedNameIndex = (vvs_setSharedNameIndex)type##_setSharedNameIndex;\
+toret->close = (vvs_close)type##_deleteVVS;\
 toret->setSeats = NULL;
 
 struct VirtualVotingSystemFactory {

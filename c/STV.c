@@ -505,7 +505,6 @@ VirtualVotingSystem* newVirtualSTV() {
 		free( vr );
 		return NULL;
 	}
-	toret->close = STV_deleteVVS;
 	toret->it = &vr->rr;
 	return toret;
 }

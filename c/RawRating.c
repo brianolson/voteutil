@@ -171,7 +171,6 @@ VirtualVotingSystem* newVirtualRawRating() {
 	struct vvsrr* vr = (struct vvsrr*)malloc(sizeof(struct vvsrr));
 	VirtualVotingSystem* toret = &vr->vvs;
 	INIT_VVS_TYPE(RawRating);
-	toret->close = RawRating_deleteVVS;
 	toret->it = &vr->rr;
 	return toret;
 }
