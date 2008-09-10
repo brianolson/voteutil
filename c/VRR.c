@@ -705,7 +705,7 @@ int findPath(pair* ranks, int numranks, int from, int to, SearchStack* up) {
 	fprintf(stderr, "%sfindpath(:%d) %d->%d\n", prefix, numranks-1, from, to);
 #endif
 	for ( i = 0; i < numranks; ++i ) {
-		if ( (!ranks[i].active) && (pair_cmp(ranks + i, ranks + (numranks-1))) ){
+		if ( !ranks[i].active ){
 			continue;
 		}
 		if ( ranks[i].i == from ) {
@@ -818,7 +818,8 @@ int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 	if ( it->explain != NULL ) {
 		fprintf((FILE*)it->explain, "</p><p>Final pair rankings:</p><table border=\"0\">\n" );
 		for ( i = 0; i < x; ++i ) {
-			fprintf((FILE*)it->explain, "<tr><td>%s</td><td>&gt;</td><td>%s</td><td>(%d > %d)</td></tr>\n",
+			fprintf((FILE*)it->explain, "<tr%s><td>%s</td><td>&gt;</td><td>%s</td><td>(%d > %d)</td></tr>\n",
+					(ranks[i].active ? "" : " style=\"color: #999999\""),
 					indexName(it->ni, ranks[i].i), indexName(it->ni, ranks[i].j), ranks[i].Vij, ranks[i].Vji);
 		}
 		fprintf((FILE*)it->explain, "</table>\n");

@@ -27,6 +27,9 @@ struct NameVoteStruct {
 };
 typedef struct NameVoteStruct NameVote;
 
+/**
+Sorts based on rating, then by strcmp() on names.
+*/
 void sortNameVotes(NameVote* they, int length);
 
 /* A more compact struct than NameVote. For implementations that need to hold all votes in memory. */

@@ -89,6 +89,7 @@ static int IRV_getWinnersInternal(
 	cur = it->storedVotes;
 	it->storedVotes = NULL;
 	while ( numActive > 1 ) {
+		// reset fractional count, which is counted every round from tie list.
 		for ( i = 0; i < numc; i++ ) {
 			if ( they[i].active ) {
 				they[i].fractions = 0.0;
@@ -101,11 +102,12 @@ static int IRV_getWinnersInternal(
 			float max;
 			next = cur->next;
 			i = 0;
+			// find first active choice on this ballot
 			while ( (i < cur->numVotes) && (! they[cur->vote[i].index].active) ) {
 				i++;
 			}
 			if ( i == cur->numVotes ) {
-				// exhausted ballot
+				// exhausted ballot with no active choices
 				cur->next = exhausted;
 				exhausted = cur;
 			} else {
@@ -159,6 +161,7 @@ static int IRV_getWinnersInternal(
 			min = they[i].whole + they[i].fractions;
 			tied = 1;
 			i++;
+			// find loser(s)
 			for ( ; i < numc; i++ ) {
 				if ( ! they[i].active ) {
 					// skip
@@ -171,8 +174,16 @@ static int IRV_getWinnersInternal(
 			}
 			if ( tied == numActive ) {
 				// last N are tied, return them all
+				if ( round != NULL ) {
+					for ( i = 0; i < numc; ++i ) {
+						round->they[i].active = they[i].active;
+						round->they[i].name = indexName( it->ni, i );
+						round->they[i].tally = (they[i].whole + they[i].fractions);
+					}
+				}
 				break;
 			}
+			// disqualify loser(s)
 			for ( i = 0; i < numc; i++ ) {
 				if ( (they[i].whole + they[i].fractions) == min ) {
 					they[i].active = false;
@@ -220,6 +231,7 @@ static int IRV_getWinnersInternal(
 			it->winners[numActive].rating = (they[i].whole + they[i].fractions);
 		}
 	}
+	sortNameVotes(it->winners, numc);
 	// re-bundle all the votes into storedVotes from cur, exhausted and buckets[]
 	if ( cur != NULL ) {
 		it->storedVotes = cur;
