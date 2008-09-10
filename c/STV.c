@@ -207,9 +207,11 @@ static int settleWinners( STV* it, TallyStatus* tally, double quota ) {
 		// find first active
 		surplus = 0.0;
 		maxi = -1;
+		winnersFound = 0;
 		for ( i = 0; i < numc; ++i ) {
 			if ( tally[i].status == STATUS_ELECTED ) {
 				surplus += tally[i].tally - quota;
+				winnersFound++;
 			} else if ( tally[i].status == STATUS_ACTIVE ) {
 				if ( (maxi == -1) || (tally[i].tally > max) ) {
 					submaxi = maxi;
@@ -236,7 +238,9 @@ static int settleWinners( STV* it, TallyStatus* tally, double quota ) {
 			return winnersFound;
 		}
 		for ( i = 0; i < numc; ++i ) {
-			if ( (tally[i].status == STATUS_ACTIVE) && (tally[i].tally > quota) ) {
+			if ( tally[i].status == STATUS_ELECTED ) {
+				tally[i].weight = 1.00000001 * (quota / tally[i].tally);
+			} else if ( (tally[i].status == STATUS_ACTIVE) && (tally[i].tally > quota) ) {
 				tally[i].status = STATUS_ELECTED;
 				winnersFound++;
 				tally[i].weight = 1.00000001 * (quota / tally[i].tally);
