@@ -1,12 +1,37 @@
 #!/usr/bin/perl -w
+#
+$usage = <<EOF;
+Usage:
+./test.pl [--tmpdir dir][--keep-temps][--perf][--check][--both][-n runs]
+          [--urlhandler cmd]
+
+    --tmpdir dir      defaults to using perl tempdir() otherwise
+    --keep-temps      don't delete temporary files if all tests pass (normally
+                      kept on failures)
+    --perf            Test speed, not correctness.
+    --check           Test correctness, not speed (default).
+    --both            Test both speed and correctness.
+    -n runs           Number fo times to repeat correctness test.
+    --urlhandler cmd  Execute `cmd \$url` for each failed test explain output.
+EOF
+
 
 use File::Temp qw/ tempfile tempdir /;
 use File::Path;
 
+%longToShort = (
+	"Instant Runoff Normalized Ratings" => "irnr",
+	"Virtual Round Robin" => "vrr",
+	"Virtual Round Robin, Ranked Pairs Resolution" => "rp",
+	"Raw Rating Summation" => "raw",
+	"Instant Runoff Voting" => "irv",
+	"Single Transferrable Vote" => "stv",
+);
+
 @groups = (
 	['c', "../c/countvotes", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"] ],
 #	['cpp', "../cpp/dynamic_canditates/countvotes_dynamic"],
-	['java', "java -jar ../java/vote.jar", ["hist", "irnr", "vrr", "raw", "irv", "stv"] ],
+	['java', "java -jar ../java/vote.jar", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"] ],
 #	['perl', "../perl/votep.pl"],
 );
 
@@ -17,10 +42,14 @@ foreach $g ( @groups ) {
 
 $n = 1;
 
+$urlhandler = undef;
 $tmpdir = undef;
 $cleanup = 1;
 $do_correcness = 1;
 $do_perf = 0;
+$failcount = 0;
+$maxfail = 3;
+$do_build = 0;
 
 while ( $arg = shift ) {
 	if ( $arg eq "-n" ) {
@@ -38,13 +67,21 @@ while ( $arg = shift ) {
 		$do_correcness = 0;
 	} elsif ( $arg eq "--no-perf" ) {
 		$do_perf = 0;
+	} elsif ( $arg eq "--build" ) {
+		$do_build = 1;
 	} elsif ( $arg eq "--check" ) {
 		$do_correctness = 1;
 		$do_perf = 0;
 	} elsif ( $arg eq "--no-check" ) {
 		$do_correctness = 0;
+	} elsif ( $arg eq "--urlhandler" ) {
+		$urlhandler = shift;
+	} elsif ( ($arg eq "--help") or ($arg eq "-h") ) {
+		print STDOUT $usage;
+		exit 0;
 	} else {
 		print STDERR "bogus arg \"$arg\"\n";
+		print STDERR $usage;
 		exit 1;
 	}
 }
@@ -109,6 +146,22 @@ if ( ! defined $tmpdir ) {
 	$tmpdir = tempdir( CLENAUP => 0 );
 }
 
+sub build() {
+	my $cwd = $ENV{PWD};
+	print "building java...\n";
+	chdir("../java") or die "could not chdir ../java : $!\n";
+	mysys("ant");
+	print "building c...\n";
+	chdir("../c") or die "could not chdir ../c : $!\n";
+	mysys("make");
+	chdir($cwd) or die "could not chdir $cwd : $!\n";
+	print "done.\n";
+}
+
+if ($do_build) {
+	build();
+}
+
 %redone = ();
 $anybad = 0;
 
@@ -146,49 +199,70 @@ sub test_correctness() {
 	$localbad = 0;
 	while (($meth, $they) = each %results) {
 		#print $meth . ":";
-		$pimpl = undef;
-		$presult = undef;
+		$prev_impl = undef;
+		$prev_result = undef;
 		%x = %{$they};
 		while (($iname, $result) = each %x) {
-			if ((defined $pimpl) && ($presult ne $result)) {
+			if ((defined $prev_impl) && ($prev_result ne $result)) {
 				print STDERR<<EOF;
 error: mismatch in $meth, numChoices=${numChoices}, numVotes=${numVotes}
 $iname: $result
-$pimpl: $presult
+$prev_impl: $prev_result
 badvotes: $tfname
 EOF
 				$anybad = 1;
 				$localbad = 1;
 				$outname = $tfname . "_" . $iname . ".html";
+				$enablestr = "";
+				if ( $longToShort{$meth} ) {
+					$enablestr = " --disable-all --enable " . $longToShort{$meth};
+					$outname = $tfname . "_" . $iname . "_" . $longToShort{$meth} . ".html";
+				}
 				if ( ! $redone{$outname} ) {
-					$cmd = $implToApp{$iname} . " --explain -o " . $outname . " -i " . $tfname;
+					$cmd = $implToApp{$iname} . $enablestr . " --explain -o " . $outname . " -i " . $tfname;
 					$redone{$outname} = 1;
 				}
 				push @commands, $cmd;
 				mysys( $cmd );
-				$outname = $tfname . "_" . $pimpl . ".html";
+				if ( $urlhandler ) {
+					$uc = $urlhandler . " " . $outname;
+					mysys( $uc );
+				}
+				$outname = $tfname . "_" . $prev_impl . ".html";
+				if ( $longToShort{$meth} ) {
+					$outname = $tfname . "_" . $prev_impl . "_" . $longToShort{$meth} . ".html";
+				}
 				if ( ! $redone{$outname} ) {
-					$cmd = $implToApp{$pimpl} . " --explain -o " . $outname . " -i " . $tfname;
+					$cmd = $implToApp{$prev_impl} . $enablestr . " --explain -o " . $outname . " -i " . $tfname;
 					$redone{$outname} = 1;
 				}
 				push @commands, $cmd;
 				mysys( $cmd );
+				if ( $urlhandler ) {
+					$uc = $urlhandler . " " . $outname;
+					mysys( $uc );
+				}
 			} else {
 				#print " " . $iname;
 			}
-			$pimpl = $iname;
-			$presult = $result;
+			$prev_impl = $iname;
+			$prev_result = $result;
 		}
 		#print "\n";
 	}
 	if ( $localbad ) {
+		$failcount++;
 		print join("\n", @commands) . "\n";
+	} elsif ( $cleanup ) {
+		unlink <${tfname}*>;
 	}
 }
 
 if ( $do_correcness ) {
-	for ($i = 0; $ i < $n; $i++ ) {
+	$i = 0;
+	while (($i < $n) and ($failcount < $maxfail)) {
 		test_correctness();
+		$i++;
 	}
 	
 	foreach $outname ( keys %redone ) {
@@ -249,10 +323,6 @@ EOF
 	}
 	$out .= "</table>\n";
 	return $out;
-}
-
-if ( $do_correctness ) {
-	test_correctness();
 }
 
 if ( $do_perf ) {
