@@ -387,6 +387,7 @@ public abstract class NameVotingSystem {
 
 	/**
 	It's just like return s.replaceAll( "%", "%25" ).replaceAll( "&", "%26" ).replaceAll( "=", "%3d" ); but faster.
+	This is similar to java.net.URLEncoder.encode but much faster as it does not do full charset encoding. This leaves non-ascii characters intact in the String and thus assumes unicode-capable storage for the result string.
 	@param s string to %hex escape
 	@return string with no '&' or '=' chars, them having been %hex escaped
 	*/
@@ -444,8 +445,11 @@ public abstract class NameVotingSystem {
 	}
 	/**
 	un-escape ASCII string with %xx escapes in it to, converting such sequences to bytes.
+	This is similar to java.net.URLDecoder.decode, but much faster if full charset decoding is not needed. Using java.net.URLDecoder.decode can double the time spent processing a large set of votes.
+	depercentHexify() will work fine if the input string is already decoded except for '%' '&' '=' which are escaped in percentHexify()
 	@param in string which may have %xx escapes in it
 	@return unescaped string
+	@see #percentHexify(String)
 	*/
 	public static String depercentHexify( String in ) {
 		char[] a = in.toCharArray();

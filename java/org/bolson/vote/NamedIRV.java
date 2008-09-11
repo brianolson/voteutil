@@ -31,7 +31,7 @@ public class NamedIRV extends NameVotingSystem {
 	/**
 	 Holds the internal count state for one choice.
 	 */
-	protected static class TallyState {
+	protected static class TallyState implements Comparable {
 		public String name;
 		public int index;
 		
@@ -57,6 +57,19 @@ public class NamedIRV extends NameVotingSystem {
 			x.fractions = fractions + votes.size();
 			x.active = active;
 			return x;
+		}
+		
+		/**
+		Sorts on name by default String comparator.
+		*/
+		public int compareTo(Object o) throws ClassCastException {
+			if ( o instanceof String ) {
+				return name.compareTo(o);
+			}
+			if ( o instanceof TallyState ) {
+				return name.compareTo( ((TallyState)o).name );
+			}
+			throw new ClassCastException("not a TallyState");
 		}
 	}
 	
@@ -157,6 +170,7 @@ public class NamedIRV extends NameVotingSystem {
 			tv[i] = ts;
 			i++;
 		}
+		java.util.Arrays.sort(tv);
 		java.util.Iterator vi = votes.iterator();
 		while ( vi.hasNext() ) {
 		    bucketize( (IndexVoteSet)vi.next() );
@@ -182,17 +196,24 @@ public class NamedIRV extends NameVotingSystem {
 				i++;
 			}
 			// find min
+			int ties = 1;
 			while ( i < tv.length ) {
 				if ( tv[i].active ) {
 					double tm = tv[i].votes.size() + tv[i].fractions;
 					if ( tm < min ) {
 						min = tm;
 						mini = i;
+						ties = 1;
+					} else if ( tm == min ) {
+						ties++;
+					} else if ( debugLog != null ) {
+						if ( Math.abs(tm - min) < 0.001 ) {
+							debugLog.append("very small diff between mins: ").append(Math.abs(tm - min)).append("\n");
+						}
 					}
 				}
 				i++;
 			}
-			tv[mini].active = false;
 			if (rounds != null) {
 				TallyState[] ntv = new TallyState[tv.length];
 				for ( i = 0; i < tv.length; i++ ) {
@@ -200,14 +221,41 @@ public class NamedIRV extends NameVotingSystem {
 				}
 				rounds.add(ntv);
 			}
-			tv[mini].fractions += tv[mini].votes.size();  // archive best count
-			numActive--;
-			winners[numActive] = new NameVote( tv[mini].name, (float)min );
+			// ArrayList<ArrayList<IndexVoteSet> >
+			ArrayList rebuck = new ArrayList();
+			if (ties == numActive) {
+				break;
+			} else if (ties == 1) {
+				if ( debugLog != null ) { debugLog.append("ties=1, dq \"").append(tv[mini].name).append("\"\n"); }
+				tv[mini].active = false;
+				tv[mini].fractions = min;  // archive best count
+				rebuck.add( tv[mini].votes );
+				numActive--;
+				winners[numActive] = new NameVote( tv[mini].name, (float)min );
+			} else {
+				if ( debugLog != null ) { debugLog.append("ties=").append(ties).append(" dq:\n"); }
+				for ( i = tv.length - 1; i >= 0; i-- ) {
+					if ( tv[i].active &&
+							(tv[i].votes.size() + tv[i].fractions == min) ) {
+						if ( debugLog != null ) { debugLog.append("\t\"").append(tv[i].name).append("\"\n"); }
+						tv[i].active = false;
+						tv[i].fractions = min;
+						rebuck.add( tv[i].votes );
+						numActive--;
+						winners[numActive] = new NameVote( tv[i].name, (float)min );
+					}
+				}
+			}
 			if ( numActive > 1 ) {
 				// redistribute disqualified votes
-				while ( tv[mini].votes.size() > 0 ) {
-					bucketize( (IndexVoteSet)tv[mini].votes.remove(tv[mini].votes.size()-1) );
+				while ( rebuck.size() > 0 ) {
+					ArrayList votes = (ArrayList)rebuck.remove(rebuck.size()-1);
+					while ( votes.size() > 0 ) {
+						bucketize( (IndexVoteSet)votes.remove(votes.size()-1) );
+					}
 				}
+				rebuck = null;
+				// reset fractions before re-count of tied votes.
 				for ( i = 0; i < tv.length; i++ ) {
 					if ( tv[i].active ) {
 						tv[i].fractions = 0;
@@ -221,17 +269,26 @@ public class NamedIRV extends NameVotingSystem {
 			}
 		}
 		// Find the winner
+		int outi = 0;
 		for ( i = 0; i < tv.length; i++ ) {
 			if ( tv[i].active ) {
-				break;
+				// assert(tv[i] == null);
+				winners[outi] = new NameVote( tv[i].name, (float)(tv[i].votes.size() + tv[i].fractions) );
+				outi++;
 			}
 		}
-		if ( i >= tv.length || tv[i] == null ) {
+		// check that winners[...] contains no nulls?
+		for ( i = 0; i < winners.length; i++ ) {
+			if ( winners[i] == null ) {
+				winners[i] = new NameVote("IRV IMPLEMENTATION ERROR", 0.0f);
+			}
+		}
+		/*if ( i >= tv.length || tv[i] == null ) {
 			// No winner. Bad source data?
 			winners = new NameVote[0];
 		} else {
 			winners[0] = new NameVote( tv[i].name, (float)(tv[i].votes.size() + tv[i].fractions) );
-		}
+		}*/
 		if ( explain != null && rounds != null ) {
 			roundsToHTML( explain, rounds, winners );
 		}

@@ -72,6 +72,8 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 			toret[i] = new NameVote( name, (float)(r[0]) );
 			i++;
 		}
+		java.util.Arrays.sort(toret);
+		/*
 		// selection sort
 		for ( i = 0; i < toret.length; i++ ) {
 			for ( int j = i + 1; j < toret.length; j++ ) {
@@ -82,6 +84,7 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 				}
 			}
 		}
+		*/
 		winners = toret;
 		return toret;
 	}

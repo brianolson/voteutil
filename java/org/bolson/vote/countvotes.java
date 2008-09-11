@@ -26,11 +26,49 @@ public class countvotes {
 			System.err.println(usage[i]);
 		}
 	}
+	public static class ShortNameClassName {
+		public String shortName;
+		public String className;
+		public boolean enabled;
+		public boolean testable;
+		/**
+		@param short_name
+		@param class_name
+		*/
+		public ShortNameClassName(String short_name, String class_name) {
+			shortName = short_name;
+			className = class_name;
+			enabled = false;
+			testable = true;
+		}
+		/**
+		@param short_name
+		@param class_name
+		@param default_enabled Set whether method will be in the default enabled set of methods before --enable --disable command line options.
+		@param test_enabled this method will be included in --test output
+		*/
+		public ShortNameClassName(String short_name, String class_name,
+				boolean default_enabled, boolean test_enabled) {
+			shortName = short_name;
+			className = class_name;
+			enabled = default_enabled;
+			testable = test_enabled;
+		}
+	}
 	public static final String[] enableNames = {
-		"hist","irnr","vrr","raw","irv","stv"
+		"hist","irnr","vrr","rp","raw","irv","stv"
 	};
 	public static final String[] enableClassNames = {
-		"org.bolson.vote.NamedHistogram", "org.bolson.vote.NamedIRNR", "org.bolson.vote.NamedVRR", "org.bolson.vote.NamedRaw", "org.bolson.vote.NamedIRV", "org.bolson.vote.NamedSTV"
+		"org.bolson.vote.NamedHistogram", "org.bolson.vote.NamedIRNR", "org.bolson.vote.NamedVRR", "org.bolson.vote.NamedRankedPairs", "org.bolson.vote.NamedRaw", "org.bolson.vote.NamedIRV", "org.bolson.vote.NamedSTV"
+	};
+	public static final ShortNameClassName[] methodNames = {
+		new ShortNameClassName("hist", "org.bolson.vote.NamedHistogram", true, true),
+		new ShortNameClassName("irnr", "org.bolson.vote.NamedIRNR", true, true),
+		new ShortNameClassName("vrr", "org.bolson.vote.NamedVRR", true, true),
+		new ShortNameClassName("rp", "org.bolson.vote.NamedRankedPairs", false, true),
+		new ShortNameClassName("raw", "org.bolson.vote.NamedRaw", true, true),
+		new ShortNameClassName("irv", "org.bolson.vote.NamedIRV", true, true),
+		new ShortNameClassName("stv", "org.bolson.vote.NamedSTV", false, false),
 	};
 
 	public static final int MODE_URL = 1;
@@ -65,11 +103,16 @@ public class countvotes {
 		NameVotingSystem firstWinner = null;
 
 		//boolean[] enabled = new boolean[]{ true,true,true,true,true,false };
-		countClasses.add( enableClassNames[0] );
+		/*countClasses.add( enableClassNames[0] );
 		countClasses.add( enableClassNames[1] );
 		countClasses.add( enableClassNames[2] );
 		countClasses.add( enableClassNames[3] );
-		countClasses.add( enableClassNames[4] );
+		countClasses.add( enableClassNames[4] );*/
+		for ( int i = 0; i < methodNames.length; i++ ) {
+			if ( methodNames[i].enabled ) {
+				countClasses.add( methodNames[i].className );
+			}
+		}
 
 		for ( int i = 0; i < argv.length; i++ ) {
 			if ( argv[i].equals("-i") ) {
@@ -91,15 +134,15 @@ public class countvotes {
 			} else if ( argv[i].equals("--disable-all") ) {
 				countClasses = new Vector();
 			} else if ( argv[i].equals("--enable-all") ) {
-				for ( int j = 0; j < enableNames.length; j++ ) {
-					countClasses.add( enableClassNames[j] );
+				for ( int j = 0; j < methodNames.length; j++ ) {
+					countClasses.add( methodNames[j].className );
 				}
 			} else if ( argv[i].equals("--disable") ) {
 				boolean any = false;
 				i++;
-				for ( int j = 0; j < enableNames.length; j++ ) {
-					if ( enableNames[j].equals( argv[i] ) ) {
-						countClasses.remove( enableClassNames[j] );
+				for ( int j = 0; j < methodNames.length; j++ ) {
+					if ( methodNames[j].shortName.equals( argv[i] ) ) {
+						countClasses.remove( methodNames[j].className );
 						any = true;
 					}
 				}
@@ -110,9 +153,9 @@ public class countvotes {
 			} else if ( argv[i].equals("--enable") ) {
 				boolean any = false;
 				i++;
-				for ( int j = 0; j < enableNames.length; j++ ) {
-					if ( enableNames[j].equals( argv[i] ) ) {
-						countClasses.add( enableClassNames[j] );
+				for ( int j = 0; j < methodNames.length; j++ ) {
+					if ( methodNames[j].shortName.equals( argv[i] ) ) {
+						countClasses.add( methodNames[j].className );
 						any = true;
 					}
 				}
@@ -142,8 +185,10 @@ public class countvotes {
 				outmode = OUT_TEST;
 				countClasses = new Vector();
 				// start at 1, skip histogram
-				for ( int j = 1; j < enableNames.length; j++ ) {
-					countClasses.add( enableClassNames[j] );
+				for ( int j = 1; j < methodNames.length; j++ ) {
+					if ( methodNames[j].testable ) {
+						countClasses.add( methodNames[j].className );
+					}
 				}
 			} else if ( argv[i].equals("--text") ) {
 				outmode = OUT_TEXT;
@@ -154,9 +199,9 @@ public class countvotes {
 			} else if ( argv[i].equals("--help") || argv[i].equals("-help") || argv[i].equals("-h") ) {
 				printUsage();
 				System.out.println("available election methods:");
-				for ( int j = 0; j < enableNames.length; j++ ) {
-					System.out.print( enableNames[j] );
-					if ( (j+1) < enableNames.length ) {
+				for ( int j = 0; j < methodNames.length; j++ ) {
+					System.out.print( methodNames[j].shortName );
+					if ( (j+1) < methodNames.length ) {
 						System.out.print( ", " );
 					}
 				}
@@ -293,15 +338,20 @@ public class countvotes {
 			// minimal and easily regular output so that a good test result has no diff to standard output
 			for ( int vi = 0; vi < vs.length; vi++ ) {
 				out.print( vs[vi].name() + ": " );
-				NameVotingSystem.NameVote[] winners = vs[vi].getWinners();
-				if ( winners == null || winners.length == 0 ) {
-					out.println();
-					continue;
-				}
-				out.print( winners[0].name );
-				for ( int i = 1; i < winners.length; i++ ) {
-					out.print( ", " );
-					out.print( winners[i].name );
+				try {
+					NameVotingSystem.NameVote[] winners = vs[vi].getWinners();
+					if ( winners == null || winners.length == 0 ) {
+						out.println();
+						continue;
+					}
+					out.print( winners[0].name );
+					for ( int i = 1; i < winners.length; i++ ) {
+						out.print( ", " );
+						out.print( winners[i].name );
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					out.print( "fail" );
 				}
 				out.println();
 			}

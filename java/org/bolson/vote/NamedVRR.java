@@ -21,6 +21,12 @@ public class NamedVRR extends NameVotingSystem {
 	 @see #htmlExplain(StringBuffer)
 	 */
 	protected StringBuffer explain = null;
+	
+	/**
+	Enable Ranked Pairs Mode by passing "rp" to init(String[])
+	@see #init(String[])
+	*/	
+	protected boolean rankedPairsMode = false;
 
 	/**
 	 Checks arguments to modify this VRR.
@@ -43,6 +49,8 @@ public class NamedVRR extends NameVotingSystem {
 				winningVotes = false;
 				margins = true;
 				argv[i] = null;
+			} else if ( argv[i].equals("rp") ) {
+				rankedPairsMode = true;
 			}
 		}
 		return super.init( argv );
@@ -160,7 +168,11 @@ public class NamedVRR extends NameVotingSystem {
 				return winners;
 			}
 		}
-		return getWinnersCSSD( they, tally );
+		if ( rankedPairsMode ) {
+			return getWinnersRankedPairs( they, tally );
+		} else {
+			return getWinnersCSSD( they, tally );
+		}
 	}
 	
 	/** Extract counts in order of name index from counts mapping. 
@@ -204,63 +216,12 @@ public class NamedVRR extends NameVotingSystem {
 				return sb;
 			}
 		}
-		/*if ( debugLog != null ) {
+		if ( debugLog != null ) {
 			sb.append( "<pre>debug:\n" );
 			sb.append( debugLog );
 			sb.append( "</pre>" );
-		}*/
-		sb.append( "<table border=\"1\"><tr><td></td>" );
-		for ( int i = 0; i < winners.length; i++ ) {
-			sb.append( "<td>(" );
-			sb.append( i );
-			sb.append( ")</td>" );
 		}
-		sb.append( "</tr>" );
-		int[] indextr = new int[winners.length];
-		for ( int xi = 0; xi < winners.length; xi++ ) {
-			int i;
-			for ( i = 0; i < they.length; i++ ) {
-				if ( winners[xi].name.equals( they[i].name ) ) {
-					indextr[xi] = i;
-				}
-			}
-		}
-		for ( int xi = 0; xi < indextr.length; xi++ ) {
-			int i;
-			i = indextr[xi];
-			sb.append( "<tr><td>(" );
-			sb.append( xi );
-			sb.append( ") " );
-			sb.append( they[i].name );
-			sb.append( "</td>" );
-			for ( int xj = 0; xj < indextr.length; xj++ ) {
-				int j;
-				j = indextr[xj];
-				if ( i == j ) {
-					sb.append( "<td></td>" );
-				} else {
-					int thisw, otherw;
-					if ( i > j ) {
-						thisw = they[i].counts[j];
-						otherw = they[i].counts[j + i];
-					} else /*if ( i < j )*/ {
-						thisw = they[j].counts[j + i];
-						otherw = they[j].counts[i];
-					}
-					if ( thisw > otherw ) {
-						sb.append("<td bgcolor=\"#bbffbb\">");
-					} else if ( thisw < otherw ) {
-						sb.append("<td bgcolor=\"#ffbbbb\">");
-					} else {
-						sb.append("<td>");
-					}				
-					sb.append( thisw );
-					sb.append( "</td>" );
-				}
-			}
-			sb.append( "</tr>" );
-		}
-		sb.append( "</table>" );
+		sb = htmlTable( sb, winners, they );
 		sb.append( "<table border=\"1\">" );
 		for ( int i = 0; i < winners.length; i++ ) {
 			sb.append( "<tr><td>" );
@@ -279,7 +240,11 @@ public class NamedVRR extends NameVotingSystem {
 		return sb;
 	}
 	public String name() {
-		return "Virtual Round Robin";
+		if (rankedPairsMode) {
+			return "Virtual Round Robin, Ranked Pairs Resolution";
+		} else {
+			return "Virtual Round Robin";
+		}
 	}
 
 	/**
@@ -375,8 +340,10 @@ D z z z 0
 		
 		boolean notdone = true;
 		int tie = 0;
+		int round = 0;
 		
 		while ( notdone ) {
+			round++;
 			notdone = false;
 			mind = Integer.MAX_VALUE;
 			tie = 0;
@@ -389,6 +356,19 @@ D z z z 0
 					explain.append(they[ss[i]].name);
 				}
 				explain.append("</p>\n");
+			}
+			if ( debugLog != null ) {
+				debugLog.append("schwartz set = { ");
+				debugLog.append( they[ss[0]].name );
+				for ( int j = 1; j < ss.length; j++ ) {
+					debugLog.append(", ");
+					debugLog.append( they[ss[j]].name );
+				}
+				debugLog.append(" }\ndefeats: ").append(they[0].name).append("=").append(defeatCount[0]);
+				for ( int j = 1; j < defeatCount.length; j++ ) {
+					debugLog.append(", ").append(they[j].name).append("=").append(defeatCount[j]);
+				}
+				debugLog.append("\n");
 			}
 			// find weakest defeat between members of schwartz set
 			for ( int ji = 0; ji < ss.length - 1; ji++ ) {
@@ -457,12 +437,17 @@ D z z z 0
 			for ( int i = 0; i < tie; ++i ) {
 				int mindk = mins[i].ihi;
 				int mindj = mins[i].ilo;
+				tally[mindk*numc + mindj] = -1;
+				tally[mindj*numc + mindk] = -1;
+				defeatCount[mindj]--;
 				if ( debugLog != null ) {
-					debugLog.append( mindk ).append( '/' ).append( mindj ).append(" = 0\n");
-					//htmlTable( debugLog, numc, tally, "intermediate", null );
+					debugLog.append( "set " ).append( they[mindk].name ).append( " vs " ).append( they[mindj].name ).append(" = -1\n");
+					htmlDebugTable( debugLog, numc, tally, "intermediate", they );
 				}
 				if ( explain != null ) {
-					explain.append("<p>Weakest defeat is ");
+					explain.append("<p>");
+					explain.append(round);
+					explain.append(": Weakest defeat is ");
 					explain.append(they[mindk].name);
 					explain.append(" (");
 					explain.append(tally[mindk*numc + mindj]);
@@ -474,26 +459,271 @@ D z z z 0
 					explain.append(they[mindj].name);
 					explain.append(" has one fewer defeat.</p>\n");
 				}
-				tally[mindk*numc + mindj] = -1;
-				tally[mindj*numc + mindk] = -1;
-				defeatCount[mindj]--;
 			}
 			ss = getSchwartzSet( numc, tally, defeatCount, debugLog );
 			if ( ss.length == 1 ) {
 				return winners = makeWinners( they, defeatCount );
 			}
-			if ( debugLog != null ) {
-				debugLog.append("ss={ ");
-				debugLog.append( ss[0] );
-				for ( int j = 1; j < ss.length; j++ ) {
-					debugLog.append(", ");
-					debugLog.append( ss[j] );
-				}
-				debugLog.append(" }\n");
-			}
 			notdone = true;
 		}
 		return winners = makeWinners( they, defeatCount );
+	}
+
+	/**
+	Temporary data for Ranked Pairs cycle resolution.
+	*/
+	protected static class Pair implements Comparable {
+		public int winner;
+		public int loser;
+		public int Vwl;
+		public int Vlw;
+		public boolean active;
+		
+		public Pair(int winner_in, int loser_in, int win_v_loss, int loss_v_win) {
+			winner = winner_in;
+			loser = loser_in;
+			Vwl = win_v_loss;
+			Vlw = loss_v_win;
+			active = true;
+		}
+		
+		public int compareTo(Object o) throws ClassCastException {
+			if (o instanceof Pair) {
+				Pair b = (Pair)o;
+				if (Vwl > b.Vwl) {
+					return -1;
+				}
+				if (Vwl < b.Vwl) {
+					return 1;
+				}
+				if (Vlw < b.Vlw) {
+					return -1;
+				}
+				if (Vlw > b.Vlw) {
+					return 1;
+				}
+				return 0;
+			}
+			throw new ClassCastException("not a Pair");
+		}
+		
+		public boolean equals(Object o) throws ClassCastException {
+			if (o instanceof Pair) {
+				Pair b = (Pair)o;
+				return (winner == b.winner) && (loser == b.loser) &&
+					(Vwl == b.Vwl) && (Vlw == b.Vlw) && (active == b.active);
+			}
+			throw new ClassCastException("not a Pair");
+		}
+	}
+
+	/**
+	Ranked Pairs condorcet cycle resolution.
+	@see http://wiki.electorama.com/wiki/Ranked_Pairs
+	*/
+	public NameVote[] getWinnersRankedPairs( Count[] they, int[] tally ) {
+		int numc = they.length;
+		java.util.ArrayList rankset = new java.util.ArrayList();
+		int x = 0;
+		for ( int i = 0; i < numc; ++i ) {
+			if ( debugLog != null ) {
+				debugLog.append(i).append(": ").append(they[i].name).append("\n");
+			}
+			for ( int j = i + 1; j < numc; ++j ) {
+				int ij, ji;
+				ij = tally[i*numc + j];	// i beat j ij times
+				ji = tally[j*numc + i];	// j beat i ji times
+				if ( ij > ji ) {
+					if ( debugLog != null ) { debugLog.append(i).append(" > ").append(j).append("\n"); }
+					rankset.add(new Pair(i, j, ij, ji));
+					x++;
+				} else if ( ji > ij ) {
+					if ( debugLog != null ) { debugLog.append(j).append(" > ").append(i).append("\n"); }
+					rankset.add(new Pair(j, i, ji, ij));
+					x++;
+				} else {
+					// tie policy?
+					if ( explain != null ) {
+						explain.append("<p>not adding a ranked pair for (\"").append(they[i].name).append("\" vs \"").append(they[j].name).append("\") due to tie</p>\n");
+					}
+				}
+			}
+		}
+		if ( debugLog != null ) { debugLog.append("x=").append(x).append(" rankset.size()=").append(rankset.size()).append("\n"); }
+		Pair[] ranks = new Pair[rankset.size()];
+		java.util.Iterator t = rankset.iterator();
+		x = 0;
+		while (t.hasNext()) {
+			ranks[x] = (Pair)t.next();
+			x++;
+		}
+		java.util.Arrays.sort(ranks);
+		//assert(x == ranks.length);
+		if ( explain != null ) {
+			explain.append( "<p>Initial pair rankings:</p><table border=\"0\">\n" );
+			for ( int i = 0; i < ranks.length; ++i ) {
+				explain.append("<tr><td>");
+				explain.append(they[ranks[i].winner].name);
+				explain.append("</td><td>&gt;</td><td>");
+				explain.append(they[ranks[i].loser].name);
+				explain.append("</td><td>(");
+				explain.append(ranks[i].Vwl);
+				explain.append(" &gt; ");
+				explain.append(ranks[i].Vlw);
+				explain.append(")</td></tr>\n");
+			}
+			explain.append("</table>\n<p>");
+		}
+		if ( debugLog != null ) {
+			for ( int i = 0; i < ranks.length; ++i ) {
+				debugLog.append("ranks[").append(i).append("] ").append(ranks[i].winner).append(" > ").append(ranks[i].loser).append("\n");
+			}
+		}
+		int i = 1;
+		while ( i < x ) {
+			int equivalenceLimit = i;
+			while ( (equivalenceLimit + 1) < x ) {
+				if (ranks[equivalenceLimit].compareTo(ranks[equivalenceLimit + 1]) != 0) {
+					break;
+				}
+				++equivalenceLimit;
+			}
+			// (equivalenceLimit + 1) is the first pair not tied with the pair at i
+			if ( findPath(ranks, equivalenceLimit, ranks[i].loser, ranks[i].winner, null) ) {
+				// drop this link as there is a pre-existing reverse path
+				if ( explain != null ) {
+					explain.append("DROP: ");
+					explain.append(they[ranks[i].winner].name);
+					explain.append(" &gt; ");
+					explain.append(they[ranks[i].loser].name);
+					explain.append(" (");
+					explain.append(ranks[i].Vwl);
+					explain.append(" &gt; ");
+					explain.append(ranks[i].Vlw);
+					explain.append(")<br />\n");
+				}
+				ranks[i].active = false;
+			}
+			++i;
+		}
+		if ( explain != null ) {
+			explain.append("</p><p>Final pair rankings:</p><table border=\"0\">\n");
+			for ( i = 0; i < x; ++i ) {
+				if (ranks[i].active) {
+					explain.append("<tr><td>");
+				} else {
+					explain.append("<tr style=\"color: #999999;\"><td>");
+				}
+				explain.append(they[ranks[i].winner].name);
+				explain.append("</td><td>&gt;</td><td>");
+				explain.append(they[ranks[i].loser].name);
+				explain.append("</td><td>(");
+				explain.append(ranks[i].Vwl);
+				explain.append(" &gt; ");
+				explain.append(ranks[i].Vlw);
+				explain.append(")</td></tr>\n");
+			}
+			explain.append("</table>\n");
+		}
+		for ( i = 0; i < numc; ++i ) {
+			defeatCount[i] = 0;
+		}
+		for ( i = 0; i < x; ++i ) {
+			if ( ranks[i].active ) {
+				defeatCount[ranks[i].loser]++;
+			}
+		}
+		return winners = makeWinners( they, defeatCount );
+	}
+	
+	/**
+	temp data for Ranked Pairs
+	*/
+	protected static class SearchStack {
+		public int from;
+		public SearchStack prev;
+		public SearchStack(int fromIn) {
+			from = fromIn;
+			prev = null;
+		}
+		public SearchStack(int fromIn, SearchStack prevIn) {
+			from = fromIn;
+			prev = prevIn;
+		}
+	}
+	protected static final String spaces =
+	"                                                                        ";
+	/**
+	@param ranks a > b pairs
+	@param numranks use ranks[0]..ranks[numranks-1] inclusive.
+	@param from find a path starting with from as winner
+	@param to and path ending at to as loser
+	*/
+	protected boolean findPath(Pair[] ranks, int numranks, int from, int to) {
+		return findPath(ranks, numranks, from, to, null);
+	}
+	/**
+	@param ranks a > b pairs
+	@param numranks use ranks[0]..ranks[numranks-1] inclusive.
+	@param from find a path starting with from as winner
+	@param to and path ending at to as loser
+	@param SearchStack call with null at first. Used in recursion.
+	*/
+	protected boolean findPath(Pair[] ranks, int numranks, int from, int to, SearchStack up) {
+		SearchStack here = new SearchStack(from, up);
+		int depth = 0;  // verbose debugging feature
+		String prefix = "";  // verbose debugging feature
+		if ( debugLog != null ) {
+			SearchStack cur = up;
+			while ( cur != null ) {
+				depth++;
+				cur = cur.prev;
+			}
+			depth *= 2;
+			if ( depth > spaces.length() ) { depth = spaces.length(); }
+			prefix = spaces.substring( 0, depth );
+			debugLog.append(prefix).append("findpath(:").append(numranks).append(") ").append(from).append("->").append(to).append("\n");
+		}
+		int i;
+		for ( i = 0; i < numranks; ++i ) {
+			if ( ! ranks[i].active ) {
+				continue;
+			}
+			/*if ( (!ranks[i].active) &&
+					(ranks[i].compareTo(ranks[numranks]) != 0) ) {
+				continue;
+			}*/
+			if ( ranks[i].winner == from ) {
+				if ( ranks[i].loser == to ) {
+					if ( debugLog != null ) { debugLog.append(prefix).append("found ").append(from).append("->").append(to).append("\n"); }
+					return true;
+				}
+				boolean beenthere = false;
+				SearchStack cur = up;
+				while ( cur != null ) {
+					if ( cur.from == ranks[i].loser ) {
+						if ( debugLog != null ) { debugLog.append(prefix).append(" beenthere: ").append(ranks[i].loser).append("\n"); }
+						beenthere = true;
+						break;
+					}
+					cur = cur.prev;
+				}
+				if ( ! beenthere ) {
+					if ( debugLog != null ) { debugLog.append(prefix).append(" try through ").append(ranks[i].loser).append("\n"); }
+					boolean maybepath = findPath(ranks, numranks, ranks[i].loser, to, here);
+					if ( maybepath ) {
+						if ( debugLog != null ) { debugLog.append(prefix).append(" found ").append(ranks[i].loser).append("->").append(to).append("\n"); }
+						return maybepath;
+					} else {
+						if ( debugLog != null ) { debugLog.append(prefix).append(" fail through ").append(ranks[i].loser).append("\n"); }
+					}
+				}
+			}
+		}
+		if ( debugLog != null ) {
+			debugLog.append(prefix).append("findpath(:").append(numranks).append(") ").append(from).append("->").append(to).append(" false\n");
+		}
+		return false;
 	}
 
 	public static void countDefeats( int numc, int[] tally, int[] defeatCount ) {
@@ -568,7 +798,7 @@ D z z z 0
 		if ( ! verifySchwartzSet( numc, tally, sset, debugsb ) ) {
 			System.err.println("getSchwartzSet is returning an invalid Schwartz set!");
 			if ( debugsb != null ) {
-				htmlTable( debugsb, numc, tally, "tally not met by schwartz set", null );
+				htmlDebugTable( debugsb, numc, tally, "tally not met by schwartz set", null );
 				debugsb.append( "bad sset: " );
 				debugsb.append( sset[0] );
 				for ( j = 1; j < sset.length; j++ ) {
@@ -641,8 +871,10 @@ D z z z 0
 		return true;
 	}
 
-	public static StringBuffer htmlTable( StringBuffer sb, int numc, int[] arr, String title, String names[] ) {
-		if ( names != null ) {
+	public static StringBuffer htmlDebugTable(
+			StringBuffer sb, int numc, int[] arr,
+			String title, Count they[] ) {
+		if ( they != null ) {
 			sb.append( "<table border=\"1\"><tr><th></th><th colspan=\"" );
 		} else {
 			sb.append( "<table border=\"1\"><tr><th>Choice Index</th><th colspan=\"");
@@ -653,8 +885,8 @@ D z z z 0
 		sb.append("</th></tr>\n" );
 		for ( int i = 0; i < numc; i++ ) {
 			sb.append("<tr><td>");
-			if ( names != null ) {
-				sb.append( names[i] );
+			if ( they != null ) {
+				sb.append( they[i].name );
 			} else {
 				sb.append( i );
 			}
@@ -677,6 +909,63 @@ D z z z 0
 			sb.append("</tr>\n");
 		}
 		sb.append("</table>\n");
+		return sb;
+	}
+	
+	public static StringBuffer htmlTable(
+			StringBuffer sb, NameVote[] winners, Count[] they) {
+		sb.append( "<table border=\"1\"><tr><td></td>" );
+		for ( int i = 0; i < winners.length; i++ ) {
+			sb.append( "<td>(" );
+			sb.append( i );
+			sb.append( ")</td>" );
+		}
+		sb.append( "</tr>" );
+		int[] indextr = new int[winners.length];
+		for ( int xi = 0; xi < winners.length; xi++ ) {
+			int i;
+			for ( i = 0; i < they.length; i++ ) {
+				if ( winners[xi].name.equals( they[i].name ) ) {
+					indextr[xi] = i;
+				}
+			}
+		}
+		for ( int xi = 0; xi < indextr.length; xi++ ) {
+			int i;
+			i = indextr[xi];
+			sb.append( "<tr><td>(" );
+			sb.append( xi );
+			sb.append( ") " );
+			sb.append( they[i].name );
+			sb.append( "</td>" );
+			for ( int xj = 0; xj < indextr.length; xj++ ) {
+				int j;
+				j = indextr[xj];
+				if ( i == j ) {
+					sb.append( "<td></td>" );
+				} else {
+					int thisw, otherw;
+					if ( i > j ) {
+						thisw = they[i].counts[j];
+						otherw = they[i].counts[j + i];
+					} else /*if ( i < j )*/ {
+						thisw = they[j].counts[j + i];
+						otherw = they[j].counts[i];
+					}
+					if ( thisw > otherw ) {
+						sb.append("<td bgcolor=\"#bbffbb\">");
+					} else if ( thisw < otherw ) {
+						sb.append("<td bgcolor=\"#ffbbbb\">");
+					} else {
+						sb.append("<td>");
+					}				
+					sb.append( thisw );
+					sb.append( "</td>" );
+				}
+			}
+			sb.append( "</tr>" );
+		}
+		sb.append( "</table>" );
 		return sb;
 	}
 
