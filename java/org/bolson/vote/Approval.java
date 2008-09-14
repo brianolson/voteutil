@@ -50,17 +50,17 @@ public class Approval extends VotingSystem {
 		int i;
 		if ( voteOverMeanRating ) {
 			float mean = 0;
-			for ( i = 0; i < numc; i++ ) if ( rating[i] != NO_VOTE ) {
+			for ( i = 0; i < numc; i++ ) if ( (rating[i] != NO_VOTE) && (!Float.isNaN(rating[i])) ) {
 				mean += rating[i];
 			}
 			mean = mean / numc;
-			for ( i = 0; i < numc; i++ ) if ( (rating[i] != NO_VOTE) && (rating[i] > mean) ) {
+			for ( i = 0; i < numc; i++ ) if ( (rating[i] != NO_VOTE) && (!Float.isNaN(rating[i])) && (rating[i] > mean) ) {
 				talley[i]++;
 			}
-			return 0;
-		}
-		for ( i = 0; i < numc; i++ ) if ( !Float.isNaN(rating[i]) && (rating[i] > fthresh) ) {
-			talley[i]++;
+		} else {
+			for ( i = 0; i < numc; i++ ) if ( (!Float.isNaN(rating[i])) && (rating[i] > fthresh) ) {
+				talley[i]++;
+			}
 		}
 		return 0;
 	}
@@ -68,17 +68,17 @@ public class Approval extends VotingSystem {
 		int i;
 		if ( voteOverMeanRating ) {
 			double mean = 0;
-			for ( i = 0; i < numc; i++ ) if ( rating[i] != NO_VOTE ) {
+			for ( i = 0; i < numc; i++ ) if ( (rating[i] != NO_VOTE) && (!Double.isNaN(rating[i])) ) {
 				mean += rating[i];
 			}
 			mean = mean / numc;
-			for ( i = 0; i < numc; i++ ) if ( (rating[i] != NO_VOTE) && (rating[i] > mean) ) {
+			for ( i = 0; i < numc; i++ ) if ( (rating[i] != NO_VOTE) && (!Double.isNaN(rating[i])) && (rating[i] > mean) ) {
 				talley[i]++;
 			}
-			return 0;
-		}
-		for ( i = 0; i < numc; i++ ) if ( !Double.isNaN(rating[i]) && (rating[i] > dthresh)) {
-			talley[i]++;
+		} else {
+			for ( i = 0; i < numc; i++ ) if ( (!Double.isNaN(rating[i])) && (rating[i] > dthresh)) {
+				talley[i]++;
+			}
 		}
 		return 0;
 	}
