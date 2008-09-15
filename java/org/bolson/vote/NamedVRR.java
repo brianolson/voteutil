@@ -7,12 +7,14 @@ Virtual Round Robin election (Condorcet).
  @see <a href="http://en.wikipedia.org/wiki/Condorcet's_Method">Condorcet's Method (Wikipedia)</a>
  @author Brian Olson
  */
-public class NamedVRR extends NameVotingSystem {
+public class NamedVRR extends NameVotingSystem implements SummableVotingSystem {
 	/** "DUMMY_CHOICE_NAME" is standin for choices not voted on yet so that write-ins count correctly. */
 	protected static final String dummyname = "DUMMY_CHOICE_NAME";
 	/** HashMap<String,Count> maps choice names to Count.
 	 @see Count */
 	protected HashMap counts = new HashMap();
+	/** Always call getIndexedCounts(). */
+	protected Count[] countIndexCache = null;
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
 	protected NameVote[] winners = null;
 	/** intermediate count calculated during getWinners */
@@ -70,7 +72,9 @@ public class NamedVRR extends NameVotingSystem {
 		for ( int i = 0; i < vote.length; i++ ) {
 			cs[i] = getCount( vote[i].name );
 		}
+		// clear cached solution
 		winners = null;
+		// Apply votes for choices voted on
 		for ( int i = 0; i < vote.length; i++ ) {
 			Count a;
 			a = cs[i];
@@ -96,7 +100,8 @@ public class NamedVRR extends NameVotingSystem {
 					}
 				}
 				} catch ( ArrayIndexOutOfBoundsException ae ) {
-					System.out.println("<p>vote["+i+"].name="+vote[i].name+", rating="+vote[i].rating+", index="+a.index+"<br>vote["+j+"].name="+vote[j].name+", rating="+vote[j].rating+", index="+b.index+"</p>");
+					System.out.println("<p>ERROR: vote["+i+"].name="+vote[i].name+", rating="+vote[i].rating+", index="+a.index+"<br>vote["+j+"].name="+vote[j].name+", rating="+vote[j].rating+", index="+b.index+"</p>");
+					Thread.dumpStack();
 				}
 			}
 		}
@@ -135,7 +140,91 @@ public class NamedVRR extends NameVotingSystem {
 			}
 		}
 	}
-	
+
+	/** Vote a partial tally into this voting system.
+	 @param other another SummableVotingSystem. Most likely it will only work if it is the same class as this.
+	 @throws ClassCastExepcion if other isn't the same or compatible with this
+	 */
+	public void accumulateSubVote( SummableVotingSystem other ) throws ClassCastException {
+		if ( other == null ) return;
+		if ( ! (other instanceof NamedVRR) ) {
+			throw new ClassCastException("don't know how to add "+other.getClass().getName()+" into "+this.getClass().getName() );
+		}
+		NamedVRR it = (NamedVRR)other;
+		Count[] othercounts = it.getIndexedCounts(true);
+		// Apply to this like a big vote
+		Count[] cs = new Count[othercounts.length];
+		// minimize hash table lookup, and force fork if any new names. need to fork before modifying any data.
+		// This also serves to map other-VRR-index to this-VRR-index
+		for ( int i = 0; i < othercounts.length; i++ ) {
+			cs[i] = getCount( othercounts[i].name );
+		}
+		if ( debug && (debugLog != null) ) {
+			htmlDebugTable( debugLog, othercounts, "other counts" );
+			htmlDebugTable( debugLog, cs, "this counts" );
+		}
+		// clear cached solution
+		winners = null;
+		// Apply votes for choices voted on in the other VRR
+		for ( int i = 0; i < othercounts.length; i++ ) {
+			Count oci = othercounts[i];
+			Count thisi = cs[i];
+			for ( int j = 0; j < oci.index; j++ ) {
+				Count thisj = cs[j];
+				if ( thisi.index > thisj.index ) {
+					thisi.counts[thisj.index] += oci.winsVs(j);
+					thisi.counts[thisi.index + thisj.index] += oci.lossesVs(j);
+				} else if ( thisj.index > thisi.index ) {
+					thisj.counts[thisi.index] += oci.lossesVs(j);
+					thisj.counts[thisj.index + thisi.index] += oci.winsVs(j);
+				} else {
+					System.err.println("ERROR"); Thread.dumpStack();
+				}
+			}
+		}
+		/*
+		 FIXME WRITEME, this isn't right.
+		// All names not voted assumed to rate -0, lose to names with >= 0 ratings and beat < 0 ratings.
+		// Act as if these names were being added as copies of the dummy vote in that, and add those votes to each side of that pairing in this.
+		for ( java.util.Iterator ci = counts.entrySet().iterator(); ci.hasNext(); ) {
+			java.util.Map.Entry e = (java.util.Map.Entry)ci.next();
+			String name = (String)e.getKey();
+			Count d = (Count)e.getValue();
+			boolean isvoted = false;
+			for ( int i = 0; i < othercounts.length; i++ ) {
+				if ( d == cs[i] || name.equals( othercounts[i].name ) ) {
+					isvoted = true;
+					break;
+				}
+			}
+			if ( isvoted ) {
+				continue;
+			}
+			// A name in this wasn't voted on in that, use dummy votes from that to apply non-votes to name in this.
+			for ( int i = 0; i < othercounts.length; i++ ) {
+				Count a;
+				a = cs[i];
+				if ( vote[i].rating >= 0 ) {
+					if ( a.index > d.index ) {
+						a.counts[d.index]++; // a wins
+					} else {
+						d.counts[d.index + a.index]++; // d looses
+					}
+				} else if ( 0 > vote[i].rating ) {
+					if ( a.index > d.index ) {
+						a.counts[a.index + d.index]++; // a looses
+					} else {
+						d.counts[a.index]++; // d wins
+					}
+				}
+			}
+		}
+		 */
+		if ( debug && (debugLog != null) ) {
+			htmlDebugTable( debugLog, cs, "this counts" );
+		}
+	}
+
 	protected static NameVote[] makeWinners( Count[] they, int[] defeatCount ) {
 		NameVote[] winners = new NameVote[they.length];
 		int i;
@@ -153,6 +242,13 @@ public class NamedVRR extends NameVotingSystem {
 			return winners;
 		}
 		Count[] they = getIndexedCounts( false );
+		if ( explain != null ) {
+			if ( explainVerbosity >= 2 ) {
+				htmlDebugTable( explain, getIndexedCounts( true ), null );
+			} else if ( explainVerbosity >= 1 ) {
+				htmlDebugTable( explain, they, null );
+			}
+		}
 		int numc = they.length;
 		if ( numc == 0 ) {
 			return new NameVote[0];
@@ -179,6 +275,10 @@ public class NamedVRR extends NameVotingSystem {
 	 @see #counts
 	 */
 	protected Count[] getIndexedCounts( boolean ldebug ) {
+		if ( (countIndexCache != null) && (!ldebug) ) {
+			// only use cache for non-dummy-inclusive version
+			return countIndexCache;
+		}
 		int numi = counts.size();
 		if ( ! ldebug ) {
 			numi--;
@@ -205,6 +305,10 @@ public class NamedVRR extends NameVotingSystem {
 					they[j] = tc;
 				}
 			}
+		}
+		if ( !ldebug ) {
+			// only use cache for non-dummy-inclusive version
+			countIndexCache = they;
 		}
 		return they;
 	}
@@ -268,10 +372,24 @@ D z z z 0
 			index = ix;
 			counts = new int[index * 2];
 		}
+		
+		/**
+		 @param otherIndex must be less than this.index
+		 */
+		int winsVs(int otherIndex) {
+			return counts[otherIndex];
+		}
+		/**
+		 @param otherIndex must be less than this.index
+		 */
+		int lossesVs(int otherIndex) {
+			return counts[index + otherIndex];
+		}
 	};
 	protected Count getCount( String name ) {
 		Count c = (Count)counts.get( name );
 		if ( c == null ) {
+			countIndexCache = null;
 			Count d;
 			d = (Count)counts.get( dummyname );
 			c = new Count( name, counts.size() );
@@ -348,7 +466,7 @@ D z z z 0
 			mind = Integer.MAX_VALUE;
 			tie = 0;
 			if ( explain != null ) {
-				assert(ss.length > 0);
+				//assert(ss.length > 0);
 				explain.append("<p>Top choices: ");
 				explain.append(they[ss[0]].name);
 				for ( int i= 1; i < ss.length; ++i ) {
@@ -404,7 +522,7 @@ D z z z 0
 						m = vhi - vlo;
 					} else {
 						m = 100000000;
-						assert(false);
+						//assert(false);
 					}
 					if ( m < mind ) {
 						tie = 1;
@@ -486,7 +604,7 @@ D z z z 0
 			Vlw = loss_v_win;
 			active = true;
 		}
-		
+
 		public int compareTo(Object o) throws ClassCastException {
 			if (o instanceof Pair) {
 				Pair b = (Pair)o;
@@ -519,7 +637,7 @@ D z z z 0
 
 	/**
 	Ranked Pairs condorcet cycle resolution.
-	@see http://wiki.electorama.com/wiki/Ranked_Pairs
+	@see <a href="http://wiki.electorama.com/wiki/Ranked_Pairs">Ranked Pairs article on Electorama wiki</a>
 	*/
 	public NameVote[] getWinnersRankedPairs( Count[] they, int[] tally ) {
 		int numc = they.length;
@@ -641,6 +759,7 @@ D z z z 0
 	*/
 	protected static class SearchStack {
 		public int from;
+		public String fromName = null;
 		public SearchStack prev;
 		public SearchStack(int fromIn) {
 			from = fromIn;
@@ -662,12 +781,21 @@ D z z z 0
 	protected boolean findPath(Pair[] ranks, int numranks, int from, int to) {
 		return findPath(ranks, numranks, from, to, null);
 	}
+	
+	protected void appendBackPath(Pair[] ranks, StringBuffer sb, SearchStack up) {
+		if (up.prev != null) {
+			appendBackPath(ranks, sb, up.prev);
+		}
+		Count[] they = getIndexedCounts(false);
+		sb.append(they[up.from].name);
+		sb.append(" -> ");
+	}
 	/**
 	@param ranks a > b pairs
 	@param numranks use ranks[0]..ranks[numranks-1] inclusive.
 	@param from find a path starting with from as winner
 	@param to and path ending at to as loser
-	@param SearchStack call with null at first. Used in recursion.
+	@param up SearchStack call with null at first. Used in recursion.
 	*/
 	protected boolean findPath(Pair[] ranks, int numranks, int from, int to, SearchStack up) {
 		SearchStack here = new SearchStack(from, up);
@@ -696,6 +824,13 @@ D z z z 0
 			if ( ranks[i].winner == from ) {
 				if ( ranks[i].loser == to ) {
 					if ( debugLog != null ) { debugLog.append(prefix).append("found ").append(from).append("->").append(to).append("\n"); }
+					if ( (explainVerbosity >= 1) && (explain != null) ) {
+						explain.append("<p>Back path: ");
+						appendBackPath(ranks, explain, here);
+						Count[] they = getIndexedCounts(false);
+						explain.append(they[to].name);
+						explain.append("</p>");
+					}
 					return true;
 				}
 				boolean beenthere = false;
@@ -871,17 +1006,44 @@ D z z z 0
 		return true;
 	}
 
+	/**
+	 Simplified debug table printing based on just Count[].
+	 @param sb gets text appended to it. Must not be null.
+	 @param they internal state from getIndexedCounts()
+	 @param title String to go in a titular place in a HTML table. May be null.
+	 @return the passed in StringBuffer sb, with stuff appended.
+	 @see #getIndexedCounts
+	 */
+	public static StringBuffer htmlDebugTable( StringBuffer sb, Count they[], String title ) {
+		return htmlDebugTable( sb, they.length, getTallyArray( they ), title, they );
+	}
+
+	/**
+	 Print a table of intermediate state.
+	 @param sb gets text appended to it. Must not be null.
+	 @param numc how many choices in the world to consider
+	 @param arr likely was once the result of getTallyArray().
+	 @param they internal state from getIndexedCounts()
+	 @param title String to go in a titular place in a HTML table. May be null.
+	 @return the passed in StringBuffer sb, with stuff appended.
+	 @see #getTallyArray
+	 */
 	public static StringBuffer htmlDebugTable(
 			StringBuffer sb, int numc, int[] arr,
 			String title, Count they[] ) {
 		if ( they != null ) {
 			sb.append( "<table border=\"1\"><tr><th></th><th colspan=\"" );
+			if ( arr == null ) {
+				arr = getTallyArray( they );
+			}
 		} else {
 			sb.append( "<table border=\"1\"><tr><th>Choice Index</th><th colspan=\"");
 		}
 		sb.append( numc );
 		sb.append("\">");
-		sb.append( title );
+		if ( title != null ) {
+			sb.append( title );
+		}
 		sb.append("</th></tr>\n" );
 		for ( int i = 0; i < numc; i++ ) {
 			sb.append("<tr><td>");

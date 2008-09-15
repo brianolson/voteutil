@@ -56,13 +56,6 @@ public class Bucklin extends RankedVotingSystem {
 			return (int[])winners.clone();
 		}
 		double max = -1.9;
-		int min;
-		int maxi = 0;
-		int mini = 0;
-		boolean loserTie = false;
-		boolean winnerTie = false;
-		int loseri = numc - 1;	// where to store next loser
-		int winneri = 0;		// where to store next winner
 		int i;
 		for ( i = 0; i < numc; i++ ) {
 			talley[i] = 0.0;
@@ -92,11 +85,9 @@ public class Bucklin extends RankedVotingSystem {
 				}
 			}
 			max = talley[0];
-			maxi = 0;
 			for ( i = 1; i < numc; i++ ) {
 				if ( talley[i] > max ) {
 					max = talley[i];
-					maxi = i;
 				}
 			}
 			if ( max > (votes.size() / 2) ) {

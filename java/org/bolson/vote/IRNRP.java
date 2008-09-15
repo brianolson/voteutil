@@ -1,6 +1,5 @@
 package org.bolson.vote;
 import java.util.Vector;
-import java.io.PrintWriter;
 
 /**
  * Instant Runoff Normalized Ratings Proportional
@@ -176,9 +175,7 @@ public class IRNRP extends RatedVotingSystem {
 		if ( debug ) {
 			debugsb = new StringBuffer();
 		}
-		double max = Double.NEGATIVE_INFINITY;
 		int i;
-		int numWinners = 1;
 		int numActive = numc;
 		boolean active[] = new boolean[numc];
 		int choiceIndecies[] = new int[numc];
@@ -315,8 +312,6 @@ public class IRNRP extends RatedVotingSystem {
 			if ( false ) {
 				// old code
 			if ( talley[choiceIndecies[0]] == talley[choiceIndecies[numActive-1]] ) {
-				// N-way tie.
-				numWinners = numActive;
 				break;
 			}
 			}
@@ -351,9 +346,8 @@ public class IRNRP extends RatedVotingSystem {
      */
     public String htmlSummary( String names[] ) {
 		StringBuffer sb;
-		double max;
 		boolean in[] = new boolean[numc];
-		int maxi = 0,i;
+		int i;
 		for ( i = 0; i < numc; i++ ) {
 			in[i] = true;
 		}
@@ -363,7 +357,9 @@ public class IRNRP extends RatedVotingSystem {
 			sb = new StringBuffer( "<table border=\"1\"><tr><th>Choice Index</th><th>IRNR Rating Summation</th></tr>\n" );
 		}
 		getWinners();
-		/*while ( true ) {
+		/*
+		 int maxi = 0;
+		 while ( true ) {
 			boolean done;
 			max = Double.NEGATIVE_INFINITY;
 			done = true;

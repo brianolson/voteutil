@@ -130,9 +130,6 @@ public class IRV extends RankedVotingSystem {
 		double max;
 		double min;
 		int maxi = 0;
-		int mini = 0;
-		boolean loserTie = false;
-		boolean winnerTie = false;
 		int loseri = numc - 1;	// where to store next loser
 		int winneri = 0;		// where to store next winner
 		int i;
@@ -149,16 +146,11 @@ public class IRV extends RankedVotingSystem {
 				if ( si > max ) {
 					maxi = i;
 					max = si;
-					loserTie = false;
 				} else if ( si == max ) {
-					loserTie = true;
 				}
 				if ( si < min ) {
-					mini = i;
 					min = si;
-					winnerTie = false;
 				} else if ( si == min ) {
-					winnerTie = true;
 				}
 			}
 			if ( max == min ) {

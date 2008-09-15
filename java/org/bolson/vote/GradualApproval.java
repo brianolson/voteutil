@@ -51,7 +51,8 @@ public class GradualApproval extends RatedVotingSystem {
 			return (int[])winners.clone();
 		}
 		for ( int v = 0; v < votes.size(); v++ ) {
-			Object o;
+			// TODO FIXME WRITEME
+			/*Object o;
 			o = votes.elementAt( v );
 			if ( o instanceof int[] ) {
 				int[] ot = (int[])o;
@@ -59,7 +60,7 @@ public class GradualApproval extends RatedVotingSystem {
 				float[] ot = (float[])o;
 			} else if ( o instanceof double[] ) {
 				double[] ot = (double[])o;
-			}
+			}*/
 		}
 		return null;
 	}

@@ -2,7 +2,6 @@ package org.bolson.vote;
 
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.io.BufferedReader;
 import java.io.StreamTokenizer;
 import java.io.IOException;
 
@@ -50,7 +49,6 @@ public class InstantProxy {
 			x = Arrays.binarySearch( uids, cur.uid );
 			if ( x < 0 ) {
 				// didn't vote
-				int pu;
 				x = proxyIndex( cur, uids );
 				if ( x < 0 ) {
 					// no 1st level proxies voted, recurse, or discard

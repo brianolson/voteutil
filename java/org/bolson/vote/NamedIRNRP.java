@@ -1,8 +1,5 @@
 package org.bolson.vote;
 
-import java.util.Vector;
-import java.util.HashMap;
-
 /**
 Instant Runoff Normalized Ratings with Proportional-Representation extension.
  @author Brian Olson
@@ -99,8 +96,6 @@ public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
 	}
 
 	public NameVote[] getWinners() {
-		boolean debug = false;
-		java.io.PrintWriter out = null;
 		if ( winners != null ) {
 			return winners;
 		}
@@ -122,7 +117,6 @@ public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
 		//double max = Double.NEGATIVE_INFINITY;
 		int numWinners = 0;
 		int numActive = numc;
-		double dt[] = new double[numc];
 		float voterWeight[] = new float[votes.size()];
 		double totalWeight = votes.size();
 		double quota = totalWeight / ( seats + 1.0 );

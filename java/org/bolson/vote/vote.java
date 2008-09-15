@@ -338,7 +338,6 @@ public class vote {
 public void voteFromTextFile( String filename ) throws Exception {
 	BufferedReader fin = null;
     DataInputStream dis = null;
-    boolean goodP = true;
 	VoteSource vs;
 
     if ( validateVotes && isFloat && ! rating ) {
@@ -755,7 +754,6 @@ public static void main( String argv[] ) {
  * @return unused arguments (filenames)
  */
 public String[] readArgv( String argv[] ) {
-    int c;
     int i;
 	java.util.Vector vFacArgv = new java.util.Vector();
 

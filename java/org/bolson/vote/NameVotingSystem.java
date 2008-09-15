@@ -17,7 +17,14 @@ public abstract class NameVotingSystem {
 	/** If debug, then log stuff here. */
 	protected StringBuffer debugLog = null;
 	
-	/** If debug, return debugLog.toString(), else null. */
+	/**
+	 If debug, return debugLog.toString(), else null. 
+	 This is different than htmlExplain.
+	 htmlExplain() should always be human readable, possibly arcane, but basically understandable by anyone with high school math.
+	 getDebug() probably only makes sense to someone following along in the source code.
+	 @return software sausage string
+	 @see #htmlExplain(StringBuffer)
+	 */
 	public String getDebug() {
 		if ( debug && debugLog != null ) {
 			return debugLog.toString();
@@ -45,6 +52,12 @@ public abstract class NameVotingSystem {
 			} else if ( argv[i].equals("debug") ) {
 				debug = true;
 				debugLog = new StringBuffer("debug enabled\n");
+				argv[i] = null;
+			} else if ( argv[i].equals("verbose") ) {
+				explainVerbosity = 1;
+				argv[i] = null;
+			} else if ( argv[i].startsWith("verbose=") ) {
+				explainVerbosity = Integer.parseInt(argv[i].substring(8));
 				argv[i] = null;
 			}
 		}
@@ -155,6 +168,36 @@ public abstract class NameVotingSystem {
 	}
 
 	/**
+	 How deep should htmlExlpain() go?
+	 Higher numbers are more verbose.
+	 Default is zero. Implementations go up from there. 10000 ought to be enough for anyone.
+	 High verbosity might serve as an audit allowing someone to watch the calculations step by step and be sure they trust the computer.
+	 May also be set by "verbose" or "verbose=<i>N</i>" into the default init().
+	 @see #setExplainVerbosity(int)
+	 @see #init(String[])
+	 */
+	public int explainVerbosity = 0;
+
+	/**
+	 How deep should htmlExlpain() go?
+	 Higher numbers are more verbose.
+	 Default is zero. Implementations go up from there. 10000 ought to be enough for anyone.
+	 High verbosity might serve as an audit allowing someone to watch the calculations step by step and be sure they trust the computer.
+	 @param level verbosity, 0..10000
+	 */
+	public void setExplainVerbosity(int level) {
+		explainVerbosity = level;
+	}
+	
+	/**
+	 @return verbosity level, 0..10000
+	 @see #setExplainVerbosity(int)
+	 */
+	public int getExplainVerbosity() {
+		return explainVerbosity;
+	}
+
+	/**
 	Get HTML explaination of how the election worked.
 	Typically show intermediate rounds or other counting state progress.
 	Default implementation calls {@link #htmlSummary(StringBuffer)}.
@@ -205,7 +248,14 @@ public abstract class NameVotingSystem {
 			}
 			return name.compareTo( b.name );
 		}
+		/**
+		 @param o thing to compare to
+		 @return true if ratings same and names both null or equal.
+		 */
 		public boolean equals( Object o ) {
+			if ( o == this ) {
+				return true;
+			}
 			NameVote b = (NameVote)o;
 			return rating == b.rating && ((name == null && b.name == null) || name.equals(b.name));
 		}

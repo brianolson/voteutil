@@ -77,14 +77,10 @@ public class INR extends RatedVotingSystem {
 		if ( winners != null ) {
 			return (int[])winners.clone();
 		}
-		double max = Double.NEGATIVE_INFINITY;
 		int i;
-		int numWinners = 1;
 		int numActive = numc;
 		boolean active[] = new boolean[numc];
 		//int choiceIndecies[] = new int[numc];
-		double dt[] = new double[numc];
-		double oneMinusStepSize = 1.0 - stepSize;
 		double[] solution;
 		int bored = 10000;
 		solution = new double[numc];

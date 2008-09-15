@@ -255,8 +255,6 @@ public class STV extends RankedVotingSystem {
 		}
 		double max;
 		double min;
-		int maxi = 0;
-		int mini = 0;
 		int numAtMin;
 		int numAtMax;
 		int loseri = numc - 1;	// where to store next loser
@@ -286,14 +284,12 @@ public class STV extends RankedVotingSystem {
 			for ( i = 0; i < numc; i++ ) {if ( active[i] ) {
 				double si = talley[i];//winnerBuckets[i].size();
 				if ( si > max ) {
-					maxi = i;
 					max = si;
 					numAtMax = 1;
 				} else if ( si == max ) {
 					numAtMax++;
 				}
 				if ( si < min ) {
-					mini = i;
 					min = si;
 					numAtMin = 1;
 				} else if ( si == min ) {

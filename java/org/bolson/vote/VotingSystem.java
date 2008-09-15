@@ -8,7 +8,7 @@ package org.bolson.vote;
  @author Brian Olson
  */
 
-public abstract class VotingSystem implements java.io.Serializable {
+public abstract class VotingSystem {
     /** number of candidates */
     protected int numc;
 

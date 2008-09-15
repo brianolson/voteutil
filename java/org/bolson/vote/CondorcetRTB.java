@@ -89,8 +89,6 @@ public class CondorcetRTB extends Condorcet {
 			return winners;
 		}
 	int defeatCount[];
-	/* ndefeats is "numc choose 2" or ((numc !)/((2 !)*((numc - 2)!))) */
-	int ndefeats = (numc*(numc-1))/2, dpos = 0;
 	int j,k;
 	int numWinners;
 	int choiceIndecies[] = new int[numc];
@@ -112,7 +110,6 @@ public class CondorcetRTB extends Condorcet {
 		}
 	    }
 	}
-	ndefeats = dpos;
 	numWinners = 0;
 	for ( j = 0; j < numc; j++ ) {
 	    if ( defeatCount[j] == 0 ) {

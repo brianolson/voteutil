@@ -9,11 +9,23 @@ import java.util.Iterator;
  @author Brian Olson
  */
 public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, java.io.Serializable {
-	/* public int init( String[] argv ) {
-	} */
+	private static final long serialVersionUID = 1L;
+	private void writeObject(java.io.ObjectOutputStream oos) throws java.io.IOException {
+		oos.writeLong(serialVersionUID);
+		oos.writeObject(they);
+	}
+	private void readObject(java.io.ObjectInputStream ois) throws java.io.IOException, ClassNotFoundException {
+		ois.readLong();
+		they = (TreeMap)ois.readObject();
+	}
+
 	TreeMap they = new TreeMap();
 	NameVote[] winners = null;
 
+	/** Add a partial tally into this instance.
+	 @param other another NamedRaw.
+	 @throws ClassCastExepcion if other isn't a NamedRaw.
+	 */
 	public void accumulateSubVote( SummableVotingSystem other ) throws ClassCastException {
 		if ( other == null ) return;
 		if ( ! (other instanceof NamedRaw) ) {
@@ -41,6 +53,10 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 		}
 	}
 
+	/**
+	 Adds up ratings. Does not keep a copy of the vote.
+	 @param vote ballot data.
+	 */
 	public void voteRating( NameVote[] vote ) {
 		winners = null;
 		for ( int i = 0; i < vote.length; i++ ) {
@@ -73,18 +89,6 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 			i++;
 		}
 		java.util.Arrays.sort(toret);
-		/*
-		// selection sort
-		for ( i = 0; i < toret.length; i++ ) {
-			for ( int j = i + 1; j < toret.length; j++ ) {
-				if ( toret[i].rating < toret[j].rating ) {
-					NameVote t = toret[i];
-					toret[i] = toret[j];
-					toret[j] = t;
-				}
-			}
-		}
-		*/
 		winners = toret;
 		return toret;
 	}
@@ -101,7 +105,6 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 			sb.append( t[i].name );
 			sb.append( "</td><td>" );
 			ratingFormat.format( t[i].rating, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
-			//sb.append( t[i].rating );
 			sb.append( "</td></tr>" );
 		}
 		sb.append( "</table>" );

@@ -43,17 +43,13 @@ public class Coombs extends RankedVotingSystem {
 			return (int[])winners.clone();
 		}
 		double max = -1e9;
-		int maxi = 0;
 		double min = 1e9;
 		int mini = 0;
-		boolean loserTie = false;
-		boolean winnerTie = false;
 		int i;
 		for ( i = 0; i < numc; i++ ) {
 			active[i] = true;
 		}
 		int numWinners;
-		int majority = votes.size() / 2;
 		for ( rankRound = 1; rankRound <= numc; rankRound++ ) {
 			int rrRank;
 			rrRank = numc + 1 - rankRound;
@@ -115,11 +111,10 @@ public class Coombs extends RankedVotingSystem {
 			}
 			max = -1e9;
 			min = -1e9;
-			mini = maxi = -1;
+			mini = -1;
 			for ( i = 0; i < numc; i++ ) if ( active[i] ) {
 				if ( talley[i] > max) {
 					max = talley[i];
-					maxi = i;
 				}
 				if ( lastTalley[i] > min ) {
 					min = lastTalley[i];

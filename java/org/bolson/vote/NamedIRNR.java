@@ -89,13 +89,11 @@ public class NamedIRNR extends NameVotingSystem {
 		return getWinners(null);
 	}
 	public NameVote[] getWinners( StringBuffer explainb ) {
-		boolean debug = false;
 		boolean explain = explainb != null;
 		ArrayList rounds = null;
 		if ( explain ) {
 			rounds = new ArrayList(); // ArrayList<TallyState[]>
 		}
-		java.io.PrintWriter out = null;
 		if ( winners != null && ! explain ) {
 			return winners;
 		}
@@ -114,11 +112,9 @@ public class NamedIRNR extends NameVotingSystem {
 			}
 			return winners = new NameVote[0];
 		}
-		double max = Double.NEGATIVE_INFINITY;
 		int numWinners = 1;
 		int numActive = numc;
 		int choiceIndecies[] = new int[numc];
-		double dt[] = new double[numc];
 		winners = new NameVote[numc];
 		while ( numActive > 1 ) {
 			// per IR setup

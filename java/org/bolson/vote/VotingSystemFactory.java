@@ -84,10 +84,10 @@ public class VotingSystemFactory {
 			if ( di >= 0 ) {
 				di = d.indexOf( '{', di );
 				di++;
-				int oqi, cqi;
+				int oqi;
 				oqi = d.indexOf( '"', di );
 				oqi++;
-				
+				// FIXME, finish writing this?
 			}
 		} catch ( Exception e ) {
 		}

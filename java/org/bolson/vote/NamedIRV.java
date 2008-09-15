@@ -64,7 +64,7 @@ public class NamedIRV extends NameVotingSystem {
 		*/
 		public int compareTo(Object o) throws ClassCastException {
 			if ( o instanceof String ) {
-				return name.compareTo(o);
+				return name.compareTo((String)o);
 			}
 			if ( o instanceof TallyState ) {
 				return name.compareTo( ((TallyState)o).name );
