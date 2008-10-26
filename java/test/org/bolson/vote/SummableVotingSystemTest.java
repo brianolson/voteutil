@@ -78,25 +78,51 @@ public class SummableVotingSystemTest {
 				b.voteRating(votes[i]);
 			}
 			b.accumulateSubVote(a);
-			assert(winnersEq(wholeWinners, b.getWinners()));
+			assertTrue(winnersEq(wholeWinners, b.getWinners()));
 		}
 		// Test summing 2..9 fragments together and getting same result as one instance.
 		for (int fragcount = 3; fragcount < 10; fragcount++) {
 			SummableVotingSystem[] fragment = new SummableVotingSystem[fragcount];
+			int counted = 0;
+			int step = numv / fragcount;
 			for (int f = 0; f < fragcount; f++) {
 				fragment[f] = (SummableVotingSystem)nvc.newInstance();
-				int start = (f * numc) / fragcount;
-				int end = ((f + 1) * numc) / fragcount;
-				for (int i = start; i < end; i++) {
-					fragment[f].voteRating(votes[i]);
+				for (int j = 0; j < step; j++) {
+					fragment[f].voteRating(votes[counted]);
+					counted++;
 				}
 			}
+			while (counted < votes.length) {
+				fragment[0].voteRating(votes[counted]);
+				counted++;
+			}
+			assertEquals(numv, counted);
 			for (int f = 1; f < fragcount; f++) {
 				fragment[0].accumulateSubVote(fragment[f]);
 			}
-			assert(winnersEq(wholeWinners, fragment[0].getWinners()));
+			NameVotingSystem.NameVote[] fragwinners = fragment[0].getWinners();
+			if (!winnersEq(wholeWinners, fragwinners)) {
+				StringBuffer sb = new StringBuffer("whole=\n");
+				for (int i = 0; i < wholeWinners.length; i++) {
+					sb.append(wholeWinners[i].name).append(": ").append(wholeWinners[i].rating).append("\n");
+				}
+				sb.append("fragmented=\n");
+				for (int i = 0; i < fragwinners.length; i++) {
+					sb.append(fragwinners[i].name).append(": ").append(fragwinners[i].rating).append("\n");
+				}
+				sb.append("fragcount=").append(fragcount);
+				fail(sb.toString());
+			}
 		}
 	}
+	
+	/*public static void printWinners(NameVotingSystem.NameVote[] winners) {
+		for (int i = 0; i < winners.length; i++) {
+			System.out.print(winners[i].name);
+			System.out.print(": ");
+			System.out.println(winners[i].rating);
+		}
+	}*/
 	
 	@Test
 	public void Raw()

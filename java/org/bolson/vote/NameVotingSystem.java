@@ -257,7 +257,9 @@ public abstract class NameVotingSystem implements ElectionMethod {
 				return true;
 			}
 			NameVote b = (NameVote)o;
-			return rating == b.rating && ((name == null && b.name == null) || name.equals(b.name));
+			return rating == b.rating &&
+				((name == null && b.name == null) ||
+				 ((name != null) && name.equals(b.name)));
 		}
 	}
 

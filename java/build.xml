@@ -26,7 +26,7 @@
   </target>
   
   <target name="compile-test">
-    <javac srcdir="test/org" destdir="test/classes" deprecation="on">
+    <javac srcdir="test/org" destdir="test/classes" deprecation="on" debug="true">
       <classpath>
         <fileset dir="dependlibs" includes="**/*.jar" />
 		<pathelement location="vote.jar" />
@@ -42,8 +42,9 @@
 	    <pathelement location="vote-test.jar" />
         <fileset dir="dependlibs" includes="**/*.jar" />
 	  </classpath>
-	  <test name="org.bolson.vote.NamedVotingSystemTest" />
 	  <test name="org.bolson.vote.SummableVotingSystemTest" />
+	  <test name="org.bolson.vote.IndexVotableTest" />
+	  <test name="org.bolson.vote.NamedVotingSystemTest" />
 	  <formatter type="plain" usefile="false" />
 	</junit>
   </target>
