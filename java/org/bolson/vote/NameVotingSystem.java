@@ -9,7 +9,7 @@ import java.util.Iterator;
 Taking a bunch of (name,rating) pairs this type of voting system allows for write-ins and perhaps a somewhat simpler usage.
  @author Brian Olson
 */
-public abstract class NameVotingSystem {
+public abstract class NameVotingSystem implements ElectionMethod {
 	/** If true, save or spew extra info while running.
 		Defaults to false, can be enabled by a "debug" option to init. */
 	protected boolean debug = false;
@@ -283,6 +283,67 @@ public abstract class NameVotingSystem {
 			index = new int[size];
 			rating = new float[size];
 		}
+		
+		/**
+		Allocates nothing, internal arrays are null.
+		Probably follow up with readUrlEncoded or manual external initialization.
+		*/
+		public IndexVoteSet() {
+			index = null;
+			rating = null;
+		}
+		
+		/** Parse a index=value&amp;index=value url query type string into an IndexVoteSet. 
+		All 'index' parts must parse with Integer.parseInt() and all 'value' parts must parse with Float.parseFloat().
+		@param s the url query type string with candidate names and ratings */
+		public void readUrlEncoded( String s ) throws NumberFormatException {
+			/* This is a slightly modified version of NameVotingSystem.fromUrlEncoded() */
+			/* It's important to _not_ use java.util.regex split or match here
+			because they are slow and String.indexOf and String.substring are all
+			that is needed and work out to be much much faster. */
+			if ( s.length() == 0 ) {
+				index = new int[0];
+				rating = new float[0];
+				return;
+			}
+			int numVotes = 1;
+			int amp = s.indexOf( '&' );
+			while ( amp != -1 ) {
+				numVotes++;
+				amp = s.indexOf( '&', amp + 1 );
+			}
+			index = new int[numVotes];
+			rating = new float[numVotes];
+			int pos = 0;
+			amp = s.indexOf( '&' );
+			int eq;
+			for ( int i = 0; i < numVotes; i++ ) {
+				eq = s.indexOf( '=', pos );
+				if ( ((amp != -1) && (eq > amp)) || eq == -1 ) {
+					throw new NumberFormatException("cannot parse empty strings as index and rating");
+				} else {
+					float value;
+					String prename;
+					prename = s.substring( pos, eq );
+					if ( eq + 1 == amp ) {
+						value = Float.NaN;
+					} else {
+						String vstr;
+						if ( amp == -1 ) {
+							vstr = s.substring( eq + 1 );
+						} else {
+							vstr = s.substring( eq + 1, amp );
+						}
+						value = Float.parseFloat( vstr );
+					}
+					index[i] = Integer.parseInt(prename);
+					rating[i] = value;
+				}
+				pos = amp + 1;
+				amp = s.indexOf( '&', pos );
+			}
+		}
+
 	}
 
 	/**

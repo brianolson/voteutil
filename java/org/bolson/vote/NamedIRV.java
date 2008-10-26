@@ -10,7 +10,7 @@ import java.util.HashMap;
  @see NamedIRNR
  @author Brian Olson
  */
-public class NamedIRV extends NameVotingSystem {
+public class NamedIRV extends NameVotingSystem implements IndexVotable {
 	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
 	protected HashMap they = new HashMap();
 	/** ArrayList<String> for lookup of name from index. */
@@ -96,6 +96,22 @@ public class NamedIRV extends NameVotingSystem {
 			iv.rating[i] = vote[i].rating;
 		}
 		votes.add( iv );
+		winners = null;
+	}
+	public void voteIndexVoteSet(IndexVoteSet vote) {
+		if ( vote == null || vote.index.length == 0 ) {
+			return;
+		}
+		int maxi = -1;
+		for ( int i = 0; i < vote.index.length; i++ ) {
+			if ( vote.index[i] > maxi ) {
+				maxi = vote.index[i];
+			}
+		}
+		while ( indexTS.size() <= maxi ) {
+			get(Integer.toString(indexTS.size() + 1));
+		}
+		votes.add( vote );
 		winners = null;
 	}
 	protected void bucketize( IndexVoteSet vote ) {

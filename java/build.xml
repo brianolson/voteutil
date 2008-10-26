@@ -43,6 +43,7 @@
         <fileset dir="dependlibs" includes="**/*.jar" />
 	  </classpath>
 	  <test name="org.bolson.vote.NamedVotingSystemTest" />
+	  <test name="org.bolson.vote.SummableVotingSystemTest" />
 	  <formatter type="plain" usefile="false" />
 	</junit>
   </target>
