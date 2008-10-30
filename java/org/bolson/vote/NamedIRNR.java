@@ -13,7 +13,7 @@ Instant Runoff Normalized Ratings.
  @see <a href="http://bolson.org/voting/methods.html#IRNR">IRNR (bolson.org)</a>
  @author Brian Olson
 */
-public class NamedIRNR extends NameVotingSystem {
+public class NamedIRNR extends NameVotingSystem implements IndexVotable {
 	/** Holds each passed in vote.
 	 This would be ArrayList<IndexVoteSet> if I broke Java 1.4 compatibility. */
 	protected ArrayList votes = new ArrayList();
@@ -26,6 +26,22 @@ public class NamedIRNR extends NameVotingSystem {
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
 	protected NameVote[] winners = null;
 
+	/** Get the TallyState for some name, or instantiate one if needed. */
+	protected TallyState get(String name) {
+		TallyState ts;
+		ts = (TallyState)names.get( name );
+		if ( ts != null ) {
+			ts.count++;
+		} else {
+			int ni = names.size();
+			ts = new TallyState( name, ni );
+			names.put( name, ts );
+			indexNames.add( name );
+			indexTS.add( ts );
+		}
+		return ts;
+	}
+
 	/** Record vote.
 	 Keeps a refence to passed in array.
 	 */
@@ -35,24 +51,29 @@ public class NamedIRNR extends NameVotingSystem {
 		}
 		IndexVoteSet iv = new IndexVoteSet(vote.length);
 		for ( int i = 0; i < vote.length; i++ ) {
-			TallyState ts;
-			ts = (TallyState)names.get( vote[i].name );
-			if ( ts != null ) {
-				ts.count++;
-			} else {
-				int ni = names.size();
-				ts = new TallyState( vote[i].name, ni );
-				names.put( vote[i].name, ts );
-				indexNames.add( vote[i].name );
-				indexTS.add( ts );
-			}
+			TallyState ts = get(vote[i].name);
 			iv.index[i] = ts.index;
 			iv.rating[i] = vote[i].rating;
 		}
 		votes.add( iv );
 		winners = null;
 	}
-	
+	public void voteIndexVoteSet(IndexVoteSet vote) {
+		if ( vote == null || vote.index.length == 0 ) {
+			return;
+		}
+		int maxi = -1;
+		for ( int i = 0; i < vote.index.length; i++ ) {
+			if ( vote.index[i] > maxi ) {
+				maxi = vote.index[i];
+			}
+		}
+		while ( indexTS.size() <= maxi ) {
+			get(Integer.toString(indexTS.size() + 1));
+		}
+		votes.add( vote );
+		winners = null;
+	}
 	/**
 	 Holds the internal count state for one choice.
 	 */

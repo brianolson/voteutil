@@ -27,13 +27,24 @@ public class IndexVotableTest {
 			votes[v] = vote;
 		}
 	}
+	public void generateRandomIndexVotes(int numc, int numv) {
+		ivotes = new NameVotingSystem.IndexVoteSet[numv];
+		Random r = new Random();
+		for ( int v = 0; v < numv; v++ ) {
+			ivotes[v] = new NameVotingSystem.IndexVoteSet(numc);
+			for ( int c = 0; c < numc; c++ ) {
+				ivotes[v].rating[c] = (float)r.nextGaussian();
+				ivotes[v].index[c] = c;
+			}
+		}
+	}
 	
 	public void testSystem(Class ivc, int numc, int numv)
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
 		IndexVotable iv = (IndexVotable)ivc.newInstance();
 		IndexVotable nv = (IndexVotable)ivc.newInstance();
 		generateRandomVotes(numc, numv);
-		for (int i = 0; i < numc; i++) {
+		for (int i = 0; i < numv; i++) {
 			iv.voteIndexVoteSet(ivotes[i]);
 			nv.voteRating(votes[i]);
 		}
@@ -48,6 +59,12 @@ public class IndexVotableTest {
 			fail(sb.toString());
 		}
 	}
+	public void testSystemBatch(Class ivc)
+	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
+		testSystem(ivc, 2, 100);
+		testSystem(ivc, 5, 1000);
+		testSystem(ivc, 20, 5000);
+	}
 	
 	public static StringBuffer sbWinners(StringBuffer sb, NameVotingSystem.NameVote[] winners) {
 		for (int i = 0; i < winners.length; i++) {
@@ -61,9 +78,47 @@ public class IndexVotableTest {
 	@Test
 	public void IRV()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testSystem(org.bolson.vote.NamedIRV.class, 2, 100);
-		testSystem(org.bolson.vote.NamedIRV.class, 5, 1000);
-		testSystem(org.bolson.vote.NamedIRV.class, 20, 5000);
+		testSystemBatch(org.bolson.vote.NamedIRV.class);
+	}
+	@Test
+	public void IRNR()
+	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
+		testSystemBatch(org.bolson.vote.NamedIRNR.class);
+	}
+	@Test
+	public void VRR()
+	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
+		testSystemBatch(org.bolson.vote.NamedVRR.class);
+	}
+	
+	public void testSpeed(IndexVotable x) {
+		long start = System.currentTimeMillis();
+		for (int i = 0; i < ivotes.length; i++) {
+			x.voteIndexVoteSet(ivotes[i]);
+		}
+		NameVotingSystem.NameVote[] winners = x.getWinners();
+		long end = System.currentTimeMillis();
+		double vps = ivotes.length / ((double)(end - start) / 1000.0);
+		System.out.println( x.name() + ": " + vps + " votes/second");
+	}
+
+	public static final int kSpeedNumc = 10;
+	public static final int kSpeedNumv = 100000;
+
+	@Test
+	public void IRV_Speed() {
+		generateRandomIndexVotes(kSpeedNumc, kSpeedNumv);
+		testSpeed(new NamedIRV());
+	}
+	@Test
+	public void IRNR_Speed() {
+		generateRandomIndexVotes(kSpeedNumc, kSpeedNumv);
+		testSpeed(new NamedIRNR());
+	}
+	@Test
+	public void VRR_Speed() {
+		generateRandomIndexVotes(kSpeedNumc, kSpeedNumv);
+		testSpeed(new NamedVRR());
 	}
 
 	public static void main( String[] argv ) {

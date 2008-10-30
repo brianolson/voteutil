@@ -116,13 +116,8 @@ public class SummableVotingSystemTest {
 		}
 	}
 	
-	/*public static void printWinners(NameVotingSystem.NameVote[] winners) {
-		for (int i = 0; i < winners.length; i++) {
-			System.out.print(winners[i].name);
-			System.out.print(": ");
-			System.out.println(winners[i].rating);
-		}
-	}*/
+	// TODO: test partial summation with different sets of names in each part.
+	// as in: a write-in in one small part of the vote.
 	
 	@Test
 	public void Raw()

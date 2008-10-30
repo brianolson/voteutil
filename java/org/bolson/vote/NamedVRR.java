@@ -7,7 +7,7 @@ Virtual Round Robin election (Condorcet).
  @see <a href="http://en.wikipedia.org/wiki/Condorcet's_Method">Condorcet's Method (Wikipedia)</a>
  @author Brian Olson
  */
-public class NamedVRR extends NameVotingSystem implements SummableVotingSystem {
+public class NamedVRR extends NameVotingSystem implements SummableVotingSystem, IndexVotable {
 	/** "DUMMY_CHOICE_NAME" is standin for choices not voted on yet so that write-ins count correctly. */
 	protected static final String dummyname = "DUMMY_CHOICE_NAME";
 	/** HashMap<String,Count> maps choice names to Count.
@@ -67,6 +67,7 @@ public class NamedVRR extends NameVotingSystem implements SummableVotingSystem {
 	 Keeps only a summation of the votes, not individual vote data.
 	*/
 	public void voteRating( NameVote[] vote ) {
+		// See also parallel implementation in voteIndexVoteSet()
 		Count[] cs = new Count[vote.length];
 		// minimize hash table lookup, and force fork if any new names. need to fork before modifying any data.
 		for ( int i = 0; i < vote.length; i++ ) {
@@ -131,6 +132,81 @@ public class NamedVRR extends NameVotingSystem implements SummableVotingSystem {
 						d.counts[d.index + a.index]++; // d looses
 					}
 				} else if ( 0 > vote[i].rating ) {
+					if ( a.index > d.index ) {
+						a.counts[a.index + d.index]++; // a looses
+					} else {
+						d.counts[a.index]++; // d wins
+					}
+				}
+			}
+		}
+	}
+	public void voteIndexVoteSet(IndexVoteSet vote) {
+		// See also parallel implementation in voteRating()
+		Count[] cs = new Count[vote.index.length];
+		// minimize hash table lookup, and force fork if any new names. need to fork before modifying any data.
+		for ( int i = 0; i < vote.index.length; i++ ) {
+			cs[i] = getCount( Integer.toString(vote.index[i] + 1) );
+		}
+		// clear cached solution
+		winners = null;
+		// Apply votes for choices voted on
+		for ( int i = 0; i < vote.rating.length; i++ ) {
+			Count a;
+			a = cs[i];
+			for ( int j = i + 1; j < vote.rating.length; j++ ) {
+				Count b;
+				b = cs[j];
+				if ( a.index == b.index ) {
+					// ignore duplicate names on vote
+					continue;
+				}
+				try {
+				if ( vote.rating[i] > vote.rating[j] ) {
+					if ( a.index > b.index ) {
+						a.counts[b.index]++; // a wins
+					} else {
+						b.counts[b.index + a.index]++; // b looses
+					}
+				} else if ( vote.rating[j] > vote.rating[i] ) {
+					if ( a.index > b.index ) {
+						a.counts[a.index + b.index]++; // a looses
+					} else {
+						b.counts[a.index]++; // b wins
+					}
+				}
+				} catch ( ArrayIndexOutOfBoundsException ae ) {
+					System.out.println("<p>ERROR: vote["+i+"].name="+vote.index[i]+", rating="+vote.rating[i]+", index="+a.index+"<br>vote["+j+"].name="+vote.index[j]+", rating="+vote.rating[j]+", index="+b.index+"</p>");
+					Thread.dumpStack();
+				}
+			}
+		}
+		// All names not voted assumed to rate -0, lose to names with >= 0 ratings and beat < 0 ratings.
+		for ( java.util.Iterator ci = counts.entrySet().iterator(); ci.hasNext(); ) {
+			java.util.Map.Entry e = (java.util.Map.Entry)ci.next();
+			String name = (String)e.getKey();
+			Count d = (Count)e.getValue();
+			boolean isvoted = false;
+			for ( int i = 0; i < cs.length; i++ ) {
+				if ( d == cs[i] || name.equals( cs[i].name ) ) {
+					isvoted = true;
+					break;
+				}
+			}
+			if ( isvoted ) {
+				continue;
+			}
+			// name wasn't voted on.
+			for ( int i = 0; i < vote.rating.length; i++ ) {
+				Count a;
+				a = cs[i];
+				if ( vote.rating[i] >= 0 ) {
+					if ( a.index > d.index ) {
+						a.counts[d.index]++; // a wins
+					} else {
+						d.counts[d.index + a.index]++; // d looses
+					}
+				} else if ( 0 > vote.rating[i] ) {
 					if ( a.index > d.index ) {
 						a.counts[a.index + d.index]++; // a looses
 					} else {
