@@ -1,0 +1,5 @@
+#-MMD is incompatible with multiple arch statements.
+CFLAGS=-MMD
+## To build fat binaries, comment out the line above and uncommend the two below.
+#CFLAGS=-arch ppc -arch ppc64 -arch i386 -arch x86_64
+#LDFLAGS=-arch ppc -arch ppc64 -arch i386 -arch x86_64

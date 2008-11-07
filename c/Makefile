@@ -4,13 +4,16 @@
 
 UNAME=$(shell uname)
 
-include make/${UNAME}
+-include make/${UNAME}
 
-GOPT=-g
-#GOPT=-O2
+#GOPT=-g
+GOPT=-O2
 #GOPT=-g -pg
 
-CFLAGS+=${GOPT} -Wall -ansi -pedantic -std=c99 -MMD
+CFLAGS+=${GOPT} -Wall -ansi -pedantic -std=c99
+#-MMD is incompatible with make/Darwin mode of building for multiple archs.
+#Instead it can be enabled in other make/* targets.
+#CFLAGS+=-MMD
 LDFLAGS+=${GOPT} -lz
 
 OBJS := NamedVotingSystem.o IRNR.o RawRating.o VRR.o IRV.o Histogram.o STV.o
@@ -33,6 +36,6 @@ opt:
 	${MAKE} GOPT=-O2
 
 clean:
-	rm -rf *.o libvote.a countvotes
+	rm -rf *.o libvote.a countvotes *.d permuteutil
 
 -include *.d
