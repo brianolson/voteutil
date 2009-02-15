@@ -5,6 +5,7 @@ $num = 10;
 $nnames = 4;
 $indexnames = 0;
 $namelen = 6;
+$nobias = 0;
 
 while ( $arg = shift ) {
 	if ( $arg eq "-n" || $arg eq "-v" ) {
@@ -15,6 +16,8 @@ while ( $arg = shift ) {
 		$joiner = shift;
 	} elsif ( $arg eq "-i" ) {
 		$indexnames = 1;
+	} elsif ( $arg eq "--nobias" ) {
+		$nobias = 1;
 	} else {
 		print STDERR "bogus arg \"$arg\"\n";
 		exit 1;
@@ -44,8 +47,10 @@ for ( $i = 0; $i < $nnames; $i++ ) {
 foreach $n ( @names ) {
 	$bias{$n} = 1;
 }
-$bias{$names[1]} = 1.2;
-$bias{$names[3]} = 1.4;
+if ( ! $nobias ) {
+	$bias{$names[1]} = 1.2;
+	$bias{$names[3]} = 1.4;
+}
 for ( $i = 0; $i < $num; $i++ ) {
 	print join( $joiner, map { $_ . "=" . (rand(10) * $bias{$_}) } @names ) . "\n";
 }
