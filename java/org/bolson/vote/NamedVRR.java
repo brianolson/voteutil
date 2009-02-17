@@ -389,33 +389,34 @@ public class NamedVRR extends NameVotingSystem implements SummableVotingSystem, 
 		return they;
 	}
 	public StringBuffer htmlSummary( StringBuffer sb ) {
-		Count[] they = getIndexedCounts( debug );
-		if ( winners == null ) {
-			getWinners();
-			if ( winners == null ) {
-				return sb;
-			}
+		if ( getWinners() == null ) {
+			return sb;
 		}
 		if ( debugLog != null ) {
 			sb.append( "<pre>debug:\n" );
 			sb.append( debugLog );
 			sb.append( "</pre>" );
 		}
-		sb = htmlTable( sb, winners, they );
+		Count[] they = getIndexedCounts( debug );
+		sb = htmlTable( sb, winners, they, false );
+		if (false) {
+		// this is less useful now based on changes to the pair table.
 		sb.append( "<table border=\"1\">" );
 		for ( int i = 0; i < winners.length; i++ ) {
-			sb.append( "<tr><td>" );
+			sb.append( "<tr><th>" );
+			sb.append( i+1 );
+			sb.append( "</th><td>" );
 			sb.append( winners[i].name );
-			sb.append( "</td><td>" );
-			sb.append( (int)(winners[i].rating) );
 			sb.append( "</tr>" );
 		}
 		sb.append( "</table>" );
+		}
 		return sb;
 	}
 	public StringBuffer htmlExplain( StringBuffer sb ) {
 		explain = sb;
 		sb = htmlSummary( sb );
+		sb = htmlBeatByBlock( sb );
 		explain = null;
 		return sb;
 	}
@@ -1150,19 +1151,25 @@ D z z z 0
 		return sb;
 	}
 	
+	public StringBuffer htmlTable(StringBuffer sb, boolean css) {
+		return htmlTable(sb, getWinners(), getIndexedCounts( debug ), css);
+	}
 	public static StringBuffer htmlTable(
-			StringBuffer sb, NameVote[] winners, Count[] they) {
-		sb.append( "<table border=\"1\"><tr><td></td>" );
+			StringBuffer sb, NameVote[] winners, Count[] they, boolean css) {
+		if (css) {
+			sb.append( "<table class=\"v_vrrt\"><tr><td colspan=\"2\"></td>" );
+		} else {
+			sb.append( "<table border=\"1\"><tr><td colspan=\"2\"></td>" );
+		}
 		for ( int i = 0; i < winners.length; i++ ) {
-			sb.append( "<td>(" );
-			sb.append( i );
-			sb.append( ")</td>" );
+			sb.append( "<th>" );
+			sb.append( i+1 );
+			sb.append( "</th>" );
 		}
 		sb.append( "</tr>" );
 		int[] indextr = new int[winners.length];
 		for ( int xi = 0; xi < winners.length; xi++ ) {
-			int i;
-			for ( i = 0; i < they.length; i++ ) {
+			for ( int i = 0; i < they.length; i++ ) {
 				if ( winners[xi].name.equals( they[i].name ) ) {
 					indextr[xi] = i;
 				}
@@ -1171,9 +1178,9 @@ D z z z 0
 		for ( int xi = 0; xi < indextr.length; xi++ ) {
 			int i;
 			i = indextr[xi];
-			sb.append( "<tr><td>(" );
-			sb.append( xi );
-			sb.append( ") " );
+			sb.append( "<tr><th>" );
+			sb.append( xi+1 );
+			sb.append( "</th><td>" );
 			sb.append( they[i].name );
 			sb.append( "</td>" );
 			for ( int xj = 0; xj < indextr.length; xj++ ) {
@@ -1191,9 +1198,17 @@ D z z z 0
 						otherw = they[j].counts[i];
 					}
 					if ( thisw > otherw ) {
-						sb.append("<td bgcolor=\"#bbffbb\">");
+						if (css) {
+							sb.append("<td class=\"v_vrrhi\">");
+						} else {
+							sb.append("<td bgcolor=\"#bbffbb\">");
+						}
 					} else if ( thisw < otherw ) {
-						sb.append("<td bgcolor=\"#ffbbbb\">");
+						if (css) {
+							sb.append("<td class=\"v_vrrlo\">");
+						} else {
+							sb.append("<td bgcolor=\"#ffbbbb\">");
+						}
 					} else {
 						sb.append("<td>");
 					}				
@@ -1204,6 +1219,92 @@ D z z z 0
 			sb.append( "</tr>" );
 		}
 		sb.append( "</table>" );
+		return sb;
+	}
+	public static final String HIGHER_NAME = "HIGHER_NAME";
+	public static final String LOWER_NAME = "LOWER_NAME";
+	public static final String HIGHER_COUNT = "HIGHER_COUNT";
+	public static final String LOWER_COUNT = "LOWER_COUNT";
+	// "<div class=\"v_bbr\"><span class=\"v_hi\">{{HIGHER_NAME}}</span> was preferred over <span class=\"v_lo\">{{LOWER_NAME}}</span> by {{HIGHER_COUNT}} voters. {{LOWER_COUNT}} voters had the reverse preference.</div>"
+	public static final String[] kDefaultBeatByBlockTemplate = {
+		"<div class=\"v_bbr\"><span class=\"v_hi\">",
+		HIGHER_NAME,
+		"</span> was preferred over <span class=\"v_lo\">",
+		LOWER_NAME,
+		"</span> by ",
+		HIGHER_COUNT,
+		" voters. ",
+		LOWER_COUNT,
+		" voters had the reverse preference.</div>"
+	};
+	/**
+	
+	*/
+	public StringBuffer htmlBeatByBlock(StringBuffer sb) {
+		return beatByBlock(sb, kDefaultBeatByBlockTemplate);
+	}
+	/**
+	@param template is a collection of string fragments
+	*/
+	public StringBuffer beatByBlock(StringBuffer sb, String[] template) {
+		if (getWinners() == null) {
+			return sb;
+		}
+		Count[] counts = getIndexedCounts( debug );
+		// indextr converts winners indecies into counts indecies
+		int[] indextr = new int[winners.length];
+		for ( int xi = 0; xi < winners.length; xi++ ) {
+			for ( int i = 0; i < counts.length; i++ ) {
+				if ( winners[xi].name.equals( counts[i].name ) ) {
+					indextr[xi] = i;
+				}
+			}
+		}
+		int xi = 0;
+		int i = indextr[xi];
+		for ( int xj = 0; xj < indextr.length; xj++ ) {
+			if (xj == xi) {
+				continue;
+			}
+			int j = indextr[xj];
+			int vij, vji;
+			if ( i > j ) {
+				vij = counts[i].counts[j];
+				vji = counts[i].counts[j + i];
+			} else /*if ( i < j )*/ {
+				vij = counts[j].counts[j + i];
+				vji = counts[j].counts[i];
+			}
+			for (int t = 0; t < template.length; t++) {
+				if (template[t].equals(HIGHER_NAME)) {
+					if (vij >= vji) {
+						sb.append(counts[i].name);
+					} else {
+						sb.append(counts[j].name);
+					}
+				} else if (template[t].equals(LOWER_NAME)) {
+					if (vij >= vji) {
+						sb.append(counts[j].name);
+					} else {
+						sb.append(counts[i].name);
+					}
+				} else if (template[t].equals(HIGHER_COUNT)) {
+					if (vij >= vji) {
+						sb.append(vij);
+					} else {
+						sb.append(vji);
+					}
+				} else if (template[t].equals(LOWER_COUNT)) {
+					if (vij >= vji) {
+						sb.append(vji);
+					} else {
+						sb.append(vij);
+					}
+				} else {
+					sb.append(template[t]);
+				}
+			}
+		}
 		return sb;
 	}
 

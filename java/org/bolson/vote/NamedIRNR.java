@@ -287,7 +287,12 @@ public class NamedIRNR extends NameVotingSystem implements IndexVotable {
 								sb.append( "<td style=\"color:#999999;\">" );
 							}
 							sb.append( tv[i].name );
-							sb.append( "</td><td>" );
+							sb.append( "</td>" );
+							if ( tv[i].active ) {
+								sb.append( "<td>" );
+							} else {
+								sb.append( "<td style=\"color:#999999;\">" );
+							}
 							ratingFormat.format( tv[i].tally, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
 							sb.append( "</td>" );
 						}
