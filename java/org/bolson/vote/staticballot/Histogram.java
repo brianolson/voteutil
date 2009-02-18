@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 
 /**
  Collects votes and presents HTML histograms.

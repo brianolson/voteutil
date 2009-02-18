@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 import java.io.*;
 import java.util.Enumeration;
 /**

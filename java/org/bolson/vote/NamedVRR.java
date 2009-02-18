@@ -1221,10 +1221,23 @@ D z z z 0
 		sb.append( "</table>" );
 		return sb;
 	}
+	/** Tempate key.
+	@see #beatByBlock(StringBuffer,String[] template) */
 	public static final String HIGHER_NAME = "HIGHER_NAME";
+	/** Tempate key.
+	@see #beatByBlock(StringBuffer,String[] template) */
 	public static final String LOWER_NAME = "LOWER_NAME";
+	/** Tempate key.
+	@see #beatByBlock(StringBuffer,String[] template) */
 	public static final String HIGHER_COUNT = "HIGHER_COUNT";
+	/** Tempate key.
+	@see #beatByBlock(StringBuffer,String[] template) */
 	public static final String LOWER_COUNT = "LOWER_COUNT";
+	/**
+	Used by htmlBeatByBlock.
+	&lt;div class="v_bbr"&gt;&lt;span class="v_hi"&gt;{{HIGHER_NAME}}&lt;/span&gt; was preferred over &lt;span class="v_lo"&gt;{{LOWER_NAME}}&lt;/span&gt; by {{HIGHER_COUNT}} voters. {{LOWER_COUNT}} voters had the reverse preference.&lt;/div&gt;
+	@see #htmlBeatByBlock(StringBuffer)
+	*/
 	// "<div class=\"v_bbr\"><span class=\"v_hi\">{{HIGHER_NAME}}</span> was preferred over <span class=\"v_lo\">{{LOWER_NAME}}</span> by {{HIGHER_COUNT}} voters. {{LOWER_COUNT}} voters had the reverse preference.</div>"
 	public static final String[] kDefaultBeatByBlockTemplate = {
 		"<div class=\"v_bbr\"><span class=\"v_hi\">",
@@ -1238,12 +1251,16 @@ D z z z 0
 		" voters had the reverse preference.</div>"
 	};
 	/**
-	
+	Print collection of statements of the form "a was preferred over b by N voters. M preferred the other way".
+	The exact html template is:<br>
+	&lt;div class="v_bbr"&gt;&lt;span class="v_hi"&gt;{{HIGHER_NAME}}&lt;/span&gt; was preferred over &lt;span class="v_lo"&gt;{{LOWER_NAME}}&lt;/span&gt; by {{HIGHER_COUNT}} voters. {{LOWER_COUNT}} voters had the reverse preference.&lt;/div&gt;
 	*/
 	public StringBuffer htmlBeatByBlock(StringBuffer sb) {
 		return beatByBlock(sb, kDefaultBeatByBlockTemplate);
 	}
 	/**
+	Print collection of statements of the form "a was preferred over b by N voters. M preferred the other way".
+	This statement can be templatized by passing in an array of string fragments and keys {HIGHER_NAME, LOWER_NAME, HIGHER_COUNT, LOWER_COUNT}.
 	@param template is a collection of string fragments
 	*/
 	public StringBuffer beatByBlock(StringBuffer sb, String[] template) {

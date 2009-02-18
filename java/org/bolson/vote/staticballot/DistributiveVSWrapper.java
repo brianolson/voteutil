@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 
 /**
 Utility class for running several VotingSystem instances at once.

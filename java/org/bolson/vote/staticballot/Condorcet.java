@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 /**
  * Implements the Condorcet method of ranked voting tabulation
  * and beatpath tie resolution. See <a href="http://www.electionmethods.org/">electionmethods.org</a>.

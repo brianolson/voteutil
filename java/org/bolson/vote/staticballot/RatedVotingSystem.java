@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 /**
  * Interface for any voting system that inputs a voter's ratings of the choices.
  * Supplies implementations of voteRanking which call voteRating

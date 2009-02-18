@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 
 /**
  * It's like Condorcet, but based on ratings differentials.

@@ -1,30 +1,39 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 import java.util.Vector;
 
 /**
- * Instant Runoff Normalized Ratings
+* Iterated Normalized Ratings
+ I don't know how useful this is. Maybe it's always the same as straight rating summation. dunno.
  @author Brian Olson
  */
-public class IRNR extends RatedVotingSystem {
+public class INR extends RatedVotingSystem {
 	Vector votes = new Vector();
 	int voterToTrack = -1;
 	boolean showIntermedite = false;
 	int[] winners = null;
 	boolean rmsnorm = true;
-	Vector debugHistory = null;
-	StringBuffer debugStr = null;
+	double inactiveThreshold = 0.05;
+	double stepSize = 0.05;
+	Vector debugSteps = null;
 
-    public IRNR( int numCandidates ) {
+	public static String doubleToStrLen( double d, int l ) {
+		String toret = Double.toString( d );
+		if ( toret.length() > l ) {
+			return toret.substring( 0, l );
+		}
+		return toret;
+	}
+    public INR( int numCandidates ) {
     	super( numCandidates );
 		talley = new double[numc];
     }
 	
 	public String name() {
-		return "Instant Runoff Normalized Ratings";
+		return "Iterated Normalized Ratings";
 	}
 	
 	public VotingSystem init( String argv[] ) {
-		if ( argv == null ) return this;
+		// default impl, do nothing
 		for ( int i = 0; i < argv.length; i++ ) {
 			if ( argv[i].equals( "track" ) ) {
 				i++;
@@ -37,7 +46,7 @@ public class IRNR extends RatedVotingSystem {
 				rmsnorm = false;
 //			} else if ( argv[i].equals( "" ) ) {
 			} else {
-				System.err.println( "IRNR.init: bogus arg \"" + argv[i] + '"' );
+				System.err.println( "INR.init: bogus arg \"" + argv[i] + '"' );
 				return this;
 			}
 		}
@@ -61,29 +70,32 @@ public class IRNR extends RatedVotingSystem {
     }
     
     public int[] getWinners() {
+		if ( debug ) {
+			winners = null;
+			debugSteps = new Vector();
+		}
 		if ( winners != null ) {
 			return (int[])winners.clone();
 		}
 		int i;
-		int numWinners = 1;
 		int numActive = numc;
 		boolean active[] = new boolean[numc];
-		int choiceIndecies[] = new int[numc];
+		//int choiceIndecies[] = new int[numc];
+		double[] solution;
+		int bored = 10000;
+		solution = new double[numc];
 		for ( int c = 0; c < numc; c++ ) {
 			active[c] = true;
+			solution[c] = 1.0;
 		}
-		if ( debug ) {
-			debugHistory = new Vector();
-			debugStr = new StringBuffer();
-		}
-		while ( numActive > 1 ) {
+		while ( (numActive > 1) && (--bored > 0) ) {
 			// per IR setup
 			{
 				int curact = 0;
 				for ( int c = 0; c < numc; c++ ) {
 					if ( active[c] ) {
 						talley[c] = 0;
-						choiceIndecies[curact] = c;
+						//choiceIndecies[curact] = c;
 						curact++;
 					}
 				}
@@ -99,25 +111,29 @@ public class IRNR extends RatedVotingSystem {
 					for ( int c = 0; c < numc; c++ ) if ( ot[c] != NO_VOTE && active[c] ) {
 						//System.out.println("int[] ot[" + c + "] = " + ot[c] );
 						if ( rmsnorm ) {
-							ts += ot[c] * ot[c];
+							double otc;
+							otc = ot[c] * solution[c];
+							ts += otc * otc;
 						} else {
-							ts += Math.abs(ot[c]);
+							ts += Math.abs(ot[c] * solution[c]);
 						}
 					}
 					if ( rmsnorm ) {
 						ts = Math.sqrt( ts );
 					}
 					for ( int c = 0; c < numc; c++ ) if ( ot[c] != NO_VOTE && active[c] && ts != 0 ) {
-						talley[c] += ot[c] / ts;
+						talley[c] += ot[c] * solution[c] / ts;
 					}
 				} else if ( o instanceof float[] ) {
 					float[] ot = (float[])o;
 					for ( int c = 0; c < numc; c++ ) if ( active[c] && ! Float.isNaN( ot[c] ) ) {
 						//System.out.println("float[] ot[" + c + "] = " + ot[c] );
 						if ( rmsnorm ) {
-							ts += ot[c] * ot[c];
+							double otc;
+							otc = ot[c] * solution[c];
+							ts += otc * otc;
 						} else {
-							ts += Math.abs(ot[c]);
+							ts += Math.abs(ot[c] * solution[c]);
 						}
 					}
 					if ( rmsnorm ) {
@@ -125,7 +141,7 @@ public class IRNR extends RatedVotingSystem {
 					}
 					for ( int c = 0; c < numc; c++ ) if ( active[c] && ! Float.isNaN( ot[c] ) && ts != 0 ) {
 						//System.out.println("float[] ot[" + c + "] = " + ot[c] + " / (ts = " + ts + ") = " + (ot[c] / ts) );
-						talley[c] += ot[c] / ts;
+						talley[c] += ot[c] * solution[c] / ts;
 					}
 					if ( v == voterToTrack ) {
 						for ( int c = 0; c < numc; c++ ) {
@@ -142,86 +158,58 @@ public class IRNR extends RatedVotingSystem {
 					for ( int c = 0; c < numc; c++ ) if ( active[c] && ! Double.isNaN( ot[c] ) ) {
 						//System.out.println("double[] ot[" + c + "] = " + ot[c] );
 						if ( rmsnorm ) {
-							ts += ot[c] * ot[c];
+							double otc;
+							otc = ot[c] * solution[c];
+							ts += otc * otc;
 						} else {
-							ts += Math.abs(ot[c]);
+							ts += Math.abs(ot[c] * solution[c]);
 						}
 					}
 					if ( rmsnorm ) {
 						ts = Math.sqrt( ts );
 					}
 					for ( int c = 0; c < numc; c++ ) if ( active[c] && ! Double.isNaN( ot[c] ) && ts != 0 ) {
-						talley[c] += ot[c] / ts;
+						talley[c] += ot[c] * solution[c] / ts;
 					}
 				} else {
 					System.err.println( "bogus vote \"" + o + '\"' );
 				}
 			}
+			// find new solution[]
+			double tsum;
+			tsum = 0.0;
+			for ( i = 0; i < numc; i++ ) if ( active[i] ) {
+				tsum += talley[i];
+			}
+			tsum /= numActive;
+			for ( i = 0; i < numc; i++ ) if ( active[i] ) {
+				solution[i] = ((talley[i] - tsum) * stepSize) + solution[i];
+				if ( solution[i] < inactiveThreshold ) {
+					active[i] = false;
+					numActive--;
+				}
+			}
 			if ( debug ) {
-				debugHistory.add( active.clone() );
-				debugHistory.add( talley.clone() );
-				for ( int c = 0; c < numc; c++ ) {
-					if ( ! active[c] ) {
-						debugStr.append('x');
-					}
-					debugStr.append( talley[c] );
-					if ( (c + 1) < numc ) {
-						debugStr.append( "\t" );
-					}
-				}
-				debugStr.append('\n');
-			}
-			// sort
-			boolean notdone = true;
-			while ( notdone ) {
-				notdone = false;
-				for ( int c = 1; c < numActive; c++ ) {
-					if ( talley[choiceIndecies[c]] > talley[choiceIndecies[c-1]] ) {
-						int ti = choiceIndecies[c];
-						choiceIndecies[c] = choiceIndecies[c-1];
-						choiceIndecies[c-1] = ti;
-						notdone = true;
-					}
-				}
-			}
-			if ( showIntermedite ) {
-				System.out.println("num active " + numActive );
-				for ( int c = 0; c < numc; c++ ) {
-					int tci;
-					tci = choiceIndecies[c];
-					System.out.println("\tchoiceIndecies[" + c + "] = " + tci +
-									   "\ttalley[" + tci + "] = " + talley[tci] +
-									   "\tactive[" + tci + "] = " + active[tci] );
-				}
-			}
-			if ( talley[choiceIndecies[0]] == talley[choiceIndecies[numActive-1]] ) {
-				// N-way tie.
-				numWinners = numActive;
-				break;
-			}
-			active[choiceIndecies[numActive-1]] = false;
-			numActive--;
-			while ( (numActive > 1) &&
-					(talley[choiceIndecies[numActive-1]] == talley[choiceIndecies[numActive]]) ) {
-				// eliminate all who tied for last
-				active[choiceIndecies[numActive-1]] = false;
-				numActive--;
+				debugSteps.add( talley.clone() );
+				debugSteps.add( solution.clone() );
 			}
 		}
-		winners = new int[numWinners];
-		for ( i = 0; i < numWinners; i++ ) {
-			winners[i] = choiceIndecies[i];
+		if ( numActive == 0 ) {
+			winners = new int[numc];
+			for ( i = 0; i < numc; i++ ) {
+				winners[i] = i;
+			}
+		} else {
+			winners = new int[numActive];
+			int winneri = 0;
+			for ( i = 0; i < numc; i++ ) if ( active[i] ) {
+				winners[winneri] = i;
+				winneri++;
+			}
 		}
 		return (int[])winners.clone();
     }
-	
-	/** 
-	Multi-seat IRNR.
-	Everyone who votes for a winner shares in the distribution of the overvote and retains that fraction of their voting power.*/
-	public int[] getWinners( /*java.io.PrintWriter out, */int numSeats ) {
-		return null;
-	}
-
+	    
     protected double talley[];
     
     public String toString() {
@@ -250,9 +238,9 @@ public class IRNR extends RatedVotingSystem {
 			in[i] = true;
 		}
 		if ( names != null ) {
-			sb = new StringBuffer( "<table border=\"1\"><tr><th></th><th>IRNR Rating Summation</th></tr>\n" );
+			sb = new StringBuffer( "<table border=\"1\"><tr><th></th><th>INR Rating Summation</th></tr>\n" );
 		} else {
-			sb = new StringBuffer( "<table border=\"1\"><tr><th>Choice Index</th><th>IRNR Rating Summation</th></tr>\n" );
+			sb = new StringBuffer( "<table border=\"1\"><tr><th>Choice Index</th><th>INR Rating Summation</th></tr>\n" );
 		}
 		getWinners();
 		while ( true ) {
@@ -286,41 +274,42 @@ public class IRNR extends RatedVotingSystem {
     }
 	
 	public String getDebugHTML( String[] names ) {
-		int i = 0, j;
-		if ( ! debug || debugHistory == null ) {
+		if ( ! debug || debugSteps == null ) {
 			return null;
 		}
-		int rounds = debugHistory.size() / 2;
-		boolean[][] actives = new boolean[rounds][];
-		double[][] tallies = new double[rounds][];
-		while ( i < rounds ) {
-			//boolean[] active;
-			//double[] talley;
-			actives[i] = (boolean[])debugHistory.elementAt( i * 2 );
-			tallies[i] = (double[]) debugHistory.elementAt( i * 2 + 1 );
-			i++;
+		StringBuffer toret = new StringBuffer( 4096 );
+		int numSteps = debugSteps.size() / 2;
+		double[][] tallies = new double[numSteps][];
+		double[][] solutions = new double[numSteps][];
+		int i, j;
+		for ( i = 0; i < numSteps; i++ ) {
+			tallies[i] = (double[])debugSteps.elementAt( i*2 );
+			solutions[i] = (double[])debugSteps.elementAt( i*2 + 1 );
 		}
-		StringBuffer toret = new StringBuffer( 2048 );
-		toret.append("<pre>");
-		toret.append(debugStr);
-		toret.append("</pre>");
-		toret.append("<TABLE BORDER=\"1\"><TR><TH></TH>");
-		for ( j = 0; j < rounds; j++ ) {
-			toret.append("<TH>").append(j).append("</TH>");
+		toret.append("<TABLE BORDER=\"1\"><TR>");
+		for ( j = 0; j < numc; j++ ) {
+			toret.append("<TH>");
+			if ( names != null ) {
+				toret.append( names[j] );
+			}
+			toret.append("</TH>");
 		}
 		toret.append("</TR>");
-		for ( i = 0; i < numc; i++ ) {
+		for ( i = 0; i < numSteps; i++ ) {
 			toret.append("<TR>");
-			toret.append("<TD>");
-			toret.append(names[i]);
-			toret.append("</TD>");
-			for ( j = 0; j < rounds; j++ ) {
+			double[] talley;
+			double[] solution;
+			talley = tallies[i];
+			solution = solutions[i];
+			for ( int c = 0; c < numc; c++ ) {
 				toret.append("<TD>");
-				if ( ! actives[j][i] ) {
+				if ( solution[c] < inactiveThreshold ) {
 					toret.append("<FONT COLOR=\"#999999\">");
 				}
-				toret.append( tallies[j][i] );
-				if ( ! actives[j][i] ) {
+				toret.append( doubleToStrLen( talley[c], 6 ) );
+				toret.append("<br>");
+				toret.append( doubleToStrLen( solution[c], 6 ) );
+				if ( solution[c] < inactiveThreshold ) {
 					toret.append("</FONT>");
 				}
 				toret.append("</TD>");

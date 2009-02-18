@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 
 /**
 	Wrapper that makes all calls synchronized on the subordinate VotingSystem object.

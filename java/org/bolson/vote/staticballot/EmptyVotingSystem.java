@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 /**
  * Empty code for copying before making a new VotingSystem.
  @author Somebody

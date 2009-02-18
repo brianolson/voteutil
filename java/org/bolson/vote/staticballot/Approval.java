@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 
 /**
  * Election method based on summation of Yes/No "good enough" votes.

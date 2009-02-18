@@ -1,4 +1,4 @@
-package org.bolson.vote;
+package org.bolson.vote.staticballot;
 /**
  * Top level abstract class for ranked or rated voting systems.
  * Most implementations will subclass either RankedVotingSystem or
