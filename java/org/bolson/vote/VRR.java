@@ -7,7 +7,7 @@ Virtual Round Robin election (Condorcet).
  @see <a href="http://en.wikipedia.org/wiki/Condorcet's_Method">Condorcet's Method (Wikipedia)</a>
  @author Brian Olson
  */
-public class NamedVRR extends NameVotingSystem implements SummableVotingSystem, IndexVotable {
+public class VRR extends NameVotingSystem implements SummableVotingSystem, IndexVotable {
 	/** "DUMMY_CHOICE_NAME" is standin for choices not voted on yet so that write-ins count correctly. */
 	protected static final String dummyname = "DUMMY_CHOICE_NAME";
 	/** HashMap<String,Count> maps choice names to Count.
@@ -58,7 +58,7 @@ public class NamedVRR extends NameVotingSystem implements SummableVotingSystem, 
 		return super.init( argv );
 	}
 	
-	public NamedVRR() {
+	public VRR() {
 		counts.put( dummyname, new Count( dummyname, 0 ) );
 	}
 	
@@ -223,10 +223,10 @@ public class NamedVRR extends NameVotingSystem implements SummableVotingSystem, 
 	 */
 	public void accumulateSubVote( SummableVotingSystem other ) throws ClassCastException {
 		if ( other == null ) return;
-		if ( ! (other instanceof NamedVRR) ) {
+		if ( ! (other instanceof VRR) ) {
 			throw new ClassCastException("don't know how to add "+other.getClass().getName()+" into "+this.getClass().getName() );
 		}
-		NamedVRR it = (NamedVRR)other;
+		VRR it = (VRR)other;
 		Count[] othercounts = it.getIndexedCounts(true);
 		// Apply to this like a big vote
 		Count[] cs = new Count[othercounts.length];
@@ -1326,6 +1326,6 @@ D z z z 0
 	}
 
 	static {
-		registerImpl( "VRR", NamedVRR.class );
+		registerImpl( "VRR", VRR.class );
 	}
 };

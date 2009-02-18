@@ -8,7 +8,7 @@ import java.util.ArrayList;
 	The normal vote interface in this case accumulates the ratings into histograms per name.
  @author Brian Olson
  */
-public class NamedHistogram extends NameVotingSystem {
+public class Histogram extends NameVotingSystem {
 	protected float min, max, step;
 	protected int buckets;
 	protected HashMap they = new HashMap();
@@ -81,9 +81,9 @@ public class NamedHistogram extends NameVotingSystem {
 		}
 	}
 	/**
-		equivalent to NamedHistogram( -10, 10 );
+		equivalent to Histogram( -10, 10 );
 	 */
-	public NamedHistogram() {
+	public Histogram() {
 		buckets = 21;
 		min = -10.5f;
 		max = 10.5f;
@@ -115,7 +115,7 @@ min                      max
 	 @param minRating value of the lowest edge of the lowest bucket
 	 @param maxRating value of the highest edge of the highest bucket
 	 */
-	 public NamedHistogram( int numBuckets, float minRating, float maxRating ) {
+	 public Histogram( int numBuckets, float minRating, float maxRating ) {
 		buckets = numBuckets;
 		min = minRating;
 		max = maxRating;
@@ -140,7 +140,7 @@ min = -0.5, max = 4.5
 	  @param minint value of lowest bucket
 	  @param maxint value of highest bucket
 	  */
-	 public NamedHistogram( int minint, int maxint ) {
+	 public Histogram( int minint, int maxint ) {
 		/*
 		   0    1    2    3    4
 		 |----|----|----|----|----|
@@ -565,10 +565,10 @@ default is:
 		return "Histogram";
 	}
 	public static void main( String[] argv ) {
-		(new NamedHistogram()).defaultMain( argv );
+		(new Histogram()).defaultMain( argv );
 	}
 	
 	static {
-		registerImpl( "Histogram", NamedHistogram.class );
+		registerImpl( "Histogram", Histogram.class );
 	}
 };

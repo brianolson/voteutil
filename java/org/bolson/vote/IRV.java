@@ -6,11 +6,11 @@ import java.util.HashMap;
  Instant Runoff Voting.
  Do not use, IRV is bad, VRR is better, IRNR is my favorite.
  
- @see NamedVRR
- @see NamedIRNR
+ @see VRR
+ @see IRNR
  @author Brian Olson
  */
-public class NamedIRV extends NameVotingSystem implements IndexVotable {
+public class IRV extends NameVotingSystem implements IndexVotable {
 	/** Map names to TallyState instance. Could be HashMap<String,TallyState> */
 	protected HashMap they = new HashMap();
 	/** ArrayList<String> for lookup of name from index. */
@@ -25,7 +25,7 @@ public class NamedIRV extends NameVotingSystem implements IndexVotable {
 	/** ArrayList<IndexVoteSet> */
 	protected ArrayList tiedVotes = new ArrayList();
 
-	public NamedIRV() {
+	public IRV() {
 	}
 
 	/**
@@ -397,6 +397,6 @@ public class NamedIRV extends NameVotingSystem implements IndexVotable {
 	}
 	
 	static {
-		registerImpl( "IRV", NamedIRV.class );
+		registerImpl( "IRV", IRV.class );
 	}
 };

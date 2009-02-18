@@ -59,16 +59,16 @@ public class countvotes {
 		"hist","irnr","vrr","rp","raw","irv","stv"
 	};
 	public static final String[] enableClassNames = {
-		"org.bolson.vote.NamedHistogram", "org.bolson.vote.NamedIRNR", "org.bolson.vote.NamedVRR", "org.bolson.vote.NamedRankedPairs", "org.bolson.vote.NamedRaw", "org.bolson.vote.NamedIRV", "org.bolson.vote.NamedSTV"
+		"org.bolson.vote.Histogram", "org.bolson.vote.IRNR", "org.bolson.vote.VRR", "org.bolson.vote.RankedPairs", "org.bolson.vote.Raw", "org.bolson.vote.IRV", "org.bolson.vote.STV"
 	};
 	public static final ShortNameClassName[] methodNames = {
-		new ShortNameClassName("hist", "org.bolson.vote.NamedHistogram", true, true),
-		new ShortNameClassName("irnr", "org.bolson.vote.NamedIRNR", true, true),
-		new ShortNameClassName("vrr", "org.bolson.vote.NamedVRR", true, true),
-		new ShortNameClassName("rp", "org.bolson.vote.NamedRankedPairs", false, true),
-		new ShortNameClassName("raw", "org.bolson.vote.NamedRaw", true, true),
-		new ShortNameClassName("irv", "org.bolson.vote.NamedIRV", true, true),
-		new ShortNameClassName("stv", "org.bolson.vote.NamedSTV", false, false),
+		new ShortNameClassName("hist", "org.bolson.vote.Histogram", true, true),
+		new ShortNameClassName("irnr", "org.bolson.vote.IRNR", true, true),
+		new ShortNameClassName("vrr", "org.bolson.vote.VRR", true, true),
+		new ShortNameClassName("rp", "org.bolson.vote.RankedPairs", false, true),
+		new ShortNameClassName("raw", "org.bolson.vote.Raw", true, true),
+		new ShortNameClassName("irv", "org.bolson.vote.IRV", true, true),
+		new ShortNameClassName("stv", "org.bolson.vote.STV", false, false),
 	};
 
 	public static final int MODE_URL = 1;
@@ -99,7 +99,7 @@ public class countvotes {
 		PrintWriter out = null;
 		int seats = 1;
 		
-		NamedHistogram histInstance = null;
+		Histogram histInstance = null;
 		NameVotingSystem firstWinner = null;
 
 		//boolean[] enabled = new boolean[]{ true,true,true,true,true,false };
@@ -167,8 +167,8 @@ public class countvotes {
 				i++;
 				seats = Integer.parseInt(argv[i]);
 				countClasses = new Vector();
-				countClasses.add( "org.bolson.vote.NamedSTV" );
-				countClasses.add( "org.bolson.vote.NamedHistogram" );
+				countClasses.add( "org.bolson.vote.STV" );
+				countClasses.add( "org.bolson.vote.Histogram" );
 			} else if ( argv[i].equals("--urlencoded") ) {
 				mode = MODE_URL;
 			} else if ( argv[i].equals("--whitespace") ) {
@@ -267,8 +267,8 @@ public class countvotes {
 			for ( int i = 0; i < vs.length; i++ ) {
 				String cn;
 				cn = (String)countClasses.get(i);
-				if ( cn.equals( "Histogram" ) || cn.equals("NamedHistogram") || cn.equals("org.bolson.vote.NamedHistogram") ) {
-					histInstance = new NamedHistogram( histMin, histMax );
+				if ( cn.equals( "Histogram" ) || cn.equals("Histogram") || cn.equals("org.bolson.vote.Histogram") ) {
+					histInstance = new Histogram( histMin, histMax );
 					vs[i] = histInstance;
 				} else {
 					vs[i] = getMethodInstance( cn );
@@ -285,14 +285,14 @@ public class countvotes {
 				}
 			}
 		} else {
-			histInstance = new NamedHistogram( histMin, histMax );
-			firstWinner = new NamedIRNR();
+			histInstance = new Histogram( histMin, histMax );
+			firstWinner = new IRNR();
 			vs = new NameVotingSystem[] {
 				histInstance,
 				firstWinner,
-				new NamedVRR(),
-				new NamedRaw(),
-				new NamedIRV(),
+				new VRR(),
+				new Raw(),
+				new IRV(),
 			};
 		}
 		for ( int vi = 0; vi < vs.length; vi++ ) {
@@ -398,7 +398,7 @@ public class countvotes {
 	}
 	
 	protected static final String[] gmiPrefixes = {
-		"", "Named", "org.bolson.vote.", "org.bolson.vote.Named"
+		"", "", "org.bolson.vote.", "org.bolson.vote."
 	};
 	public static NameVotingSystem getMethodInstance(String name) {
 		Class c;

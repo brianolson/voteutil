@@ -13,7 +13,7 @@ Instant Runoff Normalized Ratings.
  @see <a href="http://bolson.org/voting/methods.html#IRNR">IRNR (bolson.org)</a>
  @author Brian Olson
 */
-public class NamedIRNR extends NameVotingSystem implements IndexVotable {
+public class IRNR extends NameVotingSystem implements IndexVotable {
 	/** Holds each passed in vote.
 	 This would be ArrayList<IndexVoteSet> if I broke Java 1.4 compatibility. */
 	protected ArrayList votes = new ArrayList();
@@ -319,6 +319,6 @@ public class NamedIRNR extends NameVotingSystem implements IndexVotable {
 	}
 	
 	static {
-		registerImpl( "IRNR", NamedIRNR.class );
+		registerImpl( "IRNR", IRNR.class );
 	}
 };

@@ -15,7 +15,7 @@ Truncated ballots should, if possible, fully deweight on any choices that do get
 @see <a href="http://en.wikipedia.org/wiki/Single_Transferable_Vote">STV on Wikipedia</a>
  @author Brian Olson
 */
-public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMethod {
+public class STV extends NameVotingSystem implements MultiSeatElectionMethod {
 	/** Number of choices who will count as elected. */
 	protected int seats = 1;
 	/** HashMap<String,TallyState> map from choice names to the TallyState about them. */
@@ -113,7 +113,7 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 		}
 	} /* class WeightedVote */
 	
-	public NamedSTV() {
+	public STV() {
 	}
 
 	/**
@@ -490,13 +490,13 @@ public class NamedSTV extends NameVotingSystem implements MultiSeatElectionMetho
 	
 	public static void main( String[] argv ) {
 		try {
-			(new NamedSTV()).defaultMain( argv );
+			(new STV()).defaultMain( argv );
 		} catch ( Exception e ) {
 			e.printStackTrace();
 		}
 	}
 	
 	static {
-		registerImpl( "STV", NamedSTV.class );
+		registerImpl( "STV", STV.class );
 	}
 }

@@ -8,7 +8,7 @@ import java.util.Iterator;
  Raw sum of ratings, highest wins.
  @author Brian Olson
  */
-public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, java.io.Serializable {
+public class Raw extends NameVotingSystem implements SummableVotingSystem, java.io.Serializable {
 	private static final long serialVersionUID = 1L;
 	private void writeObject(java.io.ObjectOutputStream oos) throws java.io.IOException {
 		oos.writeLong(serialVersionUID);
@@ -23,15 +23,15 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 	NameVote[] winners = null;
 
 	/** Add a partial tally into this instance.
-	 @param other another NamedRaw.
-	 @throws ClassCastExepcion if other isn't a NamedRaw.
+	 @param other another Raw.
+	 @throws ClassCastExepcion if other isn't a Raw.
 	 */
 	public void accumulateSubVote( SummableVotingSystem other ) throws ClassCastException {
 		if ( other == null ) return;
-		if ( ! (other instanceof NamedRaw) ) {
+		if ( ! (other instanceof Raw) ) {
 			throw new ClassCastException("don't know how to add "+other.getClass().getName()+" into "+this.getClass().getName() );
 		}
-		NamedRaw it = (NamedRaw)other;
+		Raw it = (Raw)other;
 		winners = null;
 		Iterator ti = it.they.entrySet().iterator();
 		while ( ti.hasNext() ) {
@@ -115,6 +115,6 @@ public class NamedRaw extends NameVotingSystem implements SummableVotingSystem, 
 	}
 	
 	static {
-		registerImpl( "Raw", NamedRaw.class );
+		registerImpl( "Raw", Raw.class );
 	}
 };

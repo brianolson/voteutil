@@ -4,7 +4,7 @@ package org.bolson.vote;
 Instant Runoff Normalized Ratings with Proportional-Representation extension.
  @author Brian Olson
 */
-public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
+public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 	protected int seats = 1;
 
 	/**
@@ -296,6 +296,6 @@ public class NamedIRNRP extends NamedIRNR implements MultiSeatElectionMethod {
 	}
 	
 	static {
-		registerImpl( "IRNRP", NamedIRNRP.class );
+		registerImpl( "IRNRP", IRNRP.class );
 	}
 };

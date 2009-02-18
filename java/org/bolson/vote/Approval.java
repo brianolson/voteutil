@@ -7,7 +7,7 @@ import java.util.Iterator;
 /**
  @author Brian Olson
 */
-public class NamedApproval extends NameVotingSystem {
+public class Approval extends NameVotingSystem {
 	/** HashMap<String,int[]> maps names to int[1] counts. */
 	HashMap they = new HashMap();
 	/** Cache of winners. Set by getWinners. Cleared by voteRating. */
@@ -81,6 +81,6 @@ public class NamedApproval extends NameVotingSystem {
 	}
 	
 	static {
-		registerImpl( "Approval", NamedApproval.class );
+		registerImpl( "Approval", Approval.class );
 	}
 };
