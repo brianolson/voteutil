@@ -98,11 +98,11 @@ public class NamedVotingSystemTest {
 	}
 	
 	/*static final Class[] knownVotingSystems = {
-		org.bolson.vote.NamedIRNR.class,
-		org.bolson.vote.NamedIRV.class,
-		org.bolson.vote.NamedApproval.class,
-		org.bolson.vote.NamedRaw.class,
-		org.bolson.vote.NamedVRR.class,
+		org.bolson.vote.IRNR.class,
+		org.bolson.vote.IRV.class,
+		org.bolson.vote.Approval.class,
+		org.bolson.vote.Raw.class,
+		org.bolson.vote.VRR.class,
 	};
 
 	@Test(timeout=1000)
@@ -134,30 +134,30 @@ public class NamedVotingSystemTest {
 	@Test
 	public void IRNR()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testNameVotingSystem( org.bolson.vote.NamedIRNR.class );
+		testNameVotingSystem( org.bolson.vote.IRNR.class );
 	}
 	@Test
 	public void IRV()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testNameVotingSystem( org.bolson.vote.NamedIRV.class );
+		testNameVotingSystem( org.bolson.vote.IRV.class );
 	}
 	@Test
 	public void Approval()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testNameVotingSystem( org.bolson.vote.NamedApproval.class );
+		testNameVotingSystem( org.bolson.vote.Approval.class );
 	}
 	@Test
 	public void VRR()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testNameVotingSystem( org.bolson.vote.NamedVRR.class );
+		testNameVotingSystem( org.bolson.vote.VRR.class );
 	}
 	@Test
 	public void Raw()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testNameVotingSystem( org.bolson.vote.NamedRaw.class );
+		testNameVotingSystem( org.bolson.vote.Raw.class );
 	}
 	
 	public static void main( String[] argv ) {
-		org.junit.runner.JUnitCore.main("org.bolson.vote.NamedVotingSystemTest");
+		org.junit.runner.JUnitCore.main("org.bolson.vote.VotingSystemTest");
 	}
 }

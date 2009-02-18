@@ -122,17 +122,17 @@ public class SummableVotingSystemTest {
 	@Test
 	public void Raw()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		runCombos(org.bolson.vote.NamedRaw.class, 2, 100);
-		runCombos(org.bolson.vote.NamedRaw.class, 5, 1000);
-		runCombos(org.bolson.vote.NamedRaw.class, 20, 1000);
+		runCombos(org.bolson.vote.Raw.class, 2, 100);
+		runCombos(org.bolson.vote.Raw.class, 5, 1000);
+		runCombos(org.bolson.vote.Raw.class, 20, 1000);
 	}
 	
 	@Test
 	public void VRR()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		runCombos(org.bolson.vote.NamedVRR.class, 2, 100);
-		runCombos(org.bolson.vote.NamedVRR.class, 5, 1000);
-		runCombos(org.bolson.vote.NamedVRR.class, 20, 1000);
+		runCombos(org.bolson.vote.VRR.class, 2, 100);
+		runCombos(org.bolson.vote.VRR.class, 5, 1000);
+		runCombos(org.bolson.vote.VRR.class, 20, 1000);
 	}
 
 	public static void main( String[] argv ) {

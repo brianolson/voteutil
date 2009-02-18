@@ -78,17 +78,17 @@ public class IndexVotableTest {
 	@Test
 	public void IRV()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testSystemBatch(org.bolson.vote.NamedIRV.class);
+		testSystemBatch(org.bolson.vote.IRV.class);
 	}
 	@Test
 	public void IRNR()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testSystemBatch(org.bolson.vote.NamedIRNR.class);
+		testSystemBatch(org.bolson.vote.IRNR.class);
 	}
 	@Test
 	public void VRR()
 	throws java.lang.InstantiationException, java.lang.IllegalAccessException {
-		testSystemBatch(org.bolson.vote.NamedVRR.class);
+		testSystemBatch(org.bolson.vote.VRR.class);
 	}
 	
 	public void testSpeed(IndexVotable x) {
@@ -108,17 +108,17 @@ public class IndexVotableTest {
 	@Test
 	public void IRV_Speed() {
 		generateRandomIndexVotes(kSpeedNumc, kSpeedNumv);
-		testSpeed(new NamedIRV());
+		testSpeed(new IRV());
 	}
 	@Test
 	public void IRNR_Speed() {
 		generateRandomIndexVotes(kSpeedNumc, kSpeedNumv);
-		testSpeed(new NamedIRNR());
+		testSpeed(new IRNR());
 	}
 	@Test
 	public void VRR_Speed() {
 		generateRandomIndexVotes(kSpeedNumc, kSpeedNumv);
-		testSpeed(new NamedVRR());
+		testSpeed(new VRR());
 	}
 
 	public static void main( String[] argv ) {
