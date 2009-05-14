@@ -50,8 +50,15 @@ VRR* newVRR() {
 
 // x defeats y
 #define xy( x, y ) ( (x > y) ? (it->counts[x][y]) : (it->counts[y][y+x]) )
-#define setxy( x, y, v ) do { if (x > y) { it->counts[x][y] = (v); }else{ it->counts[y][y+x] = (v); } } while (0)
-//#define incxy( x, y ) do { if (x > y) { it->counts[x][y]++; }else{ it->counts[y][y+x]++; } } while (0)
+
+static __inline void _setxy( VRR* it, int x, int y, int value ) {
+	if (x > y) {
+		it->counts[x][y] = value;
+	} else {
+		it->counts[y][y+x] = value;
+	}
+}
+#define setxy( x, y, v ) _setxy( it, x, y, v )
 
 static __inline void _incxy( VRR* it, int x, int y ) {
 	if (x > y) {
@@ -635,7 +642,7 @@ static int getSchwartzSet( VRR* it, int* tally, int* defeatCount, int* sset ) {
 	if ( ! verifySchwartzSet( numc, tally, sset, numWinners ) ) {
 		fprintf(stderr, "getSchwartzSet is returning an invalid Schwartz set!\n");
 		assert(numWinners > 0);
-		//htmlTable( debugsb, numc, tally, "tally not met by schwartz set", null );  // FIXME: Java translation cruft.
+		// TODO: it would be nice to dump the intermediate count table here
 		fprintf(stderr, "bad sset: %d", sset[0] );
 		for ( j = 1; j < numWinners; j++ ) {
 			fprintf(stderr, ", %d", sset[j]);
@@ -832,54 +839,9 @@ int VRR_RankedPairs( VRR* it, int winnersLength, NameVote** winnersP, int* defea
 			defeatCount[ranks[i].j]++;
 		}
 	}
-#if 1
 	VRR_makeWinners( it, defeatCount );
 	free( defeatCount );
 	return VRR_returnWinners( it, winnersLength, winnersP );
-#else
-	{
-		// make winners
-		NameVote* winners;
-		int winc = 0;
-		it->winners = (NameVote*)malloc( sizeof(NameVote)*it->numc );
-		winners = it->winners;
-		// emit winners as they show up in ranked pairs
-		for ( i = 0; i < x; ++i ) {
-			int foundw;
-			foundw = 0;
-			for ( j = 0; j < i; ++j ) {
-				if ( ranks[j].i == ranks[i].i ) {
-					foundw = 1;  // already emitted
-				}
-			}
-			if ( foundw == 0 ) {
-				assert(winc < numc);
-				winners[winc].name = indexName( it->ni, ranks[i].i );
-				winners[winc].rating = numc - winc;
-				winc++;
-			}
-		}
-		// search all indecies to ensure ultimate looser gets last place in winners output.
-		for ( i = 0; i < numc; ++i ) {
-			int foundw;
-			foundw = 0;
-			for ( j = 0; j < x; ++j ) {
-				if ( ranks[j].i == i ) {
-					foundw = 1;  // already emitted
-				}
-			}
-			if ( foundw == 0 ) {
-				assert(winc < numc);
-				winners[winc].name = indexName( it->ni, ranks[i].i );
-				winners[winc].rating = numc - winc;
-				winc++;
-			}
-		}
-		assert(winc == numc);
-	}
-	free(ranks);
-	return VRR_returnWinners( it, winnersLength, winnersP );
-#endif
 }
 
 static void VRR_condorcetTable( VRR* it, FILE* fout, int numw, NameVote* winners );
