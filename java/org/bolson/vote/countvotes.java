@@ -69,6 +69,7 @@ public class countvotes {
 		new ShortNameClassName("raw", "org.bolson.vote.Raw", true, true),
 		new ShortNameClassName("irv", "org.bolson.vote.IRV", true, true),
 		new ShortNameClassName("stv", "org.bolson.vote.STV", false, false),
+		new ShortNameClassName("irnrp", "org.bolson.vote.IRNRP", false, false),
 	};
 
 	public static final int MODE_URL = 1;

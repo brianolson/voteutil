@@ -36,19 +36,19 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 	
 	protected void deweight( float[] voterWeight, TallyState[] evict ) {
 		for ( int v = 0; v < votes.size(); v++ ) {
-			NameVote[] ot;
+			IndexVoteSet iv;
 			double ts;
 			boolean hasIt;
 			if ( voterWeight[v] <= 0.0 ) {
 				continue;
 			}
 			ts = 0.0;
-			ot = (NameVote[])votes.get( v );
+			iv = (IndexVoteSet)votes.get( v );
 			hasIt = false;
-			for ( int c = 0; c < ot.length; c++ ) {
+			for ( int c = 0; c < iv.index.length; c++ ) {
 				TallyState tts;
 				boolean active;
-				tts = (TallyState)names.get( ot[c].name );
+				tts = (TallyState)indexTS.get(iv.index[c]);
 				active = tts.active;
 				if ( ! active ) {
 					for ( int i = 0; i < evict.length; i++ ) {
@@ -62,11 +62,11 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 				if ( ! deweightPerCurrent ) {
 					active = true; // deweight per contribution to original vote with all choices active
 				}
-				if ( active && ! Float.isNaN( ot[c].rating ) ) {
+				if ( active && ! Float.isNaN( iv.rating[c] ) ) {
 					if ( rmsnorm ) {
-						ts += ot[c].rating * ot[c].rating;
+						ts += iv.rating[c] * iv.rating[c];
 					} else {
-						ts += Math.abs(ot[c].rating);
+						ts += Math.abs(iv.rating[c]);
 					}
 				}
 			}
@@ -78,14 +78,14 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 				ts = Math.sqrt( ts );
 			}
 			ts = 1.0 / ts;
-			for ( int c = 0; c < ot.length; c++ ) {
+			for ( int c = 0; c < iv.index.length; c++ ) {
 				TallyState tts;
-				tts = (TallyState)names.get( ot[c].name );
-				if ( ! Float.isNaN( ot[c].rating ) && ot[c].rating > 0 ) {
+				tts = (TallyState)indexTS.get(iv.index[c]);
+				if ( ! Float.isNaN( iv.rating[c] ) && iv.rating[c] > 0 ) {
 					for ( int i = 0; i < evict.length; i++ ) {
 						if ( evict[i] == tts ) {
 							double tp;
-							tp = ot[c].rating * ts;
+							tp = iv.rating[c] * ts;
 							voterWeight[v] -= tp;
 							break;
 						}
@@ -95,7 +95,8 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 		}
 	}
 
-	public NameVote[] getWinners() {
+	public NameVote[] getWinners(StringBuffer explainb) {
+		rmsnorm = false;
 		if ( winners != null ) {
 			return winners;
 		}
@@ -125,6 +126,7 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 		}
 		winners = new NameVote[numc];
 		while ( numWinners < seats && numActive > 1 ) {
+			assert(numWinners + numActive == numc);
 			// per IR setup
 			for ( int c = 0; c < numc; c++ ) {
 				if ( namea[c].active ) {
@@ -133,24 +135,24 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 			}
 			// sum up into tally
 			for ( int v = 0; v < votes.size(); v++ ) {
-				NameVote[] ot;
+				IndexVoteSet iv;
 				double ts;
 				boolean hasAny;
 				if ( voterWeight[v] <= 0.0 ) {
 					continue;
 				}
 				ts = 0.0;
-				ot = (NameVote[])votes.get( v );
+				iv = (IndexVoteSet)votes.get( v );
 				hasAny = false;
-				for ( int c = 0; c < ot.length; c++ ) {
+				for ( int c = 0; c < iv.index.length; c++ ) {
 					TallyState tts;
-					tts = (TallyState)names.get( ot[c].name );
-					if ( tts.active && ! Float.isNaN( ot[c].rating ) ) {
+					tts = (TallyState)indexTS.get(iv.index[c]);
+					if ( tts.active && ! Float.isNaN( iv.rating[c] ) ) {
 						hasAny = true;
 						if ( rmsnorm ) {
-							ts += ot[c].rating * ot[c].rating;
+							ts += iv.rating[c] * iv.rating[c];
 						} else {
-							ts += Math.abs(ot[c].rating);
+							ts += Math.abs(iv.rating[c]);
 						}
 					}
 				}
@@ -159,12 +161,12 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 						ts = Math.sqrt( ts );
 					}
 					ts = 1.0 / ts;
-					for ( int c = 0; c < ot.length; c++ ) {
+					for ( int c = 0; c < iv.index.length; c++ ) {
 						TallyState tts;
-						tts = (TallyState)names.get( ot[c].name );
-						if ( tts.active && ! Float.isNaN( ot[c].rating ) ) {
+						tts = (TallyState)indexTS.get(iv.index[c]);
+						if ( tts.active && ! Float.isNaN( iv.rating[c] ) ) {
 							double tp;
-							tp = ot[c].rating * ts;
+							tp = iv.rating[c] * ts;
 							if ( ! Double.isNaN( tp ) ) {
 								tts.tally += tp * voterWeight[v];
 							}
@@ -236,13 +238,13 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 			} else {
 				// deactivate losers
 				if ( mintie == 1 ) {
-					winners[numWinners+numActive] = new NameVote( namea[mini].name, (float)namea[mini].tally );
+					winners[numWinners+numActive-1] = new NameVote( namea[mini].name, (float)namea[mini].tally );
 					namea[mini].active = false;
 					numActive--;
 				} else if ( mintie > 1 ) {
 					for ( i = 0; i < namea.length; i++ ) {
 						if ( namea[i].tally == min ) {
-							winners[numWinners+numActive] = new NameVote( namea[i].name, (float)namea[i].tally );
+							winners[numWinners+numActive-1] = new NameVote( namea[i].name, (float)namea[i].tally );
 							numActive--;
 							namea[i].active = false;
 						}
@@ -267,7 +269,8 @@ public class IRNRP extends IRNR implements MultiSeatElectionMethod {
 					}
 				}
 			}
-			winners[numWinners+numActive] = new NameVote( namea[mini].name, (float)namea[mini].tally );
+			assert(mini != -1);
+			winners[numWinners+numActive-1] = new NameVote( namea[mini].name, (float)namea[mini].tally );
 			namea[mini].active = false;
 			numActive--;
 		}
