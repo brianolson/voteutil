@@ -19,6 +19,7 @@ public class countvotes {
 		"\t[--dump][--disable-all][--enable-all][--seats n]",
 		"\t[--disable method][--enable method][--explain][--full-html|--no-full-html|--text|--short]",
 		"\t[--histMax n][--histMin n]",
+		"\t[--time]",
 		"\t[-- args to methods [debug]] < votedata"
 	};
 	public static void printUsage() {
@@ -88,6 +89,7 @@ public class countvotes {
 	}
 
 	public static void main( String[] argv ) {
+		long startTime = System.currentTimeMillis();
 		boolean debug = false;
 		InputStream fin = System.in;
 		String[] methodArgs = null;
@@ -99,6 +101,7 @@ public class countvotes {
 		boolean explain = false;
 		PrintWriter out = null;
 		int seats = 1;
+		boolean printTime = false;
 		
 		Histogram histInstance = null;
 		NameVotingSystem firstWinner = null;
@@ -193,6 +196,8 @@ public class countvotes {
 				}
 			} else if ( argv[i].equals("--text") ) {
 				outmode = OUT_TEXT;
+			} else if ( argv[i].equals("--time") ) {
+				printTime = true;
 			} else if ( argv[i].equals("--short") ) {
 				outmode = OUT_SHORT;
 			} else if ( argv[i].equals("--dump") ) {
@@ -357,45 +362,47 @@ public class countvotes {
 				out.println();
 			}
 			out.flush();
-			return;
-		}
-		if ( outmode == OUT_TEXT ) {
+		} else if ( outmode == OUT_TEXT ) {
 			// simple plain text output
 			for ( int vi = 0; vi < vs.length; vi++ ) {
 				out.println( vs[vi].name() );
 			}
 			out.flush();
-			return;
-		}
-		if ( outmode == OUT_SHORT ) {
-		}
-		// only HTML outputting modes remain below here
-		for ( int vi = 0; vi < vs.length; vi++ ) {
-			out.print( "<h2>" );
-			out.print( vs[vi].name() );
-			out.print( "</h2>" );
-			String hs = null;
-			if ( vs[vi] == histInstance && firstWinner != null ) {
-				hs = histInstance.htmlSummary( new StringBuffer(), firstWinner.getWinners() ).toString();
-			} else if ( explain ) {
-				hs = vs[vi].htmlExplain();
-			} else {
-				hs = vs[vi].htmlSummary();
-			}
-			if ( debug ) {
-				String dbs = vs[vi].getDebug();
-				if ( dbs != null && dbs.length() > 0 ) {
-					out.println( "<h3>debug:</h3><pre>" );
-					out.println( dbs );
-					out.println( "</pre>" );
+		} else if ( outmode == OUT_SHORT ) {
+		} else {
+			// only HTML outputting modes remain below here
+			for ( int vi = 0; vi < vs.length; vi++ ) {
+				out.print( "<h2>" );
+				out.print( vs[vi].name() );
+				out.print( "</h2>" );
+				String hs = null;
+				if ( vs[vi] == histInstance && firstWinner != null ) {
+					hs = histInstance.htmlSummary( new StringBuffer(), firstWinner.getWinners() ).toString();
+				} else if ( explain ) {
+					hs = vs[vi].htmlExplain();
+				} else {
+					hs = vs[vi].htmlSummary();
 				}
+				if ( debug ) {
+					String dbs = vs[vi].getDebug();
+					if ( dbs != null && dbs.length() > 0 ) {
+						out.println( "<h3>debug:</h3><pre>" );
+						out.println( dbs );
+						out.println( "</pre>" );
+					}
+				}
+				out.println( hs );
 			}
-			out.println( hs );
+			if ( outmode == OUT_FULL_HTML ) {
+				out.println("</body></html>");
+			}
+			out.flush();
 		}
-		if ( outmode == OUT_FULL_HTML ) {
-			out.println("</body></html>");
+		if (printTime) {
+			long doneTime = System.currentTimeMillis();
+			double dt = (doneTime - startTime) / 1000.0;
+			System.err.println(dt + " seconds");
 		}
-		out.flush();
 	}
 	
 	protected static final String[] gmiPrefixes = {

@@ -58,7 +58,7 @@ public class NamedVotingSystemTest {
 				name = winnerName;
 			} else {
 				rating = rand.nextFloat() - 1.0f;
-				name = new String(new char[]{(char)(' ' + namei)});
+				name = Integer.toString(namei, 36);
 			}
 			vote[namei] = new NameVotingSystem.NameVote( name, rating );
 		}
