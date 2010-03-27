@@ -138,6 +138,20 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	public abstract void voteRating( NameVote[] vote );
 	
 	/**
+	 * Recast a rankings vote (1st, 2nd, 3rd, ...) as a ratings vote.
+	 * Each ranking becomes rating (numchoices + 1 - ranking)  
+	 * Generates a lot of garbage, creating new array and element objects.
+	 * Override this if it needs to be more efficient.
+	 */
+	public void voteRanking( NameVote[] vote ) {
+		NameVote[] out = new NameVote[vote.length];
+		for (int i = 0; i < vote.length; ++i) {
+			out[i] = new NameVote(vote[i].name, vote.length + 1 - vote[i].rating);
+		}
+		voteRating(out);
+	}
+	
+	/**
 	@return A sorted array of (name,rating) pairs.
 	 This is the total ordering of all choices, not just the elected winner(s).
 	 'Total ordering' may be imprecise below top few choices.

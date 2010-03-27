@@ -32,6 +32,15 @@ public class Histogram extends NameVotingSystem {
 	double maxRecorded = Double.MAX_VALUE * -1.0;
 	double sum;
 	protected int votes;
+	
+	public void setRankingMode() {
+		lowfirst = true;
+		labelname = "Ranking";
+	}
+	public void setRatingMode() {
+		lowfirst = false;
+		labelname = "Rating";
+	}
 
 	protected class Choice implements Comparable {
 		public int[] counts;
@@ -184,6 +193,14 @@ min = -0.5, max = 4.5
 				c.vote( vote[i].rating );
 			}
 		}
+	}
+	/**
+	 * Counts things as buckets, just like anything else, but better for (1st, 2nd, 3rd, ... ranking data).
+	 * asserts lowfirst mode.
+	 */
+	public void voteRanking( NameVote[] vote ) {
+		assert(lowfirst);
+		voteRating(vote);
 	}
 	protected String[] names() {
 		String[] names = new String[they.size()];

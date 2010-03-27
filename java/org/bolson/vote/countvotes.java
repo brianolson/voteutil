@@ -18,7 +18,7 @@ public class countvotes {
 		"\t[-i votedata|-igz gzipped-votedata]",
 		"\t[--dump][--disable-all][--enable-all][--seats n]",
 		"\t[--disable method][--enable method][--explain][--full-html|--no-full-html|--text|--short]",
-		"\t[--histMax n][--histMin n]",
+		"\t[--histMax n][--histMin n][--rankings]",
 		"\t[--time]",
 		"\t[-- args to methods [debug]] < votedata"
 	};
@@ -102,6 +102,7 @@ public class countvotes {
 		PrintWriter out = null;
 		int seats = 1;
 		boolean printTime = false;
+		boolean rankings = false;
 		
 		Histogram histInstance = null;
 		NameVotingSystem firstWinner = null;
@@ -181,6 +182,8 @@ public class countvotes {
 				mode = MODE_GTEQ_SPEC;
 			} else if ( argv[i].equals("--explain") ) {
 				explain = true;
+			} else if ( argv[i].equals("--rankings") ) {
+				rankings = true;
 			} else if ( argv[i].equals("--full-html") ) {
 				outmode = OUT_FULL_HTML;
 			} else if ( argv[i].equals("--no-full-html") ) {
@@ -301,6 +304,9 @@ public class countvotes {
 				new IRV(),
 			};
 		}
+		if (histInstance != null && rankings) {
+			histInstance.setRankingMode();
+		}
 		for ( int vi = 0; vi < vs.length; vi++ ) {
 			if ( methodArgs == null ) {
 				vs[vi].init( null );
@@ -330,7 +336,11 @@ public class countvotes {
 					out.println();
 				}
 				for ( int vi = 0; vi < vs.length; vi++ ) {
-					vs[vi].voteRating( nv );
+					if (rankings) {
+						vs[vi].voteRanking( nv );
+					} else {
+						vs[vi].voteRating( nv );
+					}
 				}
 			}
 		} catch ( Exception e ) {
