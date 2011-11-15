@@ -157,6 +157,8 @@ void strDePercentHexify( char* dest, const char* src ) {
 		if ( c == '%' ) {
 			*dest = (denibble( src[1] ) << 4) | denibble( src[2] );
 			src += 2;
+		} else if ( c == '+' ) {
+			*dest = ' ';
 		} else {
 			*dest = c;
 		}
@@ -173,6 +175,8 @@ void strnDePercentHexify( char* dest, const char* src, int srclen ) {
 			*dest = (denibble( src[1] ) << 4) | denibble( src[2] );
 			src += 2;
 			srclen -= 2;
+		} else if ( c == '+' ) {
+			*dest = ' ';
 		} else {
 			*dest = c;
 		}
