@@ -6,11 +6,12 @@ Usage:
           [--urlhandler cmd]
 
     --tmpdir dir      defaults to using perl tempdir() otherwise
-    --keep-temps      don't delete temporary files if all tests pass (normally
+    --keep-temps      do not delete temporary files if all tests pass (normally
                       kept on failures)
     --perf            Test speed, not correctness.
     --check           Test correctness, not speed (default).
     --both            Test both speed and correctness.
+    --maxbad n        Maximum number of tests that can fail before stopping.
     -n runs           Number fo times to repeat correctness test.
     --urlhandler cmd  Execute `cmd \$url` for each failed test explain output.
 EOF
@@ -48,7 +49,7 @@ $cleanup = 1;
 $do_correcness = 1;
 $do_perf = 0;
 $failcount = 0;
-$maxfail = 3;
+$maxfail = 1;
 $do_build = 0;
 
 while ( $arg = shift ) {
@@ -56,6 +57,9 @@ while ( $arg = shift ) {
 		$n = shift;
 	} elsif ( $arg eq "--tmpdir" ) {
 		$tmpdir = shift;
+		$cleanup = 0;
+	} elsif ( $arg eq "--maxbad" ) {
+		$maxfail = shift;
 		$cleanup = 0;
 	} elsif ( $arg eq "--keep-temps" ) {
 		$cleanup = 0;

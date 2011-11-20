@@ -12,17 +12,18 @@ func (it *RawSummation) Vote(vote NameVote) {
 	if it.Names == nil {
 		it.Names = new(NameMap)
 	}
-	for name, value := range vote {
-		x := it.Names.NameToIndex(name)
+	for _, nv := range vote {
+		x := it.Names.NameToIndex(nv.Name)
 		for x < len(it.sum) {
 			it.sum = append(it.sum, 0.0)
 		}
-		it.sum[x] += value
+		it.sum[x] += nv.Rating
 	}
 }
 
 func (it *RawSummation) VoteIndexes(vote IndexVote) {
-	for x, value := range vote {
+	for i, value := range vote.Ratings {
+		x := vote.Indexes[i]
 		for x < len(it.sum) {
 			it.sum = append(it.sum, 0.0)
 		}
@@ -39,11 +40,13 @@ func (it *RawSummation) GetWinners() *NameVote {
 			} else {
 				value = 0.0
 			}
-			(*out)[name] = value
+			*out = append(*out, NameRating{name, value})
+			//(*out)[name] = value
 		}
 	} else {
 		for x, value := range it.sum {
-			(*out)[strconv.Itoa(x)] = value
+			*out = append(*out, NameRating{strconv.Itoa(x), value})
+			//(*out)[strconv.Itoa(x)] = value
 		}
 	}
 	return out
