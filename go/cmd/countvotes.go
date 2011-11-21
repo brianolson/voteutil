@@ -9,7 +9,7 @@ import "voting"
 
 
 var filename = flag.String("in", "", "file name to read (default stdin")
-
+var testMode = flag.Bool("test", false, "do test-mode output")
 
 func ReadLine(f *bufio.Reader) (string, os.Error) {
 	pdata, isPrefix, err := f.ReadLine()
@@ -28,6 +28,7 @@ func ReadLine(f *bufio.Reader) (string, os.Error) {
 func main() {
 	var rawin io.Reader
 	var err os.Error
+	//var methods []*voting.ElectionMethod
 	if len(*filename) > 0 {
 		rawin, err = os.Open(*filename)
 		if err != nil {
@@ -37,17 +38,24 @@ func main() {
 		rawin = os.Stdin
 	}
 	in := bufio.NewReader(rawin)
-	vrr := new(voting.VRR)
+	methods := make([]voting.ElectionMethod, 1)
+	methods[0] = new(voting.VRR)
+	//vrr := new(voting.VRR)
 	for true {
 		line, err := ReadLine(in)
 		if err != nil {
 			break
 		}
 		vote, err := voting.UrlToNameVote(line)
-		vrr.Vote(*vote)
+		for _, em := range methods {
+			em.Vote(*vote)
+		}
+		//vrr.Vote(*vote)
 	}
-	winners := vrr.GetWinners()
-	fmt.Printf("winners:\n")
-	fmt.Print(winners)
+	for _, em := range methods {
+		result, winners := em.GetResult()
+		fmt.Printf("winners:\n")
+		fmt.Print(result, winners)
+	}
 }
 

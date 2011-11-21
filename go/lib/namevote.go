@@ -83,10 +83,28 @@ func UrlToNameVote(vote string) (*NameVote, os.Error) {
 }
 
 type ElectionMethod interface {
+	// Add a vote to this instance.
 	Vote(NameVote)
+	
+	// Add a vote to this instance.
 	VoteIndexes(IndexVote)
-	GetWinners() *NameVote
+
+	// Get sorted result for the choices, and the number of winners (may be >1 if there is a tie.
+	GetResult() (scores *NameVote, numWinners int)
+
+	// Return HTML explaining the result.
 	HtmlExlpaination() string
+
+	// Set shared NameMap
+	SetSharedNameMap(names *NameMap)
+
+	// simple tag, lower case, no spaces
+	ShortName() string
+}
+
+type MultiSeat interface {
+	// Set the number of desired winners
+	SetSeats(seats int)
 }
 
 /*

@@ -294,7 +294,7 @@ StoredIndexVoteNode* newStoredIndexVoteNodeFromURL( NameIndex* ni, const char* v
 				memcpy( erd, nptr, elen );
 				erd[elen] = '\0';
 				fprintf(stderr,"strtod could not parse rating \"%s\" for name \"%s\"\n", erd, name );
-				toret->vote[vi].rating = nanf(NULL);
+				toret->vote[vi].rating = nanf("");
 			}
 		}
 		free( name );
@@ -368,7 +368,7 @@ StoredIndexVoteNode* newStoredIndexVoteNodeFromIndexURL( const char* votestr ) {
 				memcpy( erd, nptr, elen );
 				erd[elen] = '\0';
 				fprintf(stderr,"strtod could not parse rating \"%s\" for name \"%d\"\n", erd, toret->vote[vi].index );
-				toret->vote[vi].rating = nanf(NULL);
+				toret->vote[vi].rating = nanf("");
 			}
 		}
 		pos = nextbr + 1;

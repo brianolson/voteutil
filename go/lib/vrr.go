@@ -103,7 +103,7 @@ func (it *VRR) VoteIndexes(vote IndexVote) {
 	it.total++
 }
 
-func (it *VRR) makeWinners(defeats []int) *NameVote {
+func (it *VRR) makeWinners(defeats []int) (*NameVote, int) {
 	out := new(NameVote)
 	maxd := 0
 	notDone := true
@@ -121,10 +121,18 @@ func (it *VRR) makeWinners(defeats []int) *NameVote {
 		}
 		maxd++
 	}
-	return out
+	tieCount := 1
+	for i := 1; i < len(*out); i++ {
+		if (*out)[i].Rating == (*out)[0].Rating {
+			tieCount++
+		} else {
+			break
+		}
+	}
+	return out, tieCount
 }
 
-func (it *VRR) GetWinners() *NameVote {
+func (it *VRR) GetResult() (*NameVote, int) {
 	defeats := make([]int, len(it.counts))
 	for i := 0; i < len(it.counts); i++ {
 		for j := i + 1; j < len(it.counts); j++ {
@@ -148,9 +156,17 @@ func (it *VRR) GetWinners() *NameVote {
 	fmt.Printf("total=%d\n", it.total)
 	// TODO: drop weakest defeat
 	out := new(NameVote)
-	return out
+	return out, -1
 }
 
 func (it *VRR) HtmlExlpaination() string {
 	return ""
+}
+
+func (it *VRR) SetSharedNameMap(names *NameMap) {
+	it.Names = names
+}
+
+func (it *VRR) ShortName() string {
+	return "vrr"
 }

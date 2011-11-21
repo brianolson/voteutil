@@ -11,6 +11,7 @@ const char* helptext = "countvotes [--dump][--debug][--preindexed]\n"
 "\t[-o filename|--out filenam]\n"
 "\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"
 "\t[input file name|-i votesfile|-igz gzipped-votesfile]\n"
+"\t[--test]\n"
 #if HAVE_POSTGRES
 "\t--pg \"PostgreSQL connect string\" --query \"SQL;\"\n"
 #endif
