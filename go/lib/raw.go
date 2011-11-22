@@ -30,7 +30,7 @@ func (it *RawSummation) VoteIndexes(vote IndexVote) {
 		it.sum[x] += value
 	}
 }
-func (it *RawSummation) GetWinners() *NameVote {
+func (it *RawSummation) GetResult() (*NameVote, int) {
 	out := new(NameVote)
 	if it.Names != nil {
 		for name, x := range it.Names.Indexes {
@@ -49,8 +49,17 @@ func (it *RawSummation) GetWinners() *NameVote {
 			//(*out)[strconv.Itoa(x)] = value
 		}
 	}
-	return out
+	// TODO: sort, count ties
+	return out, 1
 }
 func (it *RawSummation) HtmlExlpaination() string {
 	return ""
+}
+
+func (it *RawSummation) SetSharedNameMap(names *NameMap) {
+	it.Names = names
+}
+
+func (it *RawSummation) ShortName() string {
+	return "raw"
 }

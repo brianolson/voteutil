@@ -25,6 +25,11 @@ func ReadLine(f *bufio.Reader) (string, os.Error) {
 	return string(data), err
 }
 
+/*
+ test output format:
+{{system name}}: {{winner name}}[, {{winner name}}]\n
+*/
+
 func main() {
 	var rawin io.Reader
 	var err os.Error
@@ -54,8 +59,19 @@ func main() {
 	}
 	for _, em := range methods {
 		result, winners := em.GetResult()
-		fmt.Printf("winners:\n")
-		fmt.Print(result, winners)
+		if *testMode {
+			fmt.Printf("%s: ", em.ShortName())
+			for i := 0; i < winners; i++ {
+				if i > 0 {
+					fmt.Print(", ")
+				}
+				fmt.Print((*result)[i].Name)
+			}
+			fmt.Print("\n")
+		} else {
+			fmt.Printf("winners:\n")
+			fmt.Print(result, winners)
+		}
 	}
 }
 
