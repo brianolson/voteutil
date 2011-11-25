@@ -4,6 +4,8 @@
   </description>
   
   <target name="compile">
+	<mkdir dir="classes" />
+	<mkdir dir="dependlibs" />
     <javac srcdir="org" destdir="classes" source="1.4" debug="true">
 <!--
 	  Lots of unchecked references in post 1.4; they want to use <Type> containers.
@@ -26,6 +28,7 @@
   </target>
   
   <target name="compile-test">
+	<mkdir dir="test/classes" />
     <javac srcdir="test/org" destdir="test/classes" deprecation="on" debug="true">
       <classpath>
         <fileset dir="dependlibs" includes="**/*.jar" />
