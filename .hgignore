@@ -4,8 +4,12 @@ c/countvotes
 c/libvote.a
 c/permuteutil
 go/.*/_go_\..*
+go/.*/_gotest_\..*
 go/cmd/countvotes
 go/lib/_obj/voting.a
+go/.*/_test/.*
+go/.*/_testmain\..*
+go/.*/.\.out
 java/.*\.class
 java/vote.jar
 python/.*\.pyc

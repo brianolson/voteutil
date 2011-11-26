@@ -1,5 +1,6 @@
 package voting
 
+import "sort"
 import "strconv"
 import "os"
 import "url"
@@ -22,6 +23,24 @@ func NewIndexVote(size int) *IndexVote {
 	out.Indexes = make([]int, size)
 	out.Ratings = make([]float64, size)
 	return out
+}
+
+// In-place sort
+func (it *NameVote) Sort() {
+	sort.Sort(it)
+}
+
+// sort.Interface
+func (it *NameVote) Len() int {
+	return len(*it)
+}
+func (it *NameVote) Less(i, j int) bool {
+	return (*it)[i].Rating > (*it)[j].Rating
+}
+func (it *NameVote) Swap(i, j int) {
+	t := (*it)[i]
+	(*it)[i] = (*it)[j]
+	(*it)[j] = t
 }
 
 // Map from names to indexes.

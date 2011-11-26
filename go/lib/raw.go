@@ -14,7 +14,7 @@ func (it *RawSummation) Vote(vote NameVote) {
 	}
 	for _, nv := range vote {
 		x := it.Names.NameToIndex(nv.Name)
-		for x < len(it.sum) {
+		for x >= len(it.sum) {
 			it.sum = append(it.sum, 0.0)
 		}
 		it.sum[x] += nv.Rating
@@ -49,7 +49,12 @@ func (it *RawSummation) GetResult() (*NameVote, int) {
 			//(*out)[strconv.Itoa(x)] = value
 		}
 	}
-	// TODO: sort, count ties
+	out.Sort()
+	bestv := (*out)[0].Rating
+	tiecount := 1
+	for i := 1; (i < len(*out)) && ((*out)[i].Rating == bestv); i++ {
+		tiecount++
+	}
 	return out, 1
 }
 func (it *RawSummation) HtmlExlpaination() string {
