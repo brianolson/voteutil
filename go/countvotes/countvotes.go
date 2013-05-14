@@ -31,6 +31,7 @@ func ReadLine(f *bufio.Reader) (string, error) {
 */
 
 func main() {
+	flag.Parse()
 	var rawin io.Reader
 	var err error
 	//var methods []*voteutil.ElectionMethod
