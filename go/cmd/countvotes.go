@@ -5,13 +5,13 @@ import "flag"
 import "fmt"
 import "io"
 import "os"
-import "voting"
+import "voteutil"
 
 
 var filename = flag.String("in", "", "file name to read (default stdin")
 var testMode = flag.Bool("test", false, "do test-mode output")
 
-func ReadLine(f *bufio.Reader) (string, os.Error) {
+func ReadLine(f *bufio.Reader) (string, error) {
 	pdata, isPrefix, err := f.ReadLine()
 	if ! isPrefix {
 		return string(pdata), err
@@ -32,8 +32,8 @@ func ReadLine(f *bufio.Reader) (string, os.Error) {
 
 func main() {
 	var rawin io.Reader
-	var err os.Error
-	//var methods []*voting.ElectionMethod
+	var err error
+	//var methods []*voteutil.ElectionMethod
 	if len(*filename) > 0 {
 		rawin, err = os.Open(*filename)
 		if err != nil {
@@ -43,15 +43,15 @@ func main() {
 		rawin = os.Stdin
 	}
 	in := bufio.NewReader(rawin)
-	methods := make([]voting.ElectionMethod, 1)
-	methods[0] = new(voting.VRR)
-	//vrr := new(voting.VRR)
+	methods := make([]voteutil.ElectionMethod, 1)
+	methods[0] = new(voteutil.VRR)
+	//vrr := new(voteutil.VRR)
 	for true {
 		line, err := ReadLine(in)
 		if err != nil {
 			break
 		}
-		vote, err := voting.UrlToNameVote(line)
+		vote, err := voteutil.UrlToNameVote(line)
 		for _, em := range methods {
 			em.Vote(*vote)
 		}

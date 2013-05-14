@@ -10,3 +10,4 @@ java/.*\.class
 java/vote.jar
 python/.*\.pyc
 simulator/.*\.o
+Attic
