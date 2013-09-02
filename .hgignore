@@ -11,3 +11,5 @@ java/vote.jar
 python/.*\.pyc
 simulator/.*\.o
 Attic
+.*~$
+.DS_Store
