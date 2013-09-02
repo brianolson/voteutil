@@ -4,9 +4,10 @@ c/countvotes
 c/libvote.a
 c/permuteutil
 go/.*/_go_\..*
-go/cmd/countvotes
+go/countvotes/countvotes
 go/lib/_obj/voting.a
 java/.*\.class
 java/vote.jar
 python/.*\.pyc
 simulator/.*\.o
+Attic
