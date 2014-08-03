@@ -5,7 +5,9 @@ c/libvote.a
 c/permuteutil
 go/.*/_go_\..*
 go/countvotes/countvotes
-go/lib/_obj/voting.a
+go/lib
+go/pkg
+go/.*/Makefile
 go/.*/_test/.*
 go/.*/_testmain\..*
 go/.*/.\.out

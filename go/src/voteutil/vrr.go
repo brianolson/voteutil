@@ -47,14 +47,15 @@ type nvi struct {
 	Rating float64
 }
 
+// ElectionMethod interface
 func (it *VRR) Vote(vote NameVote) {
 	maxi := 0
 	voti := make([]nvi, len(vote))
 	i := 0
+	if it.Names == nil {
+		it.Names = new(NameMap)
+	}
 	for _, nv := range vote {
-		if it.Names == nil {
-			it.Names = new(NameMap)
-		}
 		index := it.Names.NameToIndex(nv.Name)
 		voti[i].Name = nv.Name
 		voti[i].Rating = nv.Rating
@@ -78,6 +79,7 @@ func (it *VRR) Vote(vote NameVote) {
 	it.total++
 }
 
+// ElectionMethod interface
 func (it *VRR) VoteIndexes(vote IndexVote) {
 	if len(vote.Indexes) <= 0 {
 		return
@@ -132,6 +134,7 @@ func (it *VRR) makeWinners(defeats []int) (*NameVote, int) {
 	return out, tieCount
 }
 
+// ElectionMethod interface
 func (it *VRR) GetResult() (*NameVote, int) {
 	defeats := make([]int, len(it.counts))
 	for i := 0; i < len(it.counts); i++ {
@@ -159,14 +162,17 @@ func (it *VRR) GetResult() (*NameVote, int) {
 	return out, -1
 }
 
+// ElectionMethod interface
 func (it *VRR) HtmlExlpaination() string {
 	return ""
 }
 
+// ElectionMethod interface
 func (it *VRR) SetSharedNameMap(names *NameMap) {
 	it.Names = names
 }
 
+// ElectionMethod interface
 func (it *VRR) ShortName() string {
-	return "vrr"
+	return "Virtual Round Robin"
 }

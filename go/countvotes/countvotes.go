@@ -1,15 +1,117 @@
 package main
 
 import "bufio"
-import "flag"
+//import "flag" // can't use, doesn't allow repeated options (--enable vrr --enable irnr)
 import "fmt"
+import "log"
 import "io"
 import "os"
+import "strings"
 import "voteutil"
 
 
-var filename = flag.String("in", "", "file name to read (default stdin")
-var testMode = flag.Bool("test", false, "do test-mode output")
+// from countvotes.c
+/*
+countvotes [--dump][--debug][--preindexed]\n"
+"\t[--full-html|--no-full-html|--no-html-head]\n"
+"\t[--disable-all][--enable-all][--seats n]\n"
+"\t[--rankings][--help|-h|--list][--explain]\n"
+"\t[-o filename|--out filenam]\n"
+"\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"
+"\t[input file name|-i votesfile|-igz gzipped-votesfile]\n"
+"\t[--test]
+*/
+
+
+//var filename = flag.String("in", "", "file name to read (default stdin")
+//var testMode = flag.Bool("test", false, "do test-mode output")
+
+
+func msls_get(it map[string] []string, key string) []string {
+	sl, ok := it[key]
+	if ok {
+		return sl
+	}
+	sl = make([]string, 0, 1)
+	it[key] = sl
+	return sl
+}
+
+
+// Probably takes os.Args[1:]
+// argnums is map from --?(option name) [some number of arguments for option, probably 0 or 1]
+// --?(option name)=(.*) is always interpreted as one argument
+// "--" stops parsing and all further args go to the list of non-option program arguments at out[""]
+func ParseArgs(args []string, argnums map[string]int) (map[string] []string, error) {
+	out := make(map[string] []string)
+	pos := 0
+	for pos < len(args) {
+		ostr := args[pos]
+		if ostr == "--" {
+			sl := msls_get(out, "")
+			sl = append(sl, args[pos+1:]...)
+			out[""] = sl
+			break
+		}
+		if ostr[0] == '-' {
+			var argname string
+			var eqpart string
+			eqpos := strings.IndexRune(ostr, '=')
+			if eqpos < 0 {
+				eqpos = len(ostr)
+			} else {
+				eqpart = ostr[eqpos+1:]
+			}
+			if ostr[1] == '-' {
+				argname = ostr[2:eqpos]
+			} else {
+				argname = ostr[1:eqpos]
+			}
+			argnum, ok := argnums[argname]
+			if !ok {
+				return nil, fmt.Errorf("unknown arg: %#v", ostr)
+			}
+			sl := msls_get(out, argname)
+			if eqpos < len(ostr) {
+				if argnum != 1 {
+					return nil, fmt.Errorf("got =part which is only valid for args which take one value, $#v takes %d values", argname, argnum)
+				}
+				sl = append(sl, eqpart)
+			} else {
+				for argnum > 0 {
+					pos++
+					argnum--
+					if pos >= len(args) {
+						return nil, fmt.Errorf("missing argument to %#v", ostr)
+					}
+					sl = append(sl, args[pos])
+				}
+			}
+			out[argname] = sl
+		} else {
+			sl := msls_get(out, "")
+			sl = append(sl, ostr)
+			out[""] = sl
+		}
+		pos++;
+	}
+
+	return out, nil
+}
+
+// Get args by multiple names.
+// e.g. ["i", "input"] gets things passed to -i or --input (or --i or -input)
+func GetArgs(args map[string] []string, names []string) []string {
+	out := []string{}
+	for _, name := range(names) {
+		values, ok := args[name]
+		if ok {
+			out = append(out, values...)
+		}
+	}
+	return out
+}
+
 
 func ReadLine(f *bufio.Reader) (string, error) {
 	pdata, isPrefix, err := f.ReadLine()
@@ -25,48 +127,118 @@ func ReadLine(f *bufio.Reader) (string, error) {
 	return string(data), err
 }
 
+type VoteSource interface {
+	// Return (vote, nil) normally, (nil, nil) on EOF.
+	GetVote() (*voteutil.NameVote, error)
+}
+
+type FileVoteSource struct {
+	rawReader io.Reader
+	bReader *bufio.Reader
+}
+
+func OpenFileVoteSource(path string) (*FileVoteSource, error) {
+	rawin, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	return &FileVoteSource{rawin, bufio.NewReader(rawin)}, nil
+}
+
+func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
+	// TODO: check EOF and return (nil, nil)
+	line, err := ReadLine(it.bReader)
+	if err != nil {
+		return nil, err
+	}
+	return voteutil.UrlToNameVote(line)
+}
+
 /*
  test output format:
 {{system name}}: {{winner name}}[, {{winner name}}]\n
 */
 
-func main() {
-	flag.Parse()
-	var rawin io.Reader
-	var err error
-	//var methods []*voteutil.ElectionMethod
-	if len(*filename) > 0 {
-		rawin, err = os.Open(*filename)
-		if err != nil {
-			return
-		}
-	} else {
-		rawin = os.Stdin
+type Election struct {
+	methods []voteutil.ElectionMethod
+}
+
+func (it *Election) Vote(vote *voteutil.NameVote) {
+	for _, m := range(it.methods) {
+		m.Vote(*vote)
 	}
-	in := bufio.NewReader(rawin)
-	methods := make([]voteutil.ElectionMethod, 1)
-	methods[0] = new(voteutil.VRR)
-	//vrr := new(voteutil.VRR)
+}
+
+func (it *Election) VoteAll(source VoteSource) error {
 	for true {
-		line, err := ReadLine(in)
+		vote, err := source.GetVote()
 		if err != nil {
+			return err
+		}
+		if vote == nil {
+			return nil
+		}
+		it.Vote(vote)
+	}
+	return nil
+}
+
+
+func main() {
+	//flag.Parse()
+	//var rawin io.Reader
+	var err error
+
+	argnums := map[string]int{
+		"o": 1,
+		"out": 1,
+		"test": 0,
+		"i": 1,
+	}
+
+	args, err := ParseArgs(os.Args[1:], argnums)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	outNames := GetArgs(args, []string{"o", "out"})
+
+	if len(outNames) > 1 {
+		fmt.Printf("error: can accept at most one output file name, got %#v", outNames)
+		return
+	}
+
+	inNames := GetArgs(args, []string{"i", ""})
+
+	_, testMode := args["test"]
+
+	methods := make([]voteutil.ElectionMethod, 2)
+	methods[0] = new(voteutil.VRR)
+	methods[1] = new(voteutil.InstantRunoffNormalizedRatings)
+
+	election := Election{methods}
+
+	for _, path := range(inNames) {
+		vs, err := OpenFileVoteSource(path)
+		if err != nil {
+			fmt.Printf("%s: %s\n", path, err)
 			break
 		}
-		vote, err := voteutil.UrlToNameVote(line)
-		for _, em := range methods {
-			em.Vote(*vote)
-		}
-		//vrr.Vote(*vote)
+		election.VoteAll(vs)
 	}
+	
 	for _, em := range methods {
 		result, winners := em.GetResult()
-		if *testMode {
+		if testMode {
 			fmt.Printf("%s: ", em.ShortName())
-			for i := 0; i < winners; i++ {
+			//for i := 0; i < winners; i++ {
+			for i, res := range(*result) {
 				if i > 0 {
 					fmt.Print(", ")
 				}
-				fmt.Print((*result)[i].Name)
+				//fmt.Print((*result)[i].Name)
+				fmt.Print(res.Name)
 			}
 			fmt.Print("\n")
 		} else {

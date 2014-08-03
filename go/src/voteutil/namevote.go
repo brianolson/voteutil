@@ -3,17 +3,22 @@ package voteutil
 import "errors"
 import "sort"
 import "strconv"
-//import "os"
 import "net/url"
 
 type NameRating struct {
-	Name string
+	Name   string
 	Rating float64
 }
 
 //type NameVote map[string] float64
 //type IndexVote map[int] float64
 type NameVote []NameRating
+
+// IndexVote is perhaps excessively optimized to pack nicely.
+//
+// You might think that a slice of struct of {int,float} would be nicer, and
+// you'd be right, but (int32,float64) will leave 4 bytes of dead space when you
+// make an array of them. int[],float64[] will pack more efficiently.
 type IndexVote struct {
 	Indexes []int
 	Ratings []float64
@@ -47,13 +52,13 @@ func (it *NameVote) Swap(i, j int) {
 // Map from names to indexes.
 // The reverse should be kept as an array of string.
 type NameMap struct {
-	Indexes map[string] int
-	Names []string
+	Indexes map[string]int
+	Names   []string
 }
 
 func (nm *NameMap) NameToIndex(name string) int {
 	if nm.Indexes == nil {
-		nm.Indexes = make(map[string] int)
+		nm.Indexes = make(map[string]int)
 	}
 	x, ok := nm.Indexes[name]
 	if ok {
@@ -105,7 +110,7 @@ func UrlToNameVote(vote string) (*NameVote, error) {
 type ElectionMethod interface {
 	// Add a vote to this instance.
 	Vote(NameVote)
-	
+
 	// Add a vote to this instance.
 	VoteIndexes(IndexVote)
 
