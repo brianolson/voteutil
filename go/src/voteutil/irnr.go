@@ -10,6 +10,14 @@ type InstantRunoffNormalizedRatings struct {
 	seats int
 }
 
+func NewInstantRunoffNormalizedRatings() ElectionMethod {
+	return new(InstantRunoffNormalizedRatings)
+}
+
+func NewIRNR() ElectionMethod {
+	return new(InstantRunoffNormalizedRatings)
+}
+
 // Add a vote to this instance.
 // ElectionMethod interface
 func (it *InstantRunoffNormalizedRatings) Vote(vote NameVote) {

@@ -8,6 +8,10 @@ type RawSummation struct {
 	Names *NameMap
 }
 
+func NewRawSummation() ElectionMethod {
+	return new(RawSummation)
+}
+
 func (it *RawSummation) Vote(vote NameVote) {
 	if it.Names == nil {
 		it.Names = new(NameMap)
@@ -66,5 +70,5 @@ func (it *RawSummation) SetSharedNameMap(names *NameMap) {
 }
 
 func (it *RawSummation) ShortName() string {
-	return "raw"
+	return "Raw Rating Summation"
 }

@@ -11,6 +11,9 @@ type VRR struct {
 	total int
 }
 
+func NewVRR() ElectionMethod {
+	return new(VRR)
+}
 
 func (it *VRR) increment(winner, loser int) {
 	if winner > loser {

@@ -3,7 +3,7 @@ package main
 import "bufio"
 //import "flag" // can't use, doesn't allow repeated options (--enable vrr --enable irnr)
 import "fmt"
-import "log"
+//import "log"
 import "io"
 import "os"
 import "strings"
@@ -22,11 +22,20 @@ countvotes [--dump][--debug][--preindexed]\n"
 "\t[--test]
 */
 
+type ElectionMethodConstructor func() voteutil.ElectionMethod;
 
-//var filename = flag.String("in", "", "file name to read (default stdin")
-//var testMode = flag.Bool("test", false, "do test-mode output")
+var classByShortname map[string]ElectionMethodConstructor
+func init() {
+	classByShortname = map[string]ElectionMethodConstructor {
+		"vrr": voteutil.NewVRR,
+		"raw": voteutil.NewRawSummation,
+		"irnr": voteutil.NewIRNR,
+	}
+}
 
 
+// Map String to List of Strings - Get
+// If the key isn't in the map, put an empty slice there and return that.
 func msls_get(it map[string] []string, key string) []string {
 	sl, ok := it[key]
 	if ok {
@@ -184,6 +193,29 @@ func (it *Election) VoteAll(source VoteSource) error {
 }
 
 
+func doenable(methodEnabled map[string]bool, enstr string, endis bool) {
+	comma := strings.IndexRune(enstr, ',')
+	if comma != -1 {
+		doenable(methodEnabled, enstr[:comma], endis)
+		doenable(methodEnabled, enstr[comma+1:], endis)
+	} else {
+		_, ok := classByShortname[enstr]
+		if !ok {
+			var verb string
+			if endis {
+				verb = "enable"
+			} else {
+				verb = "disable"
+			}
+			fmt.Printf("cannot %s unknown method %#v", verb, enstr)
+			os.Exit(1)
+			return
+		}
+		methodEnabled[enstr] = endis
+	}
+}
+
+
 func main() {
 	//flag.Parse()
 	//var rawin io.Reader
@@ -194,11 +226,22 @@ func main() {
 		"out": 1,
 		"test": 0,
 		"i": 1,
+		"enable": 1,
+		"disable": 1,
+		"enable-all": 0,
+		"disable-all": 0,
+	}
+
+	methodEnabled := map[string]bool {
+		"vrr": true,
+		"irnr": true,
+		"raw": true,
 	}
 
 	args, err := ParseArgs(os.Args[1:], argnums)
 	if err != nil {
-		log.Print(err)
+		fmt.Print(err)
+		os.Exit(1)
 		return
 	}
 
@@ -206,16 +249,34 @@ func main() {
 
 	if len(outNames) > 1 {
 		fmt.Printf("error: can accept at most one output file name, got %#v", outNames)
+		os.Exit(1)
 		return
 	}
 
 	inNames := GetArgs(args, []string{"i", ""})
 
+	enableStrs, hasEnables := args["enable"]
+	if hasEnables {
+		for _, enstr := range(enableStrs) {
+			doenable(methodEnabled, enstr, true)
+		}
+	}
+
+	disableStrs, hasDisables := args["disable"]
+	if hasDisables {
+		for _, enstr := range(disableStrs) {
+			doenable(methodEnabled, enstr, false)
+		}
+	}
+
 	_, testMode := args["test"]
 
-	methods := make([]voteutil.ElectionMethod, 2)
-	methods[0] = new(voteutil.VRR)
-	methods[1] = new(voteutil.InstantRunoffNormalizedRatings)
+	methods := make([]voteutil.ElectionMethod, 0)
+	for methodShort, isEnabled := range(methodEnabled) {
+		if isEnabled {
+			methods = append(methods, classByShortname[methodShort]())
+		}
+	}
 
 	election := Election{methods}
 
