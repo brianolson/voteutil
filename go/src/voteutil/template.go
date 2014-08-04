@@ -23,8 +23,8 @@ func (it *TemplateElectionMethod) GetResult() (*NameVote, int) {
 
 // Return HTML explaining the result.
 // ElectionMethod interface
-func (it *TemplateElectionMethod) HtmlExlpaination() string {
-	return ""
+func (it *TemplateElectionMethod) HtmlExplaination() string {
+	return "TODO: html explain"
 }
 
 // Set shared NameMap

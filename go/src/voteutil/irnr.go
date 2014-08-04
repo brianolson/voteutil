@@ -141,7 +141,7 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 
 // Return HTML explaining the result.
 // ElectionMethod interface
-func (it *InstantRunoffNormalizedRatings) HtmlExlpaination() string {
+func (it *InstantRunoffNormalizedRatings) HtmlExplaination() string {
 	return "<p>TODO: IRNR explanation</p>"
 }
 

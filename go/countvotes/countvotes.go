@@ -207,7 +207,7 @@ func doenable(methodEnabled map[string]bool, enstr string, endis bool) {
 			} else {
 				verb = "disable"
 			}
-			fmt.Printf("cannot %s unknown method %#v", verb, enstr)
+			fmt.Fprintf(os.Stderr, "cannot %s unknown method %#v", verb, enstr)
 			os.Exit(1)
 			return
 		}
@@ -228,8 +228,17 @@ func main() {
 		"i": 1,
 		"enable": 1,
 		"disable": 1,
+		"explain": 0,
+/*
+TODO: implement
 		"enable-all": 0,
 		"disable-all": 0,
+		"full-html": 0,
+		"no-full-html": 0,
+		"no-html-head": 0,
+		"dump": 0,
+		"debug": 0,
+*/
 	}
 
 	methodEnabled := map[string]bool {
@@ -240,7 +249,7 @@ func main() {
 
 	args, err := ParseArgs(os.Args[1:], argnums)
 	if err != nil {
-		fmt.Print(err)
+		fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 		return
 	}
@@ -248,9 +257,23 @@ func main() {
 	outNames := GetArgs(args, []string{"o", "out"})
 
 	if len(outNames) > 1 {
-		fmt.Printf("error: can accept at most one output file name, got %#v", outNames)
+		fmt.Fprintf(os.Stderr, "error: can accept at most one output file name, got %#v", outNames)
 		os.Exit(1)
 		return
+	}
+	outw := os.Stdout
+	if len(outNames) == 1 {
+		path := outNames[0]
+		if path == "-" {
+			// already writing to stdout
+		} else {
+			outw, err = os.Create(path)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%#v: cannot be opened for output\n", path)
+				os.Exit(1)
+				return
+			}
+		}
 	}
 
 	inNames := GetArgs(args, []string{"i", ""})
@@ -270,6 +293,7 @@ func main() {
 	}
 
 	_, testMode := args["test"]
+	_, showExplain := args["explain"]
 
 	methods := make([]voteutil.ElectionMethod, 0)
 	for methodShort, isEnabled := range(methodEnabled) {
@@ -283,7 +307,7 @@ func main() {
 	for _, path := range(inNames) {
 		vs, err := OpenFileVoteSource(path)
 		if err != nil {
-			fmt.Printf("%s: %s\n", path, err)
+			fmt.Fprintf(os.Stderr, "%s: %s\n", path, err)
 			break
 		}
 		election.VoteAll(vs)
@@ -292,19 +316,19 @@ func main() {
 	for _, em := range methods {
 		result, winners := em.GetResult()
 		if testMode {
-			fmt.Printf("%s: ", em.ShortName())
-			//for i := 0; i < winners; i++ {
+			fmt.Fprintf(outw, "%s: ", em.ShortName())
 			for i, res := range(*result) {
 				if i > 0 {
-					fmt.Print(", ")
+					fmt.Fprint(outw, ", ")
 				}
-				//fmt.Print((*result)[i].Name)
-				fmt.Print(res.Name)
+				fmt.Fprint(outw, res.Name)
 			}
-			fmt.Print("\n")
+			fmt.Fprint(outw, "\n")
+		} else if showExplain {
+			fmt.Fprint(outw, em.HtmlExplaination())
 		} else {
-			fmt.Printf("winners:\n")
-			fmt.Print(result, winners)
+			fmt.Fprintf(outw, "winners:\n")
+			fmt.Fprint(outw, result, winners)
 		}
 	}
 }

@@ -33,6 +33,7 @@ use File::Path;
 	['c', "../c/countvotes", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"] ],
 #	['cpp', "../cpp/dynamic_canditates/countvotes_dynamic"],
 	['java', "java -jar ../java/vote.jar", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"] ],
+    ['go', "../go/countvotes/countvotes", ["irnr", "vrr", "raw"] ],
 #	['perl', "../perl/votep.pl"],
 );
 

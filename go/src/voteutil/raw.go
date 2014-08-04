@@ -61,7 +61,7 @@ func (it *RawSummation) GetResult() (*NameVote, int) {
 	}
 	return out, 1
 }
-func (it *RawSummation) HtmlExlpaination() string {
+func (it *RawSummation) HtmlExplaination() string {
 	return ""
 }
 

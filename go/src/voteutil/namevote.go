@@ -118,7 +118,7 @@ type ElectionMethod interface {
 	GetResult() (scores *NameVote, numWinners int)
 
 	// Return HTML explaining the result.
-	HtmlExlpaination() string
+	HtmlExplaination() string
 
 	// Set shared NameMap
 	SetSharedNameMap(names *NameMap)

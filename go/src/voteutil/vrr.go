@@ -166,7 +166,7 @@ func (it *VRR) GetResult() (*NameVote, int) {
 }
 
 // ElectionMethod interface
-func (it *VRR) HtmlExlpaination() string {
+func (it *VRR) HtmlExplaination() string {
 	return ""
 }
 
