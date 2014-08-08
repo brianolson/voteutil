@@ -229,10 +229,10 @@ func main() {
 		"enable": 1,
 		"disable": 1,
 		"explain": 0,
-/*
-TODO: implement
 		"enable-all": 0,
 		"disable-all": 0,
+/*
+TODO: implement
 		"full-html": 0,
 		"no-full-html": 0,
 		"no-html-head": 0,
@@ -277,6 +277,20 @@ TODO: implement
 	}
 
 	inNames := GetArgs(args, []string{"i", ""})
+
+	_, enableAll := args["enable-all"]
+	if enableAll {
+		for enkey, _ := range(methodEnabled) {
+			methodEnabled[enkey] = true
+		}
+	}
+
+	_, disableAll := args["disable-all"]
+	if disableAll {
+		for enkey, _ := range(methodEnabled) {
+			methodEnabled[enkey] = false
+		}
+	}
 
 	enableStrs, hasEnables := args["enable"]
 	if hasEnables {
