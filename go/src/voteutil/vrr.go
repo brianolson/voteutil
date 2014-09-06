@@ -1,6 +1,7 @@
 package voteutil
 
 import "fmt"
+import "io"
 import "strings"
 
 // Virtual Round Robin election, aka Condorcet's method.
@@ -162,6 +163,10 @@ func defIsBlocked(hi, lo int, bd []int) bool {
 
 // ElectionMethod interface
 func (it *VRR) GetResult() (*NameVote, int) {
+	return it.GetResultExplain(nil)
+}
+
+func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 	defeats := make([]int, len(it.counts))
 	for i := 0; i < len(it.counts); i++ {
 		for j := i + 1; j < len(it.counts); j++ {
