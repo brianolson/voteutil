@@ -27,10 +27,13 @@ libvote.a:	${OBJS}
 
 countvotes:	libvote.a countvotes.o
 countvotes:	LDFLAGS+=${LINK_POSTGRES}
+countvotes:
+	${CC} countvotes.o libvote.a ${LDFLAGS} -o $@
 
 countvotes.o:	CFLAGS+=${COMPILE_POSTGRES}
 
 permuteutil:	libvote.a permuteutil.o
+	${CC} permuteutil.o libvote.a ${LDFLAGS} -o $@
 
 opt:
 	${MAKE} GOPT=-O2

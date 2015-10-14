@@ -318,6 +318,13 @@ TODO: implement
 
 	election := Election{methods}
 
+	if len(inNames) == 0 {
+		vs := &FileVoteSource{
+			os.Stdin,
+			bufio.NewReader(os.Stdin),
+		}
+		election.VoteAll(vs)
+	}
 	for _, path := range(inNames) {
 		vs, err := OpenFileVoteSource(path)
 		if err != nil {
@@ -331,11 +338,13 @@ TODO: implement
 		result, winners := em.GetResult()
 		if testMode {
 			fmt.Fprintf(outw, "%s: ", em.ShortName())
-			for i, res := range(*result) {
-				if i > 0 {
-					fmt.Fprint(outw, ", ")
+			if result != nil {
+				for i, res := range(*result) {
+					if i > 0 {
+						fmt.Fprint(outw, ", ")
+					}
+					fmt.Fprint(outw, res.Name)
 				}
-				fmt.Fprint(outw, res.Name)
 			}
 			fmt.Fprint(outw, "\n")
 		} else if showExplain {

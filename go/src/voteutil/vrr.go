@@ -1,5 +1,6 @@
 package voteutil
 
+import "bytes"
 import "fmt"
 import "io"
 import "strings"
@@ -162,11 +163,16 @@ func defIsBlocked(hi, lo int, bd []int) bool {
 }
 
 // ElectionMethod interface
+// return sorted result, num 'winners'
 func (it *VRR) GetResult() (*NameVote, int) {
 	return it.GetResultExplain(nil)
 }
 
+// return sorted result, num 'winners'
 func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
+	if len(it.counts) == 0 {
+		return &NameVote{}, 0
+	}
 	defeats := make([]int, len(it.counts))
 	for i := 0; i < len(it.counts); i++ {
 		for j := i + 1; j < len(it.counts); j++ {
@@ -302,8 +308,10 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 
 // ElectionMethod interface
 func (it *VRR) HtmlExplaination() string {
-	results, _ := it.GetResult() // _ = numWinners
-	parts := []string{"<table border=\"1\"><tr><td colspan=\"2\"></td>"}
+	resultExplain := new(bytes.Buffer)
+	results, _ := it.GetResultExplain(resultExplain)
+	//results, _ := it.GetResult() // _ = numWinners
+	parts := []string{resultExplain.String(), "<table border=\"1\"><tr><td colspan=\"2\"></td>"}
 	for y, _ := range(*results) {
 		parts = append(parts, fmt.Sprintf("<th>%d</th>", y+1))
 	}

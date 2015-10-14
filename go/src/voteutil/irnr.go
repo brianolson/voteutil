@@ -1,6 +1,9 @@
 package voteutil
 
-import "math"
+import (
+	"log"
+	"math"
+)
 
 type InstantRunoffNormalizedRatings struct {
 	Names *NameMap
@@ -45,6 +48,7 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 	if it.maxNameIndex > 100000 {
 		// really want to throw an exception here
 		// TODO: log error message
+		log.Print("too many names ", it.maxNameIndex)
 		return nil, -10001
 	}
 	out := new(NameVote)

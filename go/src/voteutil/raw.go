@@ -53,6 +53,9 @@ func (it *RawSummation) GetResult() (*NameVote, int) {
 			//(*out)[strconv.Itoa(x)] = value
 		}
 	}
+	if len(*out) == 0 {
+		return out, 0
+	}
 	out.Sort()
 	bestv := (*out)[0].Rating
 	tiecount := 1
