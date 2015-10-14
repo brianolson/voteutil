@@ -1,8 +1,6 @@
 package voteutil
 
-
 type TemplateElectionMethod struct {
-
 }
 
 // Add a vote to this instance.

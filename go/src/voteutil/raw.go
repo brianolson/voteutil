@@ -4,7 +4,7 @@ import "strconv"
 
 // Raw rating summation election.
 type RawSummation struct {
-	sum []float64
+	sum   []float64
 	Names *NameMap
 }
 

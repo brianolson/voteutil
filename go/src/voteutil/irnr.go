@@ -8,9 +8,9 @@ import (
 type InstantRunoffNormalizedRatings struct {
 	Names *NameMap
 
-	votes []IndexVote
+	votes        []IndexVote
 	maxNameIndex int
-	seats int
+	seats        int
 }
 
 func NewInstantRunoffNormalizedRatings() ElectionMethod {
@@ -34,7 +34,7 @@ func (it *InstantRunoffNormalizedRatings) Vote(vote NameVote) {
 // Add a vote to this instance.
 // ElectionMethod interface
 func (it *InstantRunoffNormalizedRatings) VoteIndexes(vote IndexVote) {
-	for _, ni := range(vote.Indexes) {
+	for _, ni := range vote.Indexes {
 		if ni > it.maxNameIndex {
 			it.maxNameIndex = ni
 		}
@@ -56,9 +56,9 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 		// switch from initialization default to something reasonable
 		it.seats = 1
 	}
-	enabled := make([]bool, it.maxNameIndex + 1)
-	candidateSums := make([]float64, it.maxNameIndex + 1)
-	for i, _ := range(enabled) {
+	enabled := make([]bool, it.maxNameIndex+1)
+	candidateSums := make([]float64, it.maxNameIndex+1)
+	for i, _ := range enabled {
 		enabled[i] = true
 	}
 	numEnabled := len(enabled)
@@ -69,10 +69,10 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 			candidateSums[i] = 0.0
 		}
 		// count all votes
-		for _, vote := range(it.votes) {
+		for _, vote := range it.votes {
 			votesum := 0.0
 			// gather magnitude of this vote so we can normalize it
-			for vii, ni := range(vote.Indexes) {
+			for vii, ni := range vote.Indexes {
 				if enabled[ni] {
 					tf := vote.Ratings[vii]
 					votesum += tf * tf
@@ -84,7 +84,7 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 				continue
 			}
 			votesum = math.Sqrt(votesum)
-			for vii, ni := range(vote.Indexes) {
+			for vii, ni := range vote.Indexes {
 				if enabled[ni] {
 					candidateSums[ni] += vote.Ratings[vii] / votesum
 				}
@@ -92,8 +92,8 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 		}
 		minvalue := 0.0
 		mincount := 0
-		for i, csum := range(candidateSums) {
-			if ! enabled[i] {
+		for i, csum := range candidateSums {
+			if !enabled[i] {
 				continue
 			}
 			if (mincount == 0) || (csum < minvalue) {
@@ -110,8 +110,8 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 		}
 		if (numEnabled - mincount) >= it.seats {
 			// disable loser(s)
-			for i, csum := range(candidateSums) {
-				if ! enabled[i] {
+			for i, csum := range candidateSums {
+				if !enabled[i] {
 					continue
 				}
 				if csum == minvalue {
@@ -129,11 +129,11 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 		// $seats winners if there is a tie for last place.
 		if (numEnabled - mincount) <= it.seats {
 			// build and return output
-			for i, csum := range(candidateSums) {
-				if ! enabled[i] {
+			for i, csum := range candidateSums {
+				if !enabled[i] {
 					continue
 				}
-				*out = append(*out, NameRating{it.Names.IndexToName(i),csum})
+				*out = append(*out, NameRating{it.Names.IndexToName(i), csum})
 			}
 			out.Sort()
 			return out, numEnabled
@@ -141,7 +141,6 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 	}
 	return nil, -1
 }
-
 
 // Return HTML explaining the result.
 // ElectionMethod interface

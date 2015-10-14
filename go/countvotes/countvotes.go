@@ -1,42 +1,42 @@
 package main
 
 import "bufio"
+
 //import "flag" // can't use, doesn't allow repeated options (--enable vrr --enable irnr)
 import "fmt"
-//import "log"
+import "log"
 import "io"
 import "os"
 import "strings"
 import "voteutil"
 
-
 // from countvotes.c
-/*
-countvotes [--dump][--debug][--preindexed]\n"
-"\t[--full-html|--no-full-html|--no-html-head]\n"
-"\t[--disable-all][--enable-all][--seats n]\n"
-"\t[--rankings][--help|-h|--list][--explain]\n"
-"\t[-o filename|--out filenam]\n"
-"\t[--enable|--disable hist|irnr|vrr|raw|irv|stv]\n"
-"\t[input file name|-i votesfile|-igz gzipped-votesfile]\n"
-"\t[--test]
-*/
+const usage = `
+countvotes [--dump][--debug][--preindexed]
+	[--full-html|--no-full-html|--no-html-head]
+	[--disable-all][--enable-all][--seats n]
+	[--rankings][--help|-h|--list][--explain]
+	[-o filename|--out filenam]
+	[--enable|--disable hist|irnr|vrr|raw|irv|stv]
+	[input file name|-i votesfile|-igz gzipped-votesfile]
+	[--test]
+`
 
-type ElectionMethodConstructor func() voteutil.ElectionMethod;
+type ElectionMethodConstructor func() voteutil.ElectionMethod
 
 var classByShortname map[string]ElectionMethodConstructor
+
 func init() {
-	classByShortname = map[string]ElectionMethodConstructor {
-		"vrr": voteutil.NewVRR,
-		"raw": voteutil.NewRawSummation,
+	classByShortname = map[string]ElectionMethodConstructor{
+		"vrr":  voteutil.NewVRR,
+		"raw":  voteutil.NewRawSummation,
 		"irnr": voteutil.NewIRNR,
 	}
 }
 
-
 // Map String to List of Strings - Get
 // If the key isn't in the map, put an empty slice there and return that.
-func msls_get(it map[string] []string, key string) []string {
+func msls_get(it map[string][]string, key string) []string {
 	sl, ok := it[key]
 	if ok {
 		return sl
@@ -46,16 +46,16 @@ func msls_get(it map[string] []string, key string) []string {
 	return sl
 }
 
-
 // Probably takes os.Args[1:]
 // argnums is map from --?(option name) [some number of arguments for option, probably 0 or 1]
 // --?(option name)=(.*) is always interpreted as one argument
 // "--" stops parsing and all further args go to the list of non-option program arguments at out[""]
-func ParseArgs(args []string, argnums map[string]int) (map[string] []string, error) {
-	out := make(map[string] []string)
+func ParseArgs(args []string, argnums map[string]int) (map[string][]string, error) {
+	out := make(map[string][]string)
 	pos := 0
 	for pos < len(args) {
 		ostr := args[pos]
+		// "--" by itself, stop parsing args and pass the rest through as strings
 		if ostr == "--" {
 			sl := msls_get(out, "")
 			sl = append(sl, args[pos+1:]...)
@@ -75,6 +75,10 @@ func ParseArgs(args []string, argnums map[string]int) (map[string] []string, err
 				argname = ostr[2:eqpos]
 			} else {
 				argname = ostr[1:eqpos]
+			}
+			if argname == "help" {
+				os.Stdout.Write([]byte(usage))
+				os.Exit(1)
 			}
 			argnum, ok := argnums[argname]
 			if !ok {
@@ -102,7 +106,7 @@ func ParseArgs(args []string, argnums map[string]int) (map[string] []string, err
 			sl = append(sl, ostr)
 			out[""] = sl
 		}
-		pos++;
+		pos++
 	}
 
 	return out, nil
@@ -110,9 +114,9 @@ func ParseArgs(args []string, argnums map[string]int) (map[string] []string, err
 
 // Get args by multiple names.
 // e.g. ["i", "input"] gets things passed to -i or --input (or --i or -input)
-func GetArgs(args map[string] []string, names []string) []string {
+func GetArgs(args map[string][]string, names []string) []string {
 	out := []string{}
-	for _, name := range(names) {
+	for _, name := range names {
 		values, ok := args[name]
 		if ok {
 			out = append(out, values...)
@@ -121,10 +125,9 @@ func GetArgs(args map[string] []string, names []string) []string {
 	return out
 }
 
-
 func ReadLine(f *bufio.Reader) (string, error) {
 	pdata, isPrefix, err := f.ReadLine()
-	if ! isPrefix {
+	if !isPrefix {
 		return string(pdata), err
 	}
 	data := make([]byte, len(pdata))
@@ -143,7 +146,7 @@ type VoteSource interface {
 
 type FileVoteSource struct {
 	rawReader io.Reader
-	bReader *bufio.Reader
+	bReader   *bufio.Reader
 }
 
 func OpenFileVoteSource(path string) (*FileVoteSource, error) {
@@ -156,8 +159,17 @@ func OpenFileVoteSource(path string) (*FileVoteSource, error) {
 
 func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
 	// TODO: check EOF and return (nil, nil)
+	if it.bReader == nil {
+		return nil, nil
+	}
 	line, err := ReadLine(it.bReader)
-	if err != nil {
+	if err == io.EOF {
+		it.bReader = nil
+		if len(line) == 0 {
+			return nil, nil
+		}
+	} else if err != nil {
+		log.Print("got err reading from vote file ", err)
 		return nil, err
 	}
 	return voteutil.UrlToNameVote(line)
@@ -169,11 +181,13 @@ func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
 */
 
 type Election struct {
-	methods []voteutil.ElectionMethod
+	methods   []voteutil.ElectionMethod
+	VoteCount int
 }
 
 func (it *Election) Vote(vote *voteutil.NameVote) {
-	for _, m := range(it.methods) {
+	it.VoteCount++
+	for _, m := range it.methods {
 		m.Vote(*vote)
 	}
 }
@@ -191,7 +205,6 @@ func (it *Election) VoteAll(source VoteSource) error {
 	}
 	return nil
 }
-
 
 func doenable(methodEnabled map[string]bool, enstr string, endis bool) {
 	comma := strings.IndexRune(enstr, ',')
@@ -215,36 +228,35 @@ func doenable(methodEnabled map[string]bool, enstr string, endis bool) {
 	}
 }
 
-
 func main() {
 	//flag.Parse()
 	//var rawin io.Reader
 	var err error
 
 	argnums := map[string]int{
-		"o": 1,
-		"out": 1,
-		"test": 0,
-		"i": 1,
-		"enable": 1,
-		"disable": 1,
-		"explain": 0,
-		"enable-all": 0,
+		"o":           1,
+		"out":         1,
+		"test":        0,
+		"i":           1,
+		"enable":      1,
+		"disable":     1,
+		"explain":     0,
+		"enable-all":  0,
 		"disable-all": 0,
-/*
-TODO: implement
-		"full-html": 0,
+		/*
+		   TODO: implement
+		"full-html":    0,
 		"no-full-html": 0,
 		"no-html-head": 0,
-		"dump": 0,
-		"debug": 0,
-*/
+		"dump":         0,
+		"debug":        0,
+		*/
 	}
 
-	methodEnabled := map[string]bool {
-		"vrr": true,
+	methodEnabled := map[string]bool{
+		"vrr":  true,
 		"irnr": true,
-		"raw": true,
+		"raw":  true,
 	}
 
 	args, err := ParseArgs(os.Args[1:], argnums)
@@ -280,28 +292,28 @@ TODO: implement
 
 	_, enableAll := args["enable-all"]
 	if enableAll {
-		for enkey, _ := range(methodEnabled) {
+		for enkey, _ := range methodEnabled {
 			methodEnabled[enkey] = true
 		}
 	}
 
 	_, disableAll := args["disable-all"]
 	if disableAll {
-		for enkey, _ := range(methodEnabled) {
+		for enkey, _ := range methodEnabled {
 			methodEnabled[enkey] = false
 		}
 	}
 
 	enableStrs, hasEnables := args["enable"]
 	if hasEnables {
-		for _, enstr := range(enableStrs) {
+		for _, enstr := range enableStrs {
 			doenable(methodEnabled, enstr, true)
 		}
 	}
 
 	disableStrs, hasDisables := args["disable"]
 	if hasDisables {
-		for _, enstr := range(disableStrs) {
+		for _, enstr := range disableStrs {
 			doenable(methodEnabled, enstr, false)
 		}
 	}
@@ -310,13 +322,13 @@ TODO: implement
 	_, showExplain := args["explain"]
 
 	methods := make([]voteutil.ElectionMethod, 0)
-	for methodShort, isEnabled := range(methodEnabled) {
+	for methodShort, isEnabled := range methodEnabled {
 		if isEnabled {
 			methods = append(methods, classByShortname[methodShort]())
 		}
 	}
 
-	election := Election{methods}
+	election := Election{methods, 0}
 
 	if len(inNames) == 0 {
 		vs := &FileVoteSource{
@@ -325,7 +337,7 @@ TODO: implement
 		}
 		election.VoteAll(vs)
 	}
-	for _, path := range(inNames) {
+	for _, path := range inNames {
 		vs, err := OpenFileVoteSource(path)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", path, err)
@@ -333,13 +345,14 @@ TODO: implement
 		}
 		election.VoteAll(vs)
 	}
-	
+	//log.Print("counted votes: ", election.VoteCount)
+
 	for _, em := range methods {
 		result, winners := em.GetResult()
 		if testMode {
 			fmt.Fprintf(outw, "%s: ", em.ShortName())
 			if result != nil {
-				for i, res := range(*result) {
+				for i, res := range *result {
 					if i > 0 {
 						fmt.Fprint(outw, ", ")
 					}
@@ -355,4 +368,3 @@ TODO: implement
 		}
 	}
 }
-

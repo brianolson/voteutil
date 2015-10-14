@@ -14,6 +14,7 @@ go/.*/.\.out
 java/.*\.class
 java/vote.jar
 python/.*\.pyc
+test/.*\.pyc
 simulator/.*\.o
 Attic
 .*~$

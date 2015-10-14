@@ -10,10 +10,10 @@ type VRR struct {
 	Names *NameMap
 
 	WinningVotesMode bool
-	MarginsMode bool
+	MarginsMode      bool
 	// counts[3] points to an array of length 6: [3 beats 0, 3 beats 1, 3 beats 2, 0 beats 3, 1 beats 3, 2 beats 3]
 	counts [][]int
-	total int
+	total  int
 }
 
 func NewVRR() ElectionMethod {
@@ -28,7 +28,7 @@ func (it *VRR) increment(winner, loser int) {
 		it.counts[winner][loser] += 1
 	} else {
 		//fmt.Printf("counts[%d][%d]++\n", loser, loser+winner)
-		it.counts[loser][loser + winner] += 1
+		it.counts[loser][loser+winner] += 1
 	}
 }
 
@@ -38,7 +38,7 @@ func (it *VRR) get(winner, loser int) int {
 	if winner > loser {
 		out = it.counts[winner][loser]
 	} else {
-		out = it.counts[loser][loser + winner]
+		out = it.counts[loser][loser+winner]
 	}
 	return out
 }
@@ -47,13 +47,13 @@ func (it *VRR) ensure(maxindex int) {
 	// maxindex := len(it.Names.Names) - 1
 	for len(it.counts) <= maxindex {
 		//fmt.Printf("new vrr shell counts[%d] = [%d]int\n", len(it.counts), len(it.counts) * 2)
-		it.counts = append(it.counts, make([]int, len(it.counts) * 2))
+		it.counts = append(it.counts, make([]int, len(it.counts)*2))
 	}
 }
 
 type nvi struct {
-	Name string
-	Index int
+	Name   string
+	Index  int
 	Rating float64
 }
 
@@ -116,36 +116,27 @@ func (it *VRR) VoteIndexes(vote IndexVote) {
 }
 
 func (it *VRR) makeWinners(defeats []int) (*NameVote, int) {
-	out := new(NameVote)
-	maxd := 0
-	notDone := true
-	// insertion sort
-	for notDone {
-		notDone = false
-		for i, dcount := range defeats {
-			if dcount == maxd {
-				*out = append(*out, NameRating{
-					it.Names.IndexToName(i),
-					float64(0 - dcount)})
-			} else if dcount > maxd {
-				notDone = true
-			}
-		}
-		maxd++
+	//out := new(NameVote)
+	out := make([]NameRating, len(defeats))
+	for i, dcount := range defeats {
+		out[i].Name = it.Names.IndexToName(i)
+		out[i].Rating = float64(0 - dcount)
 	}
+	onv := NameVote(out)
+	onv.Sort()
 	tieCount := 1
-	for i := 1; i < len(*out); i++ {
-		if (*out)[i].Rating == (*out)[0].Rating {
+	for i := 1; i < len(out); i++ {
+		if out[i].Rating == out[0].Rating {
 			tieCount++
 		} else {
 			break
 		}
 	}
-	return out, tieCount
+	return &onv, tieCount
 }
 
 func ain(x int, they []int) bool {
-	for _, v := range(they) {
+	for _, v := range they {
 		if v == x {
 			return true
 		}
@@ -154,7 +145,7 @@ func ain(x int, they []int) bool {
 }
 
 func defIsBlocked(hi, lo int, bd []int) bool {
-	for i := 0; i < len(bd); i+= 2 {
+	for i := 0; i < len(bd); i += 2 {
 		if bd[i] == hi && bd[i+1] == lo {
 			return true
 		}
@@ -173,6 +164,9 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 	if len(it.counts) == 0 {
 		return &NameVote{}, 0
 	}
+
+	// plain Condorcet.
+	// for each choice, count how many times it is defeated by another.
 	defeats := make([]int, len(it.counts))
 	for i := 0; i < len(it.counts); i++ {
 		for j := i + 1; j < len(it.counts); j++ {
@@ -187,7 +181,7 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 			}
 		}
 	}
-	
+
 	mindefeat := len(it.counts)
 	mini := len(it.counts)
 	for i, def := range defeats {
@@ -209,7 +203,7 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		setgrows := true
 		for setgrows {
 			setgrows = false
-			for _, j := range(activeset) {
+			for _, j := range activeset {
 				for i := 0; i < len(it.counts); i++ {
 					if ain(i, activeset) {
 						continue
@@ -221,7 +215,7 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 					jvi := it.get(j, i)
 					if ivj > jvi {
 						activeset = append(activeset, i)
-					setgrows = true
+						setgrows = true
 					}
 				}
 			}
@@ -232,18 +226,18 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 			return it.makeWinners(defeats)
 		}
 		activeNames := make([]string, len(activeset))
-		for ai, an := range(activeset) {
+		for ai, an := range activeset {
 			activeNames[ai] = it.Names.IndexToName(an)
 		}
 		fmt.Printf("active set %#v\n", activeNames)
 
 		minstrength := it.total
 		mins := []int{}
-		for i, a := range(activeset) {
-			for _, b := range(activeset[i+1:]) {
+		for i, a := range activeset {
+			for _, b := range activeset[i+1:] {
 				avb := it.get(a, b)
 				bva := it.get(b, a)
-				
+
 				var vhi int
 				var vlo int
 				var hi int
@@ -292,7 +286,7 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		for mi := 0; mi < len(mins); mi += 2 {
 			hi := mins[mi]
 			lo := mins[mi+1]
-			fmt.Printf("drop defeat %s>%s (%d>%d)\n", it.Names.IndexToName(hi), it.Names.IndexToName(lo), it.get(hi,lo), it.get(lo,hi))
+			fmt.Printf("drop defeat %s>%s (%d>%d)\n", it.Names.IndexToName(hi), it.Names.IndexToName(lo), it.get(hi, lo), it.get(lo, hi))
 			blockedDefeats = append(blockedDefeats, hi, lo)
 			defeats[lo] -= 1
 			mini = lo
@@ -312,14 +306,14 @@ func (it *VRR) HtmlExplaination() string {
 	results, _ := it.GetResultExplain(resultExplain)
 	//results, _ := it.GetResult() // _ = numWinners
 	parts := []string{resultExplain.String(), "<table border=\"1\"><tr><td colspan=\"2\"></td>"}
-	for y, _ := range(*results) {
+	for y, _ := range *results {
 		parts = append(parts, fmt.Sprintf("<th>%d</th>", y+1))
 	}
 	parts = append(parts, "</tr>")
-	for y, nv := range(*results) {
+	for y, nv := range *results {
 		yni := it.Names.NameToIndex(nv.Name)
 		parts = append(parts, fmt.Sprintf("<tr><th>%d</th><td>%s</td>", y+1, nv.Name))
-		for x, nv := range(*results) {
+		for x, nv := range *results {
 			if x == y {
 				parts = append(parts, "<td></td>")
 			} else {
