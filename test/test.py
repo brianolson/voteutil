@@ -45,29 +45,29 @@ class Impl(object):
         self.methods = methods
 
 impls = [
-    Impl('c', "../c/countvotes --test", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
-    Impl('java', "java -jar ../java/vote.jar --test", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
-    Impl('go', "../go/countvotes/countvotes --test", ["irnr", "vrr", "raw"]),
+    Impl('c', "../c/countvotes", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
+    Impl('java', "java -jar ../java/vote.jar", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
+    Impl('go', "../go/countvotes/countvotes", ["irnr", "vrr", "raw"]),
 ]
 
 
 def test_correctness(args):
-    num_choices = random.randint(2,10)
-    num_votes = random.randint(10,100000)
-    names = [randname() for _ in xrange(num_choices)]
-    votelines = [randneqvote(names) + '\n' for _ in xrange(num_votes)]
+    numChoices = random.randint(2,10)
+    numVotes = random.randint(10,100000)
+    names = [randname() for _ in xrange(numChoices)]
+    votelines = [randneqvote(names) + '\n' for _ in xrange(numVotes)]
     votedata = ''.join(votelines)
 
     # results[method][impl name] = 'results'
     results = {}
-    #methods = set()
 
     for imp in impls:
         try:
-            p = subprocess.Popen(imp.cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            cmd = imp.cmd + ' --test'
+            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             outd, errd = p.communicate(votedata)
         except:
-            logger.error('failed running %r', imp.cmd, exc_info=True)
+            logger.error('failed running %r', cmd, exc_info=True)
             return 1
         for line in outd.splitlines():
             line = line.strip()
@@ -106,6 +106,46 @@ def test_correctness(args):
     return failcount
                     
 
+def test_perf(args, numChoices, numVotes, out):
+    names = [randname() for _ in xrange(numChoices)]
+    votelines = [randneqvote(names) + '\n' for _ in xrange(numVotes)]
+    votedata = ''.join(votelines)
+
+    # results[method][impl name] = time
+    results = {}
+
+    errcount = 0
+
+    for imp in impls:
+        for methodName in imp.methods:
+            try:
+                cmd = imp.cmd + ' --disable-all --enable ' + methodName
+                start = time.time()
+                p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                outd, errd = p.communicate(votedata)
+                end = time.time()
+                dt = end - start
+                if methodName not in results:
+                    results[methodName] = {imp.name: dt}
+                else:
+                    results[methodName][imp.name] = dt
+            except:
+                logger.error('failed running %r', cmd, exc_info=True)
+                errcount += 1
+                if errcount >= 5:
+                    return
+
+    out.write('<table border="1">')
+    for methodName, mr in results.iteritems():
+        ri = 0
+        for implName, dt in mr.iteritems():
+            if ri == 0:
+                out.write('<tr><td rowspan="{}">{}</td>'.format(len(mr), methodName))
+            else:
+                out.write('<tr>')
+            ri += 1
+            out.write('<td>{}</td><td>{:.2f}</td></tr>'.format(implName, dt))
+    out.write('</table>\n')
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -123,6 +163,9 @@ def main():
             failcount = test_correctness(args)
             if failcount > 0:
                 break
+
+    if args.perf or args.both:
+        test_perf(args, 20, 500000, sys.stdout)
 
 if __name__ == '__main__':
     main()

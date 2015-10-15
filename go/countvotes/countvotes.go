@@ -7,6 +7,7 @@ import "fmt"
 import "log"
 import "io"
 import "os"
+import "runtime/pprof"
 import "strings"
 import "voteutil"
 
@@ -243,6 +244,7 @@ func main() {
 		"explain":     0,
 		"enable-all":  0,
 		"disable-all": 0,
+		"cpuprofile":  1,
 		/*
 		   TODO: implement
 		"full-html":    0,
@@ -316,6 +318,16 @@ func main() {
 		for _, enstr := range disableStrs {
 			doenable(methodEnabled, enstr, false)
 		}
+	}
+
+	cpuprofilePath, hasCpuprofile := args["cpuprofile"]
+	if hasCpuprofile {
+		cpuproff, err := os.Create(cpuprofilePath[0])
+		if err != nil {
+			log.Fatal("could not open cpuprofile file ", err)
+		}
+		pprof.StartCPUProfile(cpuproff)
+		defer pprof.StopCPUProfile()
 	}
 
 	_, testMode := args["test"]

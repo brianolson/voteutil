@@ -1,6 +1,6 @@
 package voteutil
 
-import "errors"
+//import "errors"
 import "sort"
 import "strconv"
 import "net/url"
@@ -86,19 +86,71 @@ func (nm *NameMap) NameVoteToIndexVote(it NameVote) *IndexVote {
 	return out
 }
 
+func urlParseQuery(q string) (map[string]string, error) {
+	keystart := 0
+	valstart := -1
+	var key string
+	var val string
+	var err error = nil
+	out := make(map[string]string)
+	for bytei, ch := range q {
+		switch ch {
+		case '=':
+			if keystart >= 0 {
+				key = q[keystart:bytei]
+				keystart = -1
+				valstart = bytei + 1
+			}
+		case '&', ';':
+			if valstart >= 0 {
+				val = q[valstart:bytei]
+				key, err = url.QueryUnescape(key)
+				if err != nil {
+					return nil, err
+				}
+				val, err = url.QueryUnescape(val)
+				if err != nil {
+					return nil, err
+				}
+				out[key] = val
+				valstart = -1
+				keystart = bytei + 1
+			}
+		default:
+		}
+	}
+	if valstart >= 0 {
+		val = q[valstart:]
+		key, err = url.QueryUnescape(key)
+		if err != nil {
+			return nil, err
+		}
+		val, err = url.QueryUnescape(val)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = val
+	}
+	return out, err
+}
+
 // Parse url-query formatted vote.
 // choice+one=1&choice+2=2&...
 func UrlToNameVote(vote string) (*NameVote, error) {
-	vals, err := url.ParseQuery(vote)
+	//vals, err := url.ParseQuery(vote)
+	vals, err := urlParseQuery(vote)
 	if err != nil {
 		return nil, err
 	}
 	out := new(NameVote)
 	for name, slist := range vals {
+/*
 		if len(slist) != 1 {
 			return nil, errors.New("Too many values for name: " + name)
 		}
 		rating, err := strconv.ParseFloat(slist[0], 64)
+*/
+		rating, err := strconv.ParseFloat(slist, 64)
 		if err != nil {
 			return nil, err
 		}
