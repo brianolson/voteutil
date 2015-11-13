@@ -159,7 +159,6 @@ func OpenFileVoteSource(path string) (*FileVoteSource, error) {
 }
 
 func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
-	// TODO: check EOF and return (nil, nil)
 	if it.bReader == nil {
 		return nil, nil
 	}

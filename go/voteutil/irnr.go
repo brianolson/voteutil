@@ -1,6 +1,9 @@
 package voteutil
 
 import (
+	"bytes"
+	"io"
+	"fmt"
 	"log"
 	"math"
 )
@@ -45,10 +48,16 @@ func (it *InstantRunoffNormalizedRatings) VoteIndexes(vote IndexVote) {
 // Get sorted result for the choices, and the number of winners (may be >1 if there is a tie.
 // ElectionMethod interface
 func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
+	return it.GetResultExplain(nil)
+}
+
+func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*NameVote, int) {
 	if it.maxNameIndex > 100000 {
 		// really want to throw an exception here
-		// TODO: log error message
 		log.Print("too many names ", it.maxNameIndex)
+		if explain != nil {
+			fmt.Fprintf(explain, "<p>too many names: %d</p>", it.maxNameIndex)
+		}
 		return nil, -10001
 	}
 	out := new(NameVote)
@@ -62,12 +71,20 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 		enabled[i] = true
 	}
 	numEnabled := len(enabled)
+	var exhaustedBallots int
+	var oldSums [][]float64 = nil
+	var exhaustHistory []int = nil
+	if explain != nil {
+		oldSums = make([][]float64, 0)
+		exhaustHistory = make([]int, 0)
+	}
 	// do many rounds, successively disqualify loosers
 	for numEnabled > it.seats {
 		// init sums for this round
 		for i := 0; i < len(candidateSums); i++ {
 			candidateSums[i] = 0.0
 		}
+		exhaustedBallots = 0
 		// count all votes
 		for _, vote := range it.votes {
 			votesum := 0.0
@@ -80,7 +97,7 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 			}
 			if votesum <= 0.0 {
 				// nothing left of this vote
-				// TODO: count exhausted votes for reporting
+				exhaustedBallots++
 				continue
 			}
 			votesum = math.Sqrt(votesum)
@@ -105,7 +122,10 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 		}
 
 		if mincount == 0 {
-			// TODO: log error message
+			log.Print("no active candidate has any votes!")
+			if explain != nil {
+				fmt.Fprintf(explain, "<p>no active candidate has any votes!</p>")
+			}
 			return nil, -10002
 		}
 		if (numEnabled - mincount) >= it.seats {
@@ -136,8 +156,44 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 				*out = append(*out, NameRating{it.Names.IndexToName(i), csum})
 			}
 			out.Sort()
+			if explain != nil {
+				fmt.Fprint(explain, "<table class=\"irnrExplain\"><tr><th>Name</th>")
+				for c := 0; c < len(oldSums) + 1; c++ {
+					fmt.Fprintf(explain, "<th>%d</th>", c+1)
+				}
+				fmt.Fprint(explain, "</tr>")
+				//for ci, csum := range candidateSums {
+				for _, nr := range *out {
+					ci := it.Names.NameToIndex(nr.Name)
+					csum := candidateSums[ci]
+					fmt.Fprintf(explain, "<tr><td class=\"name\">%s</td>", it.Names.IndexToName(ci))
+					for _, roundSums := range oldSums {
+						fmt.Fprintf(explain, "<td>%0.2f</td>", roundSums[ci])
+					}
+					fmt.Fprintf(explain, "<td>%0.2f</td></tr>\n", csum)
+				}
+				if exhaustedBallots > 0 {
+					fmt.Fprint(explain, "<tr class=\"exhausted\"><td>Exhausted Ballots</td>")
+					for _, eb := range exhaustHistory {
+						fmt.Fprintf(explain, "<td>%d</td>", eb)
+					}
+					fmt.Fprintf(explain, "<td>%d</td></tr></table>\n", exhaustedBallots)
+				} else {
+					fmt.Fprint(explain, "</table>\n")
+				}
+			}
 			return out, numEnabled
 		}
+
+		if explain != nil {
+			oldSums = append(oldSums, candidateSums)
+			exhaustHistory = append(exhaustHistory, exhaustedBallots)
+			candidateSums = make([]float64, it.maxNameIndex+1)
+		}
+	}
+
+	if explain != nil {
+		fmt.Fprintf(explain, "<p>internal error in irnr.go</p>")
 	}
 	return nil, -1
 }
@@ -145,7 +201,10 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 // Return HTML explaining the result.
 // ElectionMethod interface
 func (it *InstantRunoffNormalizedRatings) HtmlExplaination() string {
-	return "<p>TODO: IRNR explanation</p>"
+	var buf bytes.Buffer
+	winners, _ := it.GetResultExplain(&buf)
+	winners.PrintHtml(&buf)
+	return string(buf.Bytes())
 }
 
 // Set shared NameMap

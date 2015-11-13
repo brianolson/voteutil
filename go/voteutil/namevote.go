@@ -1,17 +1,18 @@
 package voteutil
 
-//import "errors"
-import "sort"
-import "strconv"
-import "net/url"
+import (
+	"fmt"
+	"io"
+	"sort"
+	"strconv"
+	"net/url"
+)
 
 type NameRating struct {
 	Name   string
 	Rating float64
 }
 
-//type NameVote map[string] float64
-//type IndexVote map[int] float64
 type NameVote []NameRating
 
 // IndexVote is perhaps excessively optimized to pack nicely.
@@ -48,6 +49,15 @@ func (it *NameVote) Swap(i, j int) {
 	(*it)[i] = (*it)[j]
 	(*it)[j] = t
 }
+
+func (it *NameVote) PrintHtml(out io.Writer) {
+	fmt.Fprint(out, "<table class=\"namevote\">")
+	for _, nr := range *it {
+		fmt.Fprintf(out, "<tr><td>%s</td><td>%0.2f</td></tr>", nr.Name, nr.Rating)
+	}
+	fmt.Fprint(out, "</table>")
+}
+
 
 // Map from names to indexes.
 // The reverse should be kept as an array of string.
