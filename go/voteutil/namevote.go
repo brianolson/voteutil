@@ -3,9 +3,9 @@ package voteutil
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"sort"
 	"strconv"
-	"net/url"
 )
 
 type NameRating struct {
@@ -57,7 +57,6 @@ func (it *NameVote) PrintHtml(out io.Writer) {
 	}
 	fmt.Fprint(out, "</table>")
 }
-
 
 // Map from names to indexes.
 // The reverse should be kept as an array of string.
@@ -154,12 +153,6 @@ func UrlToNameVote(vote string) (*NameVote, error) {
 	}
 	out := new(NameVote)
 	for name, slist := range vals {
-/*
-		if len(slist) != 1 {
-			return nil, errors.New("Too many values for name: " + name)
-		}
-		rating, err := strconv.ParseFloat(slist[0], 64)
-*/
 		rating, err := strconv.ParseFloat(slist, 64)
 		if err != nil {
 			return nil, err

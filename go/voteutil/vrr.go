@@ -27,10 +27,8 @@ func NewVRR() ElectionMethod {
 
 func (it *VRR) increment(winner, loser int) {
 	if winner > loser {
-		//fmt.Printf("counts[%d][%d]++\n", winner, loser)
 		it.counts[winner][loser] += 1
 	} else {
-		//fmt.Printf("counts[%d][%d]++\n", loser, loser+winner)
 		it.counts[loser][loser+winner] += 1
 	}
 }
@@ -49,7 +47,6 @@ func (it *VRR) get(winner, loser int) int {
 func (it *VRR) ensure(maxindex int) {
 	// maxindex := len(it.Names.Names) - 1
 	for len(it.counts) <= maxindex {
-		//fmt.Printf("new vrr shell counts[%d] = [%d]int\n", len(it.counts), len(it.counts) * 2)
 		it.counts = append(it.counts, make([]int, len(it.counts)*2))
 	}
 }
@@ -163,13 +160,14 @@ func (it *VRR) GetResult() (*NameVote, int) {
 }
 
 type DefeatSorter struct {
-	it *VRR
-	defeats []int
+	it             *VRR
+	defeats        []int
 	blockedDefeats []int
 
 	// sorted candidate indexes
 	sortOrder []int
 }
+
 func newDefeatSorter(it *VRR, defeats []int, blockedDefeats []int) *DefeatSorter {
 	out := &DefeatSorter{
 		it,
@@ -308,13 +306,6 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 			//return it.makeWinners(defeats)
 			break
 		}
-/*
-		activeNames := make([]string, len(activeset))
-		for ai, an := range activeset {
-			activeNames[ai] = it.Names.IndexToName(an)
-		}
-		fmt.Printf("active set %#v\n", activeNames)
-*/
 		if explain != nil {
 			fmt.Fprintf(explain, "<p>Top choices: %s", it.Names.IndexToName(activeset[0]))
 			for i := 1; i < len(activeset); i++ {
@@ -358,13 +349,6 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 				} else {
 					panic("VRR needs Mode")
 				}
-/*
-				fmt.Printf(
-					"%s>%s %d>%d %d\n",
-					it.Names.IndexToName(hi),
-					it.Names.IndexToName(lo),
-					vhi, vlo, strength)
-*/
 				if strength < minstrength {
 					minstrength = strength
 					mins = []int{hi, lo}
@@ -376,14 +360,12 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 
 		if (len(mins) / 2) == len(activeset) {
 			// N way tie. give up.
-			//return it.makeWinners(defeats)
 			break
 		}
 
 		for mi := 0; mi < len(mins); mi += 2 {
 			hi := mins[mi]
 			lo := mins[mi+1]
-			//fmt.Printf("drop defeat %s>%s (%d>%d)\n", it.Names.IndexToName(hi), it.Names.IndexToName(lo), it.get(hi, lo), it.get(lo, hi))
 			if explain != nil {
 				fmt.Fprintf(
 					explain,
@@ -398,11 +380,6 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		}
 	}
 
-	//fmt.Printf("total=%d\n", it.total)
-	// TODO: drop weakest defeat
-	//out := new(NameVote)
-	//return out, -1
-	//return it.makeWinners(defeats)
 	ds := newDefeatSorter(it, defeats, blockedDefeats)
 	sort.Sort(ds)
 
@@ -417,7 +394,6 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 func (it *VRR) HtmlExplaination() string {
 	resultExplain := new(bytes.Buffer)
 	results, _ := it.GetResultExplain(resultExplain)
-	//results, _ := it.GetResult() // _ = numWinners
 	parts := []string{resultExplain.String(), "<table border=\"1\"><tr><td colspan=\"2\"></td>"}
 	for y, _ := range *results {
 		parts = append(parts, fmt.Sprintf("<th>%d</th>", y+1))

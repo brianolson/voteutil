@@ -2,8 +2,8 @@ package voteutil
 
 import (
 	"bytes"
-	"io"
 	"fmt"
+	"io"
 	"log"
 	"math"
 )
@@ -158,7 +158,7 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 			out.Sort()
 			if explain != nil {
 				fmt.Fprint(explain, "<table class=\"irnrExplain\"><tr><th>Name</th>")
-				for c := 0; c < len(oldSums) + 1; c++ {
+				for c := 0; c < len(oldSums)+1; c++ {
 					fmt.Fprintf(explain, "<th>%d</th>", c+1)
 				}
 				fmt.Fprint(explain, "</tr>")
