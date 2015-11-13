@@ -225,12 +225,23 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 			defeats[mini] = 0
 			return it.makeWinners(defeats)
 		}
+/*
 		activeNames := make([]string, len(activeset))
 		for ai, an := range activeset {
 			activeNames[ai] = it.Names.IndexToName(an)
 		}
 		fmt.Printf("active set %#v\n", activeNames)
+*/
+		if explain != nil {
+			fmt.Fprintf(explain, "<p>Top choices: %s", it.Names.IndexToName(activeset[0]))
+			for i := 1; i < len(activeset); i++ {
+				an := activeset[i]
+				fmt.Fprintf(explain, ", %s", it.Names.IndexToName(an))
+			}
+			fmt.Fprint(explain, "</p>")
+		}
 
+		// find weakest defeat between active winners
 		minstrength := it.total
 		mins := []int{}
 		for i, a := range activeset {
@@ -264,11 +275,13 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 				} else {
 					panic("VRR needs Mode")
 				}
+/*
 				fmt.Printf(
 					"%s>%s %d>%d %d\n",
 					it.Names.IndexToName(hi),
 					it.Names.IndexToName(lo),
 					vhi, vlo, strength)
+*/
 				if strength < minstrength {
 					minstrength = strength
 					mins = []int{hi, lo}
@@ -286,7 +299,15 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		for mi := 0; mi < len(mins); mi += 2 {
 			hi := mins[mi]
 			lo := mins[mi+1]
-			fmt.Printf("drop defeat %s>%s (%d>%d)\n", it.Names.IndexToName(hi), it.Names.IndexToName(lo), it.get(hi, lo), it.get(lo, hi))
+			//fmt.Printf("drop defeat %s>%s (%d>%d)\n", it.Names.IndexToName(hi), it.Names.IndexToName(lo), it.get(hi, lo), it.get(lo, hi))
+			if explain != nil {
+				fmt.Fprintf(
+					explain,
+					"<p>Weakest defeat is %s (%d) v %s (%d). %s has one fewer defeat.</p>\n",
+					it.Names.IndexToName(hi), it.get(hi, lo),
+					it.Names.IndexToName(lo), it.get(lo, hi),
+					it.Names.IndexToName(lo))
+			}
 			blockedDefeats = append(blockedDefeats, hi, lo)
 			defeats[lo] -= 1
 			mini = lo
