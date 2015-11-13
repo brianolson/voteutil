@@ -9,7 +9,7 @@ import "io"
 import "os"
 import "runtime/pprof"
 import "strings"
-import "voteutil"
+import "bitbucket.org/bodhisnarkva/voteutil/go/voteutil"
 
 // from countvotes.c
 const usage = `

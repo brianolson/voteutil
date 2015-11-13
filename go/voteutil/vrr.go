@@ -1,9 +1,12 @@
 package voteutil
 
-import "bytes"
-import "fmt"
-import "io"
-import "strings"
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"sort"
+	"strings"
+)
 
 // Virtual Round Robin election, aka Condorcet's method.
 type VRR struct {
@@ -120,7 +123,7 @@ func (it *VRR) makeWinners(defeats []int) (*NameVote, int) {
 	out := make([]NameRating, len(defeats))
 	for i, dcount := range defeats {
 		out[i].Name = it.Names.IndexToName(i)
-		out[i].Rating = float64(0 - dcount)
+		out[i].Rating = float64(len(defeats) - dcount)
 	}
 	onv := NameVote(out)
 	onv.Sort()
@@ -157,6 +160,85 @@ func defIsBlocked(hi, lo int, bd []int) bool {
 // return sorted result, num 'winners'
 func (it *VRR) GetResult() (*NameVote, int) {
 	return it.GetResultExplain(nil)
+}
+
+type DefeatSorter struct {
+	it *VRR
+	defeats []int
+	blockedDefeats []int
+
+	// sorted candidate indexes
+	sortOrder []int
+}
+func newDefeatSorter(it *VRR, defeats []int, blockedDefeats []int) *DefeatSorter {
+	out := &DefeatSorter{
+		it,
+		defeats,
+		blockedDefeats,
+		nil,
+	}
+	out.sortOrder = make([]int, len(defeats))
+	for i := range out.sortOrder {
+		out.sortOrder[i] = i
+	}
+	return out
+}
+func (ds *DefeatSorter) Len() int {
+	return len(ds.defeats)
+}
+func (ds *DefeatSorter) Less(si, sj int) bool {
+	i := ds.sortOrder[si]
+	j := ds.sortOrder[sj]
+	if ds.defeats[i] < ds.defeats[j] {
+		return true
+	} else if ds.defeats[i] == ds.defeats[j] {
+		if defIsBlocked(i, j, ds.blockedDefeats) {
+			// [i] does not count as defeating [j]
+			return false
+		}
+		ivj := ds.it.get(i, j)
+		jvi := ds.it.get(j, i)
+		if ivj > jvi {
+			// [i] defeats [j], is less defeated than [j]
+			return true
+		}
+		return false
+	} else {
+		return false
+	}
+}
+func (ds *DefeatSorter) Swap(si, sj int) {
+	t := ds.sortOrder[si]
+	ds.sortOrder[si] = ds.sortOrder[sj]
+	ds.sortOrder[sj] = t
+}
+func (ds *DefeatSorter) WriteExplain(explain io.Writer) {
+	if explain == nil {
+		return
+	}
+	fmt.Fprint(explain, "<p>effective defeat counts:")
+	for _, candi := range ds.sortOrder {
+		dn := ds.it.Names.IndexToName(candi)
+		fmt.Fprintf(explain, " (%s %d)", dn, ds.defeats[candi])
+	}
+	fmt.Fprint(explain, "</p>\n")
+}
+func (ds *DefeatSorter) makeWinners() (*NameVote, int) {
+	out := make([]NameRating, len(ds.defeats))
+	for sorti, candi := range ds.sortOrder {
+		out[sorti].Name = ds.it.Names.IndexToName(candi)
+		out[sorti].Rating = float64(len(ds.defeats) - ds.defeats[candi])
+	}
+	tieCount := 1
+	for i := 1; i < len(out); i++ {
+		if out[i].Rating == out[0].Rating {
+			tieCount++
+		} else {
+			break
+		}
+	}
+	ouv := NameVote(out)
+	return &ouv, tieCount
 }
 
 // return sorted result, num 'winners'
@@ -223,7 +305,8 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		if len(activeset) == 1 {
 			// winner
 			defeats[mini] = 0
-			return it.makeWinners(defeats)
+			//return it.makeWinners(defeats)
+			break
 		}
 /*
 		activeNames := make([]string, len(activeset))
@@ -293,7 +376,8 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 
 		if (len(mins) / 2) == len(activeset) {
 			// N way tie. give up.
-			return it.makeWinners(defeats)
+			//return it.makeWinners(defeats)
+			break
 		}
 
 		for mi := 0; mi < len(mins); mi += 2 {
@@ -318,7 +402,15 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 	// TODO: drop weakest defeat
 	//out := new(NameVote)
 	//return out, -1
-	return it.makeWinners(defeats)
+	//return it.makeWinners(defeats)
+	ds := newDefeatSorter(it, defeats, blockedDefeats)
+	sort.Sort(ds)
+
+	if explain != nil {
+		ds.WriteExplain(explain)
+	}
+
+	return ds.makeWinners()
 }
 
 // ElectionMethod interface
