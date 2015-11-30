@@ -73,5 +73,9 @@ func (it *RawSummation) SetSharedNameMap(names *NameMap) {
 }
 
 func (it *RawSummation) ShortName() string {
+	return "raw"
+}
+
+func (it *RawSummation) Name() string {
 	return "Raw Rating Summation"
 }

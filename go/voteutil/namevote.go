@@ -180,21 +180,12 @@ type ElectionMethod interface {
 
 	// simple tag, lower case, no spaces
 	ShortName() string
+
+	// Longer descriptive name, may include options specific to this instance
+	Name() string
 }
 
 type MultiSeat interface {
 	// Set the number of desired winners
 	SetSeats(seats int)
 }
-
-/*
-function ends without a return statement
-func ReturnValue(foo bool) int {
-	if foo {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-*/

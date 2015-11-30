@@ -9,6 +9,7 @@ import "io"
 import "os"
 import "runtime/pprof"
 import "strings"
+import "strconv"
 import "bitbucket.org/bodhisnarkva/voteutil/go/voteutil"
 
 // from countvotes.c
@@ -244,6 +245,7 @@ func main() {
 		"enable-all":  0,
 		"disable-all": 0,
 		"cpuprofile":  1,
+		"seats":       1,
 		/*
 		   TODO: implement
 		"full-html":    0,
@@ -329,13 +331,27 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
+	var seats int = 1
+	seatsStrs, hasSeats := args["seats"]
+	if hasSeats {
+		ts, err := strconv.Atoi(seatsStrs[0])
+		if err != nil {
+			log.Fatal("bad arg for seats: ", seatsStrs[0])
+		}
+		seats = ts
+	}
+
 	_, testMode := args["test"]
 	_, showExplain := args["explain"]
 
 	methods := make([]voteutil.ElectionMethod, 0)
 	for methodShort, isEnabled := range methodEnabled {
 		if isEnabled {
-			methods = append(methods, classByShortname[methodShort]())
+			nm := classByShortname[methodShort]()
+			if nms, seatable := nm.(voteutil.MultiSeat); seatable {
+				nms.SetSeats(seats)
+			}
+			methods = append(methods, nm)
 		}
 	}
 
@@ -374,8 +390,18 @@ func main() {
 		} else if showExplain {
 			fmt.Fprint(outw, em.HtmlExplaination())
 		} else {
-			fmt.Fprintf(outw, "winners:\n")
-			fmt.Fprint(outw, result, winners)
+			if len(methods) > 1 {
+				fmt.Fprint(outw, em.Name(), " ")
+			}
+			fmt.Fprint(outw, "winners:\n")
+			//fmt.Fprint(outw, result, winners)
+			for i, r := range *result {
+				win := ""
+				if i < winners {
+					win = "* "
+				}
+				fmt.Fprintf(outw, "%s%s\t%0.2f\n", win, r.Name, r.Rating)
+			}
 		}
 	}
 }

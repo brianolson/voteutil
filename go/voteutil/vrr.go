@@ -12,16 +12,21 @@ import (
 type VRR struct {
 	Names *NameMap
 
+	// TODO: explain what WinningVotesMode means, algorithmically
 	WinningVotesMode bool
+	// TODO: explain what MarginsMode means, algorithmically
 	MarginsMode      bool
 	// counts[3] points to an array of length 6: [3 beats 0, 3 beats 1, 3 beats 2, 0 beats 3, 1 beats 3, 2 beats 3]
 	counts [][]int
 	total  int
 }
 
+// TODO: implement encoding/json.Marshaler and Unmarshaler so that intermediate VRR state can be suspended and restored
+
 func NewVRR() ElectionMethod {
 	x := new(VRR)
 	x.WinningVotesMode = true
+	x.MarginsMode = false
 	return x
 }
 
@@ -159,7 +164,7 @@ func (it *VRR) GetResult() (*NameVote, int) {
 	return it.GetResultExplain(nil)
 }
 
-type DefeatSorter struct {
+type defeatSorter struct {
 	it             *VRR
 	defeats        []int
 	blockedDefeats []int
@@ -168,8 +173,8 @@ type DefeatSorter struct {
 	sortOrder []int
 }
 
-func newDefeatSorter(it *VRR, defeats []int, blockedDefeats []int) *DefeatSorter {
-	out := &DefeatSorter{
+func newDefeatSorter(it *VRR, defeats []int, blockedDefeats []int) *defeatSorter {
+	out := &defeatSorter{
 		it,
 		defeats,
 		blockedDefeats,
@@ -181,10 +186,10 @@ func newDefeatSorter(it *VRR, defeats []int, blockedDefeats []int) *DefeatSorter
 	}
 	return out
 }
-func (ds *DefeatSorter) Len() int {
+func (ds *defeatSorter) Len() int {
 	return len(ds.defeats)
 }
-func (ds *DefeatSorter) Less(si, sj int) bool {
+func (ds *defeatSorter) Less(si, sj int) bool {
 	i := ds.sortOrder[si]
 	j := ds.sortOrder[sj]
 	if ds.defeats[i] < ds.defeats[j] {
@@ -205,12 +210,12 @@ func (ds *DefeatSorter) Less(si, sj int) bool {
 		return false
 	}
 }
-func (ds *DefeatSorter) Swap(si, sj int) {
+func (ds *defeatSorter) Swap(si, sj int) {
 	t := ds.sortOrder[si]
 	ds.sortOrder[si] = ds.sortOrder[sj]
 	ds.sortOrder[sj] = t
 }
-func (ds *DefeatSorter) WriteExplain(explain io.Writer) {
+func (ds *defeatSorter) WriteExplain(explain io.Writer) {
 	if explain == nil {
 		return
 	}
@@ -221,7 +226,7 @@ func (ds *DefeatSorter) WriteExplain(explain io.Writer) {
 	}
 	fmt.Fprint(explain, "</p>\n")
 }
-func (ds *DefeatSorter) makeWinners() (*NameVote, int) {
+func (ds *defeatSorter) makeWinners() (*NameVote, int) {
 	out := make([]NameRating, len(ds.defeats))
 	for sorti, candi := range ds.sortOrder {
 		out[sorti].Name = ds.it.Names.IndexToName(candi)
@@ -431,5 +436,17 @@ func (it *VRR) SetSharedNameMap(names *NameMap) {
 
 // ElectionMethod interface
 func (it *VRR) ShortName() string {
-	return "Virtual Round Robin"
+	return "vrr"
+}
+
+// ElectionMethod interface
+func (it *VRR) Name() string {
+	out := "Virtual Round Robin"
+	if it.WinningVotesMode {
+		out = out + " (winning votes mode)"
+	}
+	if it.MarginsMode {
+		out = out + " (margins mode)"
+	}
+	return out
 }

@@ -216,10 +216,16 @@ func (it *InstantRunoffNormalizedRatings) SetSharedNameMap(names *NameMap) {
 // simple tag, lower case, no spaces
 // ElectionMethod interface
 func (it *InstantRunoffNormalizedRatings) ShortName() string {
+	return "irnr"
+}
+
+// ElectionMethod interface
+func (it *InstantRunoffNormalizedRatings) Name() string {
 	return "Instant Runoff Normalized Ratings"
 }
 
 // Set the number of desired winners
 // MultiSeat interface
 func (it *InstantRunoffNormalizedRatings) SetSeats(seats int) {
+	it.seats = seats
 }
