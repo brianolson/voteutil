@@ -23,7 +23,7 @@ type VRR struct {
 
 // TODO: implement encoding/json.Marshaler and Unmarshaler so that intermediate VRR state can be suspended and restored
 
-func NewVRR() ElectionMethod {
+func NewVRR() *VRR {
 	x := new(VRR)
 	x.WinningVotesMode = true
 	x.MarginsMode = false
@@ -246,6 +246,9 @@ func (ds *defeatSorter) makeWinners() (*NameVote, int) {
 
 // return sorted result, num 'winners'
 func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
+	if explain != nil {
+		fmt.Fprintf(explain, "<p>%d votes</p>", it.total)
+	}
 	if len(it.counts) == 0 {
 		return &NameVote{}, 0
 	}

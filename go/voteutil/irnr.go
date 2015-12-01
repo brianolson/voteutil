@@ -16,11 +16,11 @@ type InstantRunoffNormalizedRatings struct {
 	seats        int
 }
 
-func NewInstantRunoffNormalizedRatings() ElectionMethod {
+func NewInstantRunoffNormalizedRatings() *InstantRunoffNormalizedRatings {
 	return new(InstantRunoffNormalizedRatings)
 }
 
-func NewIRNR() ElectionMethod {
+func NewIRNR() *InstantRunoffNormalizedRatings {
 	return new(InstantRunoffNormalizedRatings)
 }
 
@@ -51,6 +51,14 @@ func (it *InstantRunoffNormalizedRatings) GetResult() (*NameVote, int) {
 	return it.GetResultExplain(nil)
 }
 
+func printExplainTd(explain io.Writer, f float64) {
+	if math.IsNaN(f) {
+		fmt.Fprint(explain, "<td class=\"x\"></td>")
+	} else {
+		fmt.Fprintf(explain, "<td>%0.2f</td>", f)
+	}
+}
+
 func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*NameVote, int) {
 	if it.maxNameIndex > 100000 {
 		// really want to throw an exception here
@@ -59,6 +67,9 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 			fmt.Fprintf(explain, "<p>too many names: %d</p>", it.maxNameIndex)
 		}
 		return nil, -10001
+	}
+	if explain != nil {
+		fmt.Fprintf(explain, "<p>%d votes</p>", len(it.votes))
 	}
 	out := new(NameVote)
 	if it.seats == 0 {
@@ -82,7 +93,11 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 	for numEnabled > it.seats {
 		// init sums for this round
 		for i := 0; i < len(candidateSums); i++ {
-			candidateSums[i] = 0.0
+			if enabled[i] {
+				candidateSums[i] = 0.0
+			} else {
+				candidateSums[i] = math.NaN()
+			}
 		}
 		exhaustedBallots = 0
 		// count all votes
@@ -157,20 +172,20 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 			}
 			out.Sort()
 			if explain != nil {
-				fmt.Fprint(explain, "<table class=\"irnrExplain\"><tr><th>Name</th>")
+				fmt.Fprintf(explain, "<table class=\"irnrExplain\"><tr class=\"ha\"><td></td><th colspan=\"%d\">Rounds</th></tr><tr class=\"hb\"><th>Name</th>", len(oldSums)+1)
 				for c := 0; c < len(oldSums)+1; c++ {
-					fmt.Fprintf(explain, "<th>%d</th>", c+1)
+					fmt.Fprintf(explain, "<td class=\"rn\">%d</td>", c+1)
 				}
 				fmt.Fprint(explain, "</tr>")
-				//for ci, csum := range candidateSums {
 				for _, nr := range *out {
 					ci := it.Names.NameToIndex(nr.Name)
 					csum := candidateSums[ci]
-					fmt.Fprintf(explain, "<tr><td class=\"name\">%s</td>", it.Names.IndexToName(ci))
+					fmt.Fprintf(explain, "<tr class=\"cs\"><td class=\"name\">%s</td>", it.Names.IndexToName(ci))
 					for _, roundSums := range oldSums {
-						fmt.Fprintf(explain, "<td>%0.2f</td>", roundSums[ci])
+						printExplainTd(explain, roundSums[ci])
 					}
-					fmt.Fprintf(explain, "<td>%0.2f</td></tr>\n", csum)
+					printExplainTd(explain, csum)
+					fmt.Fprint(explain, "</tr>\n")
 				}
 				if exhaustedBallots > 0 {
 					fmt.Fprint(explain, "<tr class=\"exhausted\"><td>Exhausted Ballots</td>")
@@ -203,6 +218,7 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 func (it *InstantRunoffNormalizedRatings) HtmlExplaination() string {
 	var buf bytes.Buffer
 	winners, _ := it.GetResultExplain(&buf)
+	fmt.Fprint(&buf, "<p>final:</p>")
 	winners.PrintHtml(&buf)
 	return string(buf.Bytes())
 }
