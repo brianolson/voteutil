@@ -53,7 +53,7 @@ func (it *NameVote) Swap(i, j int) {
 func (it *NameVote) PrintHtml(out io.Writer) {
 	fmt.Fprint(out, "<table class=\"namevote\">")
 	for _, nr := range *it {
-		fmt.Fprintf(out, "<tr><td>%s</td><td>%0.2f</td></tr>", nr.Name, nr.Rating)
+		fmt.Fprintf(out, "<tr><td class=\"name\">%s</td><td class=\"rate\">%0.2f</td></tr>", nr.Name, nr.Rating)
 	}
 	fmt.Fprint(out, "</table>")
 }

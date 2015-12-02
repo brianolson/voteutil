@@ -217,9 +217,10 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 // ElectionMethod interface
 func (it *InstantRunoffNormalizedRatings) HtmlExplaination() string {
 	var buf bytes.Buffer
-	winners, _ := it.GetResultExplain(&buf)
-	fmt.Fprint(&buf, "<p>final:</p>")
-	winners.PrintHtml(&buf)
+	it.GetResultExplain(&buf)
+	//winners, _ := it.GetResultExplain(&buf)
+	// fmt.Fprint(&buf, "<p>final:</p>")
+	// winners.PrintHtml(&buf)
 	return string(buf.Bytes())
 }
 

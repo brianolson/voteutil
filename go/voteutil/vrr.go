@@ -402,14 +402,14 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 func (it *VRR) HtmlExplaination() string {
 	resultExplain := new(bytes.Buffer)
 	results, _ := it.GetResultExplain(resultExplain)
-	parts := []string{resultExplain.String(), "<table border=\"1\"><tr><td colspan=\"2\"></td>"}
+	parts := []string{resultExplain.String(), "<table border=\"0\"><tr><td colspan=\"2\"></td>"}
 	for y, _ := range *results {
 		parts = append(parts, fmt.Sprintf("<th>%d</th>", y+1))
 	}
 	parts = append(parts, "</tr>")
 	for y, nv := range *results {
 		yni := it.Names.NameToIndex(nv.Name)
-		parts = append(parts, fmt.Sprintf("<tr><th>%d</th><td>%s</td>", y+1, nv.Name))
+		parts = append(parts, fmt.Sprintf("<tr><th>%d</th><td class=\"name\">%s</td>", y+1, nv.Name))
 		for x, nv := range *results {
 			if x == y {
 				parts = append(parts, "<td></td>")
