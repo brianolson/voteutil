@@ -215,13 +215,13 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 
 // Return HTML explaining the result.
 // ElectionMethod interface
-func (it *InstantRunoffNormalizedRatings) HtmlExplaination() string {
+func (it *InstantRunoffNormalizedRatings) HtmlExplaination() (scores *NameVote, numWinners int, html string) {
 	var buf bytes.Buffer
-	it.GetResultExplain(&buf)
+	result, numWinners := it.GetResultExplain(&buf)
 	//winners, _ := it.GetResultExplain(&buf)
 	// fmt.Fprint(&buf, "<p>final:</p>")
 	// winners.PrintHtml(&buf)
-	return string(buf.Bytes())
+	return result, numWinners, string(buf.Bytes())
 }
 
 // Set shared NameMap

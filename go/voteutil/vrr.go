@@ -399,9 +399,9 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 }
 
 // ElectionMethod interface
-func (it *VRR) HtmlExplaination() string {
+func (it *VRR) HtmlExplaination() (scores *NameVote, numWinners int, html string) {
 	resultExplain := new(bytes.Buffer)
-	results, _ := it.GetResultExplain(resultExplain)
+	results, numWinners := it.GetResultExplain(resultExplain)
 	parts := []string{resultExplain.String(), "<table border=\"0\"><tr><td colspan=\"2\"></td>"}
 	for y, _ := range *results {
 		parts = append(parts, fmt.Sprintf("<th>%d</th>", y+1))
@@ -429,7 +429,7 @@ func (it *VRR) HtmlExplaination() string {
 		parts = append(parts, "</tr>")
 	}
 	parts = append(parts, "</table>")
-	return strings.Join(parts, "")
+	return results, numWinners, strings.Join(parts, "")
 }
 
 // ElectionMethod interface

@@ -64,8 +64,9 @@ func (it *RawSummation) GetResult() (*NameVote, int) {
 	}
 	return out, 1
 }
-func (it *RawSummation) HtmlExplaination() string {
-	return ""
+func (it *RawSummation) HtmlExplaination() (scores *NameVote, numWinners int, html string) {
+	result, numWinners := it.GetResult()
+	return result, numWinners, ""
 }
 
 func (it *RawSummation) SetSharedNameMap(names *NameMap) {
