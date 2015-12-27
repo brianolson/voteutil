@@ -30,9 +30,10 @@ var classByShortname map[string]ElectionMethodConstructor
 
 func init() {
 	classByShortname = map[string]ElectionMethodConstructor{
-		"vrr":  voteutil.NewVRR,
-		"raw":  voteutil.NewRawSummation,
-		"irnr": voteutil.NewIRNR,
+		"vrr":  func()voteutil.ElectionMethod{return voteutil.NewVRR()},
+		"raw":  func()voteutil.ElectionMethod{return voteutil.NewRawSummation()},
+		"irnr": func()voteutil.ElectionMethod{return voteutil.NewIRNR()},
+		"stv":  func()voteutil.ElectionMethod{return voteutil.NewSTV()},
 	}
 }
 
@@ -260,6 +261,7 @@ func main() {
 		"vrr":  true,
 		"irnr": true,
 		"raw":  true,
+		"stv":  false,
 	}
 
 	args, err := ParseArgs(os.Args[1:], argnums)
@@ -339,6 +341,9 @@ func main() {
 			log.Fatal("bad arg for seats: ", seatsStrs[0])
 		}
 		seats = ts
+		if seats > 1 {
+			methodEnabled["stv"] = true
+		}
 	}
 
 	_, testMode := args["test"]
@@ -388,7 +393,12 @@ func main() {
 			}
 			fmt.Fprint(outw, "\n")
 		} else if showExplain {
-			fmt.Fprint(outw, em.HtmlExplaination())
+			if len(methods) > 1 {
+				fmt.Fprintf(outw, "<h2>%s</h2>", em.Name())
+			}
+			//result, numWinners, html := em.HtmlExplaination()
+			_, _, html := em.HtmlExplaination()
+			fmt.Fprint(outw, html)
 		} else {
 			if len(methods) > 1 {
 				fmt.Fprint(outw, em.Name(), " ")

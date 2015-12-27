@@ -25,6 +25,30 @@ type IndexVote struct {
 	Ratings []float64
 }
 
+// sort.Interface
+func (it *IndexVote) Len() int {
+	return len(it.Indexes)
+}
+// sort.Interface
+// Is 'reversed' causing highest rating first.
+func (it *IndexVote) Less(i, j int) bool {
+	return it.Ratings[j] < it.Ratings[i]
+}
+// sort.Interface
+func (it *IndexVote) Swap(i, j int) {
+	ti := it.Indexes[i]
+	tr := it.Ratings[i]
+	it.Indexes[i] = it.Indexes[j]
+	it.Ratings[i] = it.Ratings[j]
+	it.Indexes[j] = ti
+	it.Ratings[j] = tr
+}
+
+func (it *IndexVote) Sort() {
+	sort.Sort(it)
+}
+
+
 func NewIndexVote(size int) *IndexVote {
 	out := new(IndexVote)
 	out.Indexes = make([]int, size)
@@ -186,6 +210,8 @@ type ElectionMethod interface {
 }
 
 type MultiSeat interface {
+	ElectionMethod
+
 	// Set the number of desired winners
 	SetSeats(seats int)
 }
