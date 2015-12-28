@@ -7,7 +7,12 @@ func TestSTVTrivial2Seat(t *testing.T) {
 	multiSeatTrivial2Seat(t, em)
 }
 
-func TestSTV3Seat(t *testing.T) {
+func TestSTV3SeatA(t *testing.T) {
 	em := NewSTV()
-	multiSeat3Seat(t, em)
+	multiSeat3SeatA(t, em)
+}
+
+func TestSTV3SeatB(t *testing.T) {
+	em := NewSTV()
+	multiSeat3SeatB(t, em)
 }

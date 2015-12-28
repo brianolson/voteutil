@@ -289,7 +289,8 @@ func (x *stvCountState) vote(vote IndexVote) {
 	for (votei < len(vote.Indexes)) && (votePower > 0) {
 		ci := vote.Indexes[votei]
 
-		for !x.enabled[ci] {
+		// A disabled candidate, or a rating less than zero, is not a vote for any choice
+		for (!x.enabled[ci]) || (vote.Ratings[votei] <= 0) {
 			votei++
 			if votei >= len(vote.Indexes) {
 				if firstEnabled >= 0 {

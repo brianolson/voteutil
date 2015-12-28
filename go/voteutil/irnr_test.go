@@ -2,6 +2,7 @@ package voteutil
 
 import (
 	"log"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -12,6 +13,38 @@ func TestIrnrBasic(t *testing.T) {
 
 func TestIrnrTie(t *testing.T) {
 	RankTie(t, NewIRNR())
+}
+
+func winnerNameList(result *NameVote) []string {
+	out := make([]string, len(*result))
+	for oi, nv := range *result {
+		out[oi] = nv.Name
+	}
+	//sort.Strings(out)
+	return out
+}
+
+func stringSetEquiv(a, b []string) bool {
+	if a == nil {
+		if b != nil {
+			return false
+		}
+		return true
+	}
+	if b == nil {
+		return false
+	}
+	if len(a) != len(b) {
+		return false
+	}
+	sort.Strings(a)
+	sort.Strings(b)
+	for ai, ax := range a {
+		if b[ai] != ax {
+			return false
+		}
+	}
+	return true
 }
 
 const twoSeatA = `a=9&b=0&c=0
@@ -39,6 +72,22 @@ a=0&b=9&c=0&d=0
 a=0&b=0&c=0&d=2
 a=0&b=0&c=0&d=2`
 
+// Just like A except 0 -> nil
+const threeSeatB = `a=9&c=8&d=2
+a=9&c=8&d=2
+a=9&c=8&d=2
+a=9&c=8&d=2
+a=9&c=8&d=2
+a=9&c=8&d=2
+a=9&c=8&d=2
+b=9
+b=9
+b=9
+b=9
+b=9
+d=2
+d=2`
+
 func stringToNameVotes(text string) []NameVote {
 	parts := strings.Split(text, "\n")
 	out := make([]NameVote, len(parts))
@@ -61,21 +110,9 @@ func ThreeSeatA() []NameVote {
 	return stringToNameVotes(threeSeatA)
 }
 
-/*
-var IRNR2SeatTestVotes []string = []string{
-	"a=9&b=0&c=0",
-	"a=9&b=0&c=0",
-	"a=9&b=0&c=0",
-	"a=9&b=0&c=0",
-
-	"a=0&b=9&c=0",
-	"a=0&b=9&c=0",
-	"a=0&b=9&c=0",
-
-	"a=0&b=0&c=2",
-	"a=0&b=0&c=2",
+func ThreeSeatB() []NameVote {
+	return stringToNameVotes(threeSeatB)
 }
-*/
 
 func TestIrnrTrivial2Seat(t *testing.T) {
 	em := NewIRNR()
@@ -83,17 +120,8 @@ func TestIrnrTrivial2Seat(t *testing.T) {
 }
 
 func multiSeatTrivial2Seat(t *testing.T, em MultiSeat) {
-	//ms := em.(MultiSeat)
 	em.SetSeats(2)
 
-	/*for _, vs := range IRNR2SeatTestVotes {
-		nv, err := UrlToNameVote(vs)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-		em.Vote(*nv)
-	}*/
 	for _, nv := range TwoSeatA() {
 		em.Vote(nv)
 	}
@@ -104,47 +132,28 @@ func multiSeatTrivial2Seat(t *testing.T, em MultiSeat) {
 	ExpectInt(t, numWinners, 2)
 }
 
-/*
-var IRNR3SeatTestVotes []string = []string{
-	// Largest faction prefers: a,c
-	"a=9&b=0&c=8&d=2",
-	"a=9&b=0&c=8&d=2",
-	"a=9&b=0&c=8&d=2",
-	"a=9&b=0&c=8&d=2",
-	"a=9&b=0&c=8&d=2",
-	"a=9&b=0&c=8&d=2",
-	"a=9&b=0&c=8&d=2",
-
-	// Second faction wants: b
-	"a=0&b=9&c=0&d=0",
-	"a=0&b=9&c=0&d=0",
-	"a=0&b=9&c=0&d=0",
-	"a=0&b=9&c=0&d=0",
-	"a=0&b=9&c=0&d=0",
-
-	// minority faction wants d, sorry
-	"a=0&b=0&c=0&d=2",
-	"a=0&b=0&c=0&d=2",
-}
-*/
-
-func TestIrnr3Seat(t *testing.T) {
+func TestIrnr3SeatA(t *testing.T) {
 	em := NewIRNR()
-	multiSeat3Seat(t, em)
+	multiSeat3SeatA(t, em)
 }
 
-func multiSeat3Seat(t *testing.T, em MultiSeat) {
+func TestIrnr3SeatB(t *testing.T) {
+	em := NewIRNR()
+	multiSeat3SeatB(t, em)
+}
+
+func multiSeat3SeatA(t *testing.T, em MultiSeat) {
+	multiSeat3SeatInner(t, em, ThreeSeatA())
+}
+
+func multiSeat3SeatB(t *testing.T, em MultiSeat) {
+	multiSeat3SeatInner(t, em, ThreeSeatB())
+}
+
+func multiSeat3SeatInner(t *testing.T, em MultiSeat, votes []NameVote) {
 	em.SetSeats(3)
 
-/*
-	for _, vs := range IRNR3SeatTestVotes {
-		nv, err := UrlToNameVote(vs)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-*/
-	for _, nv := range ThreeSeatA() {
+	for _, nv := range votes {
 		em.Vote(nv)
 	}
 
@@ -153,8 +162,11 @@ func multiSeat3Seat(t *testing.T, em MultiSeat) {
 		t.Fatal("wat")
 		return
 	}
-	ExpectString(t, (*results)[0].Name, "a")
-	ExpectString(t, (*results)[1].Name, "b")
-	ExpectString(t, (*results)[2].Name, "c")
 	ExpectInt(t, numWinners, 3)
+	winningNames := winnerNameList(results)
+	goodset := []string{"a", "b", "c"}
+	// set equivalency is good enough, don't have to return set in order
+	if !stringSetEquiv(goodset, winningNames[:3]) {
+		t.Errorf("bad results, wanted %v, got %v", goodset, results)
+	}
 }
