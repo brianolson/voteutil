@@ -16,6 +16,16 @@ java/vote.jar
 python/.*\.pyc
 test/.*\.pyc
 simulator/.*\.o
+simulator/trial.pb.cc
+simulator/trial.pb.h
+simulator/sgpb
+simulator/spacegraph
+simulator/speedtest
+simulator/vsmall
+simulator/processprl
+simulator/render_mcpb
+simulator/local.make
 Attic
 .*~$
 .DS_Store
+simulator/results
