@@ -57,6 +57,8 @@ a=0&b=9&c=0
 a=0&b=0&c=2
 a=0&b=0&c=2`
 
+const twoSeatOneVote = `a=9&b=8&c=7&d=6&e=5&f=4&g=3&h=2&i=1`
+
 const threeSeatA = `a=9&b=0&c=8&d=2
 a=9&b=0&c=8&d=2
 a=9&b=0&c=8&d=2
@@ -120,9 +122,18 @@ func TestIrnrTrivial2Seat(t *testing.T) {
 }
 
 func multiSeatTrivial2Seat(t *testing.T, em MultiSeat) {
+	multiSeat2SeatInner(t, em, twoSeatA)
+}
+
+func multiSeat2SeatOneVote(t *testing.T, em MultiSeat) {
+	multiSeat2SeatInner(t, em, twoSeatOneVote)
+}
+
+func multiSeat2SeatInner(t *testing.T, em MultiSeat, votes string) {
 	em.SetSeats(2)
 
-	for _, nv := range TwoSeatA() {
+	va := stringToNameVotes(votes)
+	for _, nv := range va {
 		em.Vote(nv)
 	}
 

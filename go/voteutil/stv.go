@@ -59,12 +59,11 @@ func (it *SingleTransferrableVote) HtmlExplaination() (scores *NameVote, numWinn
 	var buf bytes.Buffer
 	result, numWinners := it.GetResultExplain(&buf)
 	return result, numWinners, string(buf.Bytes())
-	//return nil, 0, "TODO: html explain"
 }
 
 func Quota(votes uint64, seats int) uint64 {
-	quota := votes / uint64(seats + 1)
-	for (quota * uint64(seats + 1)) < votes {
+	quota := votes / uint64(seats+1)
+	for (quota * uint64(seats+1)) < votes {
 		quota++
 	}
 	return quota
@@ -74,15 +73,18 @@ const initialVotePower = 1000000
 
 // context too messy to just live in function stack
 type stvCountState struct {
-	explain io.Writer
-	enabled []bool
-	candidateSums []uint64
-	deweight []float64
-	numEnabled int
+	explain          io.Writer
+	enabled          []bool
+	candidateSums    []uint64
+	deweight         []float64
+	numEnabled       int
 	exhaustedBallots uint64
-	oldSums [][]uint64
-	exhaustHistory []int
-	it *SingleTransferrableVote
+	oldSums          [][]uint64
+	exhaustHistory   []int
+	winners          []int
+	numWinners       int // winners[0:numWinners] have been elected
+	numLosers        int // winners[len-numLosers:len] have been disqualified
+	it               *SingleTransferrableVote
 }
 
 func (x *stvCountState) init(it *SingleTransferrableVote, explain io.Writer) {
@@ -92,6 +94,7 @@ func (x *stvCountState) init(it *SingleTransferrableVote, explain io.Writer) {
 	x.enabled = make([]bool, it.maxNameIndex+1)
 	x.candidateSums = make([]uint64, it.maxNameIndex+1)
 	x.deweight = make([]float64, it.maxNameIndex+1)
+	x.winners = make([]int, it.maxNameIndex+1)
 	for i := range x.enabled {
 		x.enabled[i] = true
 		x.deweight[i] = 1.0
@@ -102,6 +105,19 @@ func (x *stvCountState) init(it *SingleTransferrableVote, explain io.Writer) {
 		x.oldSums = make([][]uint64, 0)
 		x.exhaustHistory = make([]int, 0)
 	}
+	x.numWinners = 0
+	x.numLosers = 0
+}
+
+func (x *stvCountState) alreadyWinning(ci int) bool {
+	i := 0
+	for i < x.numWinners {
+		if x.winners[i] == ci {
+			return true
+		}
+		i++
+	}
+	return false
 }
 
 func (x *stvCountState) result() (*NameVote, int) {
@@ -169,6 +185,8 @@ func (x *stvCountState) disable() {
 	} else if ties == 1 {
 		// one loser
 		x.enabled[mini] = false
+		x.winners[len(x.winners)-x.numLosers-1] = mini
+		x.numLosers++
 		x.numEnabled--
 	} else {
 		// ties > 1; several losers
@@ -190,6 +208,8 @@ func (x *stvCountState) disable() {
 								fmt.Fprintf(x.explain, "<p>disable %s</p>", x.it.Names.IndexToName(ci))
 							}
 							x.enabled[ci] = false
+							x.winners[len(x.winners)-x.numLosers-1] = ci
+							x.numLosers++
 							x.numEnabled--
 							ties--
 						} else {
@@ -207,6 +227,8 @@ func (x *stvCountState) disable() {
 			}
 			if csum == minsum {
 				x.enabled[ci] = false
+				x.winners[len(x.winners)-x.numLosers-1] = ci
+				x.numLosers++
 				x.numEnabled--
 			}
 		}
@@ -220,7 +242,7 @@ func (x *stvCountState) pass() int {
 			x.deweight[eni] = 0.0
 		}
 	}
-	
+
 	deweightChanged := true
 	deweightCycleLimit := 10
 	var numWinners int
@@ -237,7 +259,7 @@ func (x *stvCountState) pass() int {
 			x.vote(vote)
 		}
 
-		quota := Quota((uint64(len(x.it.votes)) * initialVotePower) - x.exhaustedBallots, x.it.seats)
+		quota := Quota((uint64(len(x.it.votes))*initialVotePower)-x.exhaustedBallots, x.it.seats)
 
 		if x.explain != nil {
 			fmt.Fprintf(x.explain, "<p>early sums:")
@@ -303,7 +325,9 @@ func (x *stvCountState) vote(vote IndexVote) {
 			ci = vote.Indexes[votei]
 		}
 
-		firstEnabled = ci
+		if firstEnabled < 0 {
+			firstEnabled = ci
+		}
 
 		ties := uint64(1)
 		ti := votei + 1
@@ -379,7 +403,7 @@ func (x *stvCountState) tieDistribute(votei, ti int, vote IndexVote, votePower u
 					break
 				}
 			}
-		}				
+		}
 		// assert(votePower > votePowerDebit)
 		votePower -= votePowerDebit
 	}
@@ -406,7 +430,7 @@ func (it *SingleTransferrableVote) GetResultExplain(explain io.Writer) (*NameVot
 	if it.seats == 1 {
 		log.Print("WARNING: STV electing 1 seat is a bad election method. Considered Harmful. Do not use.")
 		if explain != nil {
-			fmt.Fprint(explain, "<p style=\"color:#f22;font-size:150%\">WARNING: STV electing 1 seat is a bad election method. Considered Harmful. Do not use.</p>")
+			fmt.Fprintf(explain, "<p style=\"color:#f22;font-size:150%%\">WARNING: STV electing 1 seat is a bad election method. Considered Harmful. Do not use.</p>")
 		}
 	}
 
