@@ -2,7 +2,46 @@
 
 
 class IRNRP:
-    """Instant Runoff Normalized Ratings, Proportional"""
+    """Instant Runoff Normalized Ratings, Proportional
+
+    Given a set of votes that are ratings from voters across some
+    choices (higher rating better), elect several choices in proportion to
+    their support in the voters.
+
+    At any time a single vote is 'normalized' by dividing it by the
+    sum of absolute values of its component ratings. The sum of
+    absolute values of the ratings of the normalized vote should be
+    1.0
+
+    Each competing choice starts off with a 'weight' of 1.0
+
+    Add up the votes, for each vote:
+      Multiply each rating by the global weight for that chioice
+      Normalize to 1.0 the sum of absolute values of ratings
+      Add up these weighted-then-normalized votes
+
+    A choice is considered elected if it has greater than the quota of:
+    ((number of active voters) / ((number of seats to elect) + 1))
+
+    If a sufficient number of choices are elected, we're done.
+
+    The weight of each elected choice shall be decreased so that it
+    receives less surplus vote but still greater vote than the needed
+    quota to win. This may be repeated several times, doing a recount
+    as above to integrate the new weights and the re-normalized votes
+    which result.
+
+    If adjusting the weights of the winners does not move enough
+    surplus vote to elect a full set of winners, whichever choice has
+    the least vote shall have its weight set to 0.0 and thus be
+    disqualified. Re-count with re-normalized votes accounting for
+    this choice having been removed from consideration.
+
+    A voter can become 'inactive' and not counted in the total number
+    of voters if all of the non-zero rated choices on their ballot
+    have become disqualified.
+
+    """
 
     def __init__(self, seats=None):
         if seats is None or seats <= 1:
