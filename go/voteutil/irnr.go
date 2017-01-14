@@ -288,14 +288,16 @@ func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, i
 	winningCounts := make([]float64, 0, it.maxNameIndex+1)
 
 	// do many rounds, successively disqualify loosers
-	for numEnabled > it.seats {
+	for numEnabled >= it.seats {
 
 		weightAdjusted := true
 		weightAdjustmentCycleLimit := 10
+		weightAdjustmentCycleCount := 0
 
 		for weightAdjusted && (weightAdjustmentCycleLimit >= 0) {
 			weightAdjusted = false
 			weightAdjustmentCycleLimit--
+			weightAdjustmentCycleCount++
 
 			// TODO: archive candidateSums for explain
 			exhaustedBallots = it.pCount(candidateSums, weight, enabled)
@@ -331,6 +333,10 @@ func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, i
 			// TODO: archive candidateSums for explain
 			exhaustedBallots = it.pCount(candidateSums, weight, enabled)
 			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats-1)
+		}
+
+		if explain != nil {
+			fmt.Fprintf(explain, "<div class=\"p\">%d weight adjustment rounds</div>\n", weightAdjustmentCycleCount)
 		}
 
 		// pick loser who doesn't make the cut

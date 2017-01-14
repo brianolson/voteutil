@@ -30,10 +30,10 @@ var classByShortname map[string]ElectionMethodConstructor
 
 func init() {
 	classByShortname = map[string]ElectionMethodConstructor{
-		"vrr":  func()voteutil.ElectionMethod{return voteutil.NewVRR()},
-		"raw":  func()voteutil.ElectionMethod{return voteutil.NewRawSummation()},
-		"irnr": func()voteutil.ElectionMethod{return voteutil.NewIRNR()},
-		"stv":  func()voteutil.ElectionMethod{return voteutil.NewSTV()},
+		"vrr":  func() voteutil.ElectionMethod { return voteutil.NewVRR() },
+		"raw":  func() voteutil.ElectionMethod { return voteutil.NewRawSummation() },
+		"irnr": func() voteutil.ElectionMethod { return voteutil.NewIRNR() },
+		"stv":  func() voteutil.ElectionMethod { return voteutil.NewSTV() },
 	}
 }
 
@@ -248,12 +248,12 @@ func main() {
 		"cpuprofile":  1,
 		"seats":       1,
 		/*
-		   TODO: implement
-		"full-html":    0,
-		"no-full-html": 0,
-		"no-html-head": 0,
-		"dump":         0,
-		"debug":        0,
+			   TODO: implement
+			"full-html":    0,
+			"no-full-html": 0,
+			"no-html-head": 0,
+			"dump":         0,
+			"debug":        0,
 		*/
 	}
 
@@ -341,15 +341,17 @@ func main() {
 			log.Fatal("bad arg for seats: ", seatsStrs[0])
 		}
 		seats = ts
-		if seats > 1 {
-			methodEnabled["stv"] = true
-		}
+		/*
+			if seats > 1 {
+				methodEnabled["stv"] = true
+			}
+		*/
 	}
 
 	_, testMode := args["test"]
 	_, showExplain := args["explain"]
 
-	methods := make([]voteutil.ElectionMethod, 0)
+	methods := make([]voteutil.ElectionMethod, 0, len(methodEnabled))
 	for methodShort, isEnabled := range methodEnabled {
 		if isEnabled {
 			nm := classByShortname[methodShort]()
