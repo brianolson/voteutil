@@ -138,6 +138,12 @@ func multiSeat2SeatInner(t *testing.T, em MultiSeat, votes string) {
 	}
 
 	results, numWinners := em.GetResult()
+	if results == nil {
+		t.Fatal("nil results")
+	}
+	if len(*results) < 2 {
+		t.Fatal("short results", results)
+	}
 	ExpectString(t, (*results)[0].Name, "a")
 	ExpectString(t, (*results)[1].Name, "b")
 	ExpectInt(t, numWinners, 2)

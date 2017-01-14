@@ -71,11 +71,13 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 	if explain != nil {
 		fmt.Fprintf(explain, "<p>%d votes</p>", len(it.votes))
 	}
-	out := new(NameVote)
 	if it.seats == 0 {
 		// switch from initialization default to something reasonable
 		it.seats = 1
+	} else if it.seats > 1 {
+		return it.IRNRP(explain)
 	}
+	out := new(NameVote)
 	enabled := make([]bool, it.maxNameIndex+1)
 	candidateSums := make([]float64, it.maxNameIndex+1)
 	for i, _ := range enabled {
@@ -205,6 +207,151 @@ func (it *InstantRunoffNormalizedRatings) GetResultExplain(explain io.Writer) (*
 			exhaustHistory = append(exhaustHistory, exhaustedBallots)
 			candidateSums = make([]float64, it.maxNameIndex+1)
 		}
+	}
+
+	if explain != nil {
+		fmt.Fprintf(explain, "<p>internal error in irnr.go</p>")
+	}
+	return nil, -1
+}
+
+func (it *InstantRunoffNormalizedRatings) pCount(candidateSums, weight []float64, enabled []bool) int {
+	// init sums for this round
+	for i := 0; i < len(candidateSums); i++ {
+		if enabled[i] {
+			candidateSums[i] = 0.0
+		} else {
+			candidateSums[i] = math.NaN()
+		}
+	}
+	exhaustedBallots := 0
+	// count all votes
+	for _, vote := range it.votes {
+		votesum := 0.0
+		// gather magnitude of this vote so we can normalize it
+		for vii, ni := range vote.Indexes {
+			if enabled[ni] {
+				tf := vote.Ratings[vii]
+				votesum += math.Abs(tf) * weight[ni]
+			}
+		}
+		if votesum <= 0.0 {
+			// nothing left of this vote
+			exhaustedBallots++
+			continue
+		}
+		votesum = math.Sqrt(votesum)
+		for vii, ni := range vote.Indexes {
+			if enabled[ni] {
+				candidateSums[ni] += (vote.Ratings[vii] * weight[ni]) / votesum
+			}
+		}
+	}
+	return exhaustedBallots
+}
+
+// Is some int x IN some array of int haystack
+// sigh, this is a basic feature of better languages
+func aiin(x int, haystack []int) bool {
+	for _, v := range haystack {
+		if v == x {
+			return true
+		}
+	}
+	return false
+}
+
+const ADJUSTMENT_RATE = 0.10
+
+// Proportional-Representation multi-seat mode
+func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, int) {
+	out := new(NameVote)
+	enabled := make([]bool, it.maxNameIndex+1)
+	weight := make([]float64, it.maxNameIndex+1)
+	candidateSums := make([]float64, it.maxNameIndex+1)
+	for i, _ := range enabled {
+		enabled[i] = true
+		weight[i] = 1.0
+	}
+	numEnabled := len(enabled)
+	var exhaustedBallots int
+	var quota float64
+	/*
+		var oldSums [][]float64 = nil // TODO: record old candidateSums for explain
+		var exhaustHistory []int = nil // TODO: record history for explain
+		if explain != nil {
+			oldSums = make([][]float64, 0)
+			exhaustHistory = make([]int, 0)
+		}
+	*/
+	winners := make([]int, 0, it.maxNameIndex+1)
+	winningCounts := make([]float64, 0, it.maxNameIndex+1)
+
+	// do many rounds, successively disqualify loosers
+	for numEnabled > it.seats {
+
+		weightAdjusted := true
+		weightAdjustmentCycleLimit := 10
+
+		for weightAdjusted && (weightAdjustmentCycleLimit >= 0) {
+			weightAdjusted = false
+			weightAdjustmentCycleLimit--
+
+			// TODO: archive candidateSums for explain
+			exhaustedBallots = it.pCount(candidateSums, weight, enabled)
+			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats-1)
+
+			// find winners, maybe finish, de-weight according to surplus
+			for ci, votes := range candidateSums {
+				if votes > quota {
+					if !aiin(ci, winners) {
+						if explain != nil {
+							fmt.Fprintf(explain, "<div class=\"p\">%s is winning with %.2f votes</div>\n", it.Names.IndexToName(ci), votes)
+						}
+						winners = append(winners, ci)
+						winningCounts = append(winningCounts, votes)
+						*out = append(*out, NameRating{it.Names.IndexToName(ci), votes})
+						if len(winners) >= it.seats {
+							// TODO: append the rest of the field in order
+							return out, len(winners)
+						}
+					}
+					surplus := votes - quota
+					adjustment := surplus * ADJUSTMENT_RATE
+					adjustmentFraction := adjustment / votes
+					weight[ci] *= (1.0 - adjustmentFraction)
+					weightAdjusted = true
+				}
+			}
+		}
+
+		if weightAdjusted {
+			// we're not going to continue adjusting for now,
+			// but we should reflect the last adjustment we made
+			// TODO: archive candidateSums for explain
+			exhaustedBallots = it.pCount(candidateSums, weight, enabled)
+			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats-1)
+		}
+
+		// pick loser who doesn't make the cut
+		minci := 0
+		mincount := candidateSums[0]
+		for ci, cv := range candidateSums {
+			if !enabled[ci] {
+				continue
+			}
+			if cv < mincount {
+				minci = ci
+				mincount = cv
+			}
+		}
+		if explain != nil {
+			fmt.Fprintf(explain, "<div class=\"p\">%s is disabled with %.2f votes</div>", it.Names.IndexToName(minci), mincount)
+		}
+		// TODO: record losers
+		weight[minci] = 0.0
+		enabled[minci] = false
+		numEnabled--
 	}
 
 	if explain != nil {

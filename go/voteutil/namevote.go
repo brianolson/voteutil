@@ -29,11 +29,13 @@ type IndexVote struct {
 func (it *IndexVote) Len() int {
 	return len(it.Indexes)
 }
+
 // sort.Interface
 // Is 'reversed' causing highest rating first.
 func (it *IndexVote) Less(i, j int) bool {
 	return it.Ratings[j] < it.Ratings[i]
 }
+
 // sort.Interface
 func (it *IndexVote) Swap(i, j int) {
 	ti := it.Indexes[i]
@@ -47,7 +49,6 @@ func (it *IndexVote) Swap(i, j int) {
 func (it *IndexVote) Sort() {
 	sort.Sort(it)
 }
-
 
 func NewIndexVote(size int) *IndexVote {
 	out := new(IndexVote)
@@ -80,6 +81,24 @@ func (it *NameVote) PrintHtml(out io.Writer) {
 		fmt.Fprintf(out, "<tr><td class=\"name\">%s</td><td class=\"rate\">%0.2f</td></tr>", nr.Name, nr.Rating)
 	}
 	fmt.Fprint(out, "</table>")
+}
+
+func (it *NameVote) Append(name string, rating float64) *NameVote {
+	out := append(*it, NameRating{name, rating})
+	return &out
+}
+
+func (it *NameVote) Prepend(name string, rating float64) *NameVote {
+	if len(*it) == 0 {
+		x := []NameRating{{name, rating}}
+		tx := NameVote(x)
+		return &tx
+	}
+	out := make([]NameRating, len(*it)+1)
+	copy(out[1:], *it)
+	out[0] = NameRating{name, rating}
+	tout := NameVote(out)
+	return &tout
 }
 
 // Map from names to indexes.
