@@ -1,0 +1,7 @@
+<table class="issue" align="center">
+{% if IssueHeader %}<tr><td colspan="{{Choices|length}}" class="ih">{{IssueHeader}}</td></tr>{%endif%}
+<tr>{% for cv in Choices %}<th>{{ loop.index }}</th>{%endfor%}</tr>
+{% for cv in Choices %}
+<tr class="cr">{% for civ in Choices %}<td class="o"><img class="o" src="{{ loop.index }}.svg"></td>{%endfor%}<td class="ct">{{cv}}</td></tr>
+{%endfor%}
+</table>

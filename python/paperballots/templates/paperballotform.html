@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printable Ballot And Tally Sheet Maker</title>
+<style>
+</style>
+<script src="/jquery.js"></script>
+</head><body bgcolor="#ffffff" text="#000000">
+
+<h1><a href="/" style="text-decoration:none;color:#000;">BetterPolls.com</a></h1>
+<h2>Printable Ballot And Tally Sheet Maker</h2>
+
+<p>
+Use this tool to create printable ballots for ranked choice votes.
+Also available are tally sheets for Virtual Round Robin (Condorcet) elections.
+</P>
+
+<form>
+<table>
+<tr style="display:none"><td>Title:</td><td><input type="text" value="" name="t" /></td></tr>
+<tr><td>Preamble:</td><td><textarea cols="60" rows="4" name="ih"></textarea></td></tr>
+<tr><td>Chocies:</td><td>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+<div class="cd"><input type="text" value="" name="c" /></div>
+</td></tr>
+<tr style="display:none"><td></td><td><button id="newchoice">+ add choice</button></td></tr>
+</table>
+
+<button name="f" value="ballot">Get Ballot</button>
+<button name="f" value="sum">Get Tablulation Sheet</button>
+<button name="f" value="both">Get Both</button>
+</form>
+
+<p><a href="/">BetterPolls.com home</a></p>
+
+</body></html>

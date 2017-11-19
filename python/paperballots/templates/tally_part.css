@@ -1,0 +1,9 @@
+img.o{margin-right:1em;}
+div.cr{margin: 4px;}
+span.ct{font-family:serif;margin:2px;}
+.issue{border:solid 1px #aaa;}
+td.rot270 {position:relative;width:40px;height:170px;}
+td.rot270 > div {position:relative;width:30px;height:160px;}
+td.rot270 span{position:absolute;display:inline-block;text-align:left;transform: rotate(270deg);white-space:nowrap;}
+table.vrrt td.c{border:1px solid #777;min-width:100px;min-height:100px;height:100px;width:100px;}
+table.vrrt td.g{background-color:#aaa;}

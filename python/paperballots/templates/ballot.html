@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{Title}}</title>
+<style>
+  {% include "ballot_part.css" %}
+  #preamble{margin-bottom:0.5em;}
+</style>
+{% macro ballot_part(IssueHeader, Choices) -%}
+{% include "ballot_part.html" %}
+{%- endmacro %}
+  </head><body bgcolor="#ffffff" text="#000000">
+	{% if Preamble %}
+	<div id="preamble">
+	  {{ Preamble }}
+	</div>
+	{% endif %}
+	<div id="content">
+	  {% for issue in Issues %}
+	  {{ ballot_part(issue.IssueHeader, issue.Choices) }}
+	  {% endfor %}
+</div>
+</body></html>

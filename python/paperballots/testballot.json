@@ -1,0 +1,41 @@
+{
+  "Title":"test ballot",
+  "Preamble":"Filling out the following ranking ballot will help design Open Source software for running better elections. Fill out each section as much as you feel is appropriate. You could just pick a 1st choice or rank all available options. Tie rankings are okay.",
+  "Issues":[
+	{
+	  "IssueHeader":"Rank these ice cream flavors. 1 for most preferred.",
+	  "Choices":[
+		"Chocolate",
+		"Vanilla",
+		"Rocky Road",
+		"Strawberry",
+		"Chocolate Chip Cookie Dough"
+	  ]
+	},
+	{
+	  "IssueHeader":"Rank the Star Wars movies. 1 for best.",
+	  "Choices":[
+		"Episode I: The Phantom Menace",
+		"Episode II: Attack of the Clones",
+		"Episode III: Revenge of the Sith",
+		"Episode IV: A New Hope",
+		"Episode V: The Empire Strikes Back",
+		"Episode VI: Return of the Jedi",
+		"Episode VII: The Force Awakens"
+	  ]
+	},
+	{
+	  "IssueHeader":"Rank the superheroes, on whatever basis you like. 1 for best.",
+	  "Choices":[
+		"Wonder Woman",
+		"Black Panther",
+		"Superman",
+		"Batman",
+		"Wolverine",
+		"Spider-man",
+		"Goku",
+		"The Doctor"
+	  ]
+	}
+  ]
+}

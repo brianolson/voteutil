@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{Title}}</title>
+<style>
+{% include "ballot_part.css" %}
+{% include "tally_part.css" %}
+
+.noprint{font-size:140%;color:#777;}
+
+@media print {
+ footer{page-break-after: always;}
+.noprint{display:none;}
+}
+</style>
+<script src="/s/jquery.js"></script>
+</head><body bgcolor="#ffffff" text="#000000">
+<div class="noprint">When printed the ballot and tabulation form will be separate pages and this message will not be printed.</div>
+
+{% include "ballot_part.html" %}
+
+<footer></footer>
+
+<div id="content">
+{% include "tally_part.html" %}
+</div>
+</body></html>

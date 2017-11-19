@@ -1,0 +1,27 @@
+<table class="vrrt">
+<tr><td class="x"></td><td colspan="{{Choices|length}}" class="x" align="center">these are ranked <b>lower</b></td></tr>
+<tr><td rowspan="{{Choices|length}}" class="rot270 x">
+<div><span>these are ranked <b>higher</b></span></div></td><td class="x"></td>{% for ci, cv in Choices.items() %}<th>{{cv}}</th>{% endfor %}</tr>
+{% for ci, cv in Choices.items() %}
+<tr><th>{{cv}}</th>{% for di, dv in Choices.items() %}<td class="c{% if ci == di %} g{%endif%}"></td>{%endfor%}</tr>
+{%endfor%}
+</table>
+
+
+<script>
+if (true){
+$('.rot270 span').each(function(i, elem){
+ var je = $(elem);
+ var jewidth = je.width();
+ var jeheight = je.height();
+ var pdiv = je.parent();
+ var ptd = pdiv.parent();
+ pdiv[0].style.width = (jeheight + 2) + 'px';
+ pdiv[0].style.height = (jewidth + 2) + 'px';
+ ptd[0].style.width = (jeheight + 4) + 'px';
+ ptd[0].style.height = (jewidth + 4) + 'px';
+ je[0].style.left = ((jewidth/-2) + (jeheight/2)) + 'px';
+ je[0].style.top = ((jewidth/2) - (jeheight/2)) + 'px';
+});
+}
+</script>

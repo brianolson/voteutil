@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg
+width="{{Width}}"
+height="{{Height}}"
+id="svg2"
+xmlns="http://www.w3.org/2000/svg" version="1.1">
+<rect x="{{Xinset}}" y="{{Yinset}}" width="{{InnerWidth}}" height="{{InnerHeight}}" rx="{{CornerRadius}}" fill="none" stroke="#000" stroke-width="{{LineThickness}}" />
+<text x="{{Xcenter}}" y="{{Ycenter}}" text-anchor="middle" dominant-baseline="central" font-size="{{TextHeight}}" fill="#aaa">{{Number}}</text>
+</svg>
