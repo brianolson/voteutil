@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.Vector;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * command line utility for counting votes.
@@ -103,6 +105,7 @@ public class countvotes {
 		int seats = 1;
 		boolean printTime = false;
 		boolean rankings = false;
+		Pattern specRepeatCountRe = null;
 		
 		Histogram histInstance = null;
 		NameVotingSystem firstWinner = null;
@@ -319,8 +322,16 @@ public class countvotes {
 			String line;
 			BufferedReader r = new BufferedReader( new InputStreamReader( fin ) );
 			while ( (line = r.readLine()) != null ) {
+				int repeatCount = 1;
+				if (specRepeatCountRe == null) {
+					specRepeatCountRe = Pattern.compile("^\\*(\\d+)\\s(.*)");
+				}
+				Matcher matcher = specRepeatCountRe.matcher(line);
+				if (matcher.matches()) {
+					repeatCount = Integer.parseInt(matcher.group(1));
+					line = matcher.group(2);
+				}
 				NameVotingSystem.NameVote[] nv;
-				//nv = NameVotingSystem.voteSpecToNameVoteArray( line );
 				if ( mode == MODE_URL ) {
 					nv = NameVotingSystem.fromUrlEncoded( line );
 				} else if ( mode == MODE_WS_NAMEQ ) {
@@ -335,11 +346,13 @@ public class countvotes {
 					out.print( NameVotingSystem.urlEncode(nv) );
 					out.println();
 				}
-				for ( int vi = 0; vi < vs.length; vi++ ) {
-					if (rankings) {
-						vs[vi].voteRanking( nv );
-					} else {
-						vs[vi].voteRating( nv );
+				for (int repeat = 0; repeat < repeatCount; repeat++) {
+					for (int vi = 0; vi < vs.length; vi++) {
+						if (rankings) {
+							vs[vi].voteRanking(nv);
+						} else {
+							vs[vi].voteRating(nv);
+						}
 					}
 				}
 			}

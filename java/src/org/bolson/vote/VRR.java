@@ -530,7 +530,7 @@ D z z z 0
 		int numc = they.length;
 		int[] ss = getSchwartzSet( numc, tally, defeatCount, debugLog );
 		int mind; // minimum defeat, index and strength
-		minij[] mins = new minij[numc];
+		minij[] mins = new minij[numc*numc];
 		mins[0] = new minij();
 		
 		boolean notdone = true;
@@ -607,6 +607,7 @@ D z z z 0
 						mins[0].ihi = ihi;
 						mins[0].ilo = ilo;
 					} else if ( m == mind ) {
+						assert(tie < mins.length);
 						if ( mins[tie] == null ) {
 							mins[tie] = new minij();
 						}
