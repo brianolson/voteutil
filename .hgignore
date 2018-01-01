@@ -13,6 +13,7 @@ go/.*/_testmain\..*
 go/.*/.\.out
 java/.*\.class
 java/vote.jar
+java/target
 python/.*\.pyc
 test/.*\.pyc
 simulator/.*\.o
