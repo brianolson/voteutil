@@ -6,7 +6,7 @@
   <target name="compile">
 	<mkdir dir="classes" />
 	<mkdir dir="dependlibs" />
-    <javac srcdir="org" destdir="classes" source="1.4" debug="true">
+    <javac srcdir="org" destdir="classes" source="1.8" debug="true">
 <!--
 	  Lots of unchecked references in post 1.4; they want to use <Type> containers.
 	  <compilerarg value="-Xlint:unchecked" />
