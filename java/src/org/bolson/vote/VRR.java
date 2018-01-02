@@ -219,7 +219,7 @@ public class VRR extends NameVotingSystem implements SummableVotingSystem, Index
 
 	/** Vote a partial tally into this voting system.
 	 @param other another SummableVotingSystem. Most likely it will only work if it is the same class as this.
-	 @throws ClassCastExepcion if other isn't the same or compatible with this
+	 @throws ClassCastException if other isn't the same or compatible with this
 	 */
 	public void accumulateSubVote( SummableVotingSystem other ) throws ClassCastException {
 		if ( other == null ) return;
