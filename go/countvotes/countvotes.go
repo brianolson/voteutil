@@ -148,8 +148,9 @@ type VoteSource interface {
 }
 
 type FileVoteSource struct {
-	rawReader io.Reader
-	bReader   *bufio.Reader
+	rawReader      io.Reader
+	bReader        *bufio.Reader
+	commentHandler func(line string)
 }
 
 func OpenFileVoteSource(path string) (*FileVoteSource, error) {
@@ -157,24 +158,38 @@ func OpenFileVoteSource(path string) (*FileVoteSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FileVoteSource{rawin, bufio.NewReader(rawin)}, nil
+	return &FileVoteSource{rawin, bufio.NewReader(rawin), nil}, nil
 }
 
 func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
 	if it.bReader == nil {
 		return nil, nil
 	}
-	line, err := ReadLine(it.bReader)
-	if err == io.EOF {
-		it.bReader = nil
-		if len(line) == 0 {
-			return nil, nil
+	for true {
+		line, err := ReadLine(it.bReader)
+		if err == io.EOF {
+			it.bReader = nil
+			if len(line) == 0 {
+				return nil, nil
+			}
+		} else if err != nil {
+			log.Print("got err reading from vote file ", err)
+			return nil, err
 		}
-	} else if err != nil {
-		log.Print("got err reading from vote file ", err)
-		return nil, err
+		if len(line) == 0 {
+			continue
+		}
+		if line[0] == '#' {
+			if it.commentHandler != nil {
+				it.commentHandler(line)
+			}
+		}
+		if line[0] == '\r' || line[0] == '\n' {
+			continue
+		}
+		return voteutil.UrlToNameVote(line)
 	}
-	return voteutil.UrlToNameVote(line)
+	return nil, nil
 }
 
 /*
@@ -194,18 +209,20 @@ func (it *Election) Vote(vote *voteutil.NameVote) {
 	}
 }
 
-func (it *Election) VoteAll(source VoteSource) error {
+func (it *Election) VoteAll(source VoteSource) (int, error) {
+	numVotes := 0
 	for true {
 		vote, err := source.GetVote()
 		if err != nil {
-			return err
+			return numVotes, err
 		}
 		if vote == nil {
-			return nil
+			return numVotes, nil
 		}
 		it.Vote(vote)
+		numVotes++
 	}
-	return nil
+	return numVotes, nil
 }
 
 func doenable(methodEnabled map[string]bool, enstr string, endis bool) {
@@ -247,13 +264,13 @@ func main() {
 		"disable-all": 0,
 		"cpuprofile":  1,
 		"seats":       1,
+		"verbose":     0,
 		/*
 			   TODO: implement
 			"full-html":    0,
 			"no-full-html": 0,
 			"no-html-head": 0,
 			"dump":         0,
-			"debug":        0,
 		*/
 	}
 
@@ -270,6 +287,8 @@ func main() {
 		os.Exit(1)
 		return
 	}
+
+	_, verbose := args["verbose"]
 
 	outNames := GetArgs(args, []string{"o", "out"})
 
@@ -341,11 +360,6 @@ func main() {
 			log.Fatal("bad arg for seats: ", seatsStrs[0])
 		}
 		seats = ts
-		/*
-			if seats > 1 {
-				methodEnabled["stv"] = true
-			}
-		*/
 	}
 
 	_, testMode := args["test"]
@@ -355,8 +369,16 @@ func main() {
 	for methodShort, isEnabled := range methodEnabled {
 		if isEnabled {
 			nm := classByShortname[methodShort]()
+			var seatable bool
 			if nms, seatable := nm.(voteutil.MultiSeat); seatable {
 				nms.SetSeats(seats)
+			}
+			if verbose {
+				if seatable && (seats > 1) {
+					fmt.Fprintf(os.Stderr, "enabled \"%s\", %d seats\n", methodShort, seats)
+				} else {
+					fmt.Fprintf(os.Stderr, "enabled \"%s\"\n", methodShort)
+				}
 			}
 			methods = append(methods, nm)
 		}
@@ -368,8 +390,17 @@ func main() {
 		vs := &FileVoteSource{
 			os.Stdin,
 			bufio.NewReader(os.Stdin),
+			nil,
 		}
-		election.VoteAll(vs)
+		numVotes, err := election.VoteAll(vs)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "stdin: error reading votes: %s\n", err)
+			os.Exit(1)
+			return
+		}
+		if verbose {
+			fmt.Fprintf(os.Stderr, "stdin: %d votes\n", numVotes)
+		}
 	}
 	for _, path := range inNames {
 		vs, err := OpenFileVoteSource(path)
@@ -377,12 +408,27 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", path, err)
 			break
 		}
-		election.VoteAll(vs)
+		numVotes, err := election.VoteAll(vs)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: error reading votes: %s\n", path, err)
+			os.Exit(1)
+			return
+		}
+		if verbose {
+			fmt.Fprintf(os.Stderr, "%s: %d votes\n", path, numVotes)
+		}
 	}
 	//log.Print("counted votes: ", election.VoteCount)
 
 	for _, em := range methods {
-		result, winners := em.GetResult()
+		var result *voteutil.NameVote
+		var winners int
+		var html string
+		if showExplain {
+			result, winners, html = em.HtmlExplaination()
+		} else {
+			result, winners = em.GetResult()
+		}
 		if testMode {
 			fmt.Fprintf(outw, "%s: ", em.ShortName())
 			if result != nil {
@@ -398,8 +444,6 @@ func main() {
 			if len(methods) > 1 {
 				fmt.Fprintf(outw, "<h2>%s</h2>", em.Name())
 			}
-			//result, numWinners, html := em.HtmlExplaination()
-			_, _, html := em.HtmlExplaination()
 			fmt.Fprint(outw, html)
 		} else {
 			if len(methods) > 1 {

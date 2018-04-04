@@ -231,8 +231,7 @@ func (it *InstantRunoffNormalizedRatings) pCount(candidateSums, weight []float64
 		// gather magnitude of this vote so we can normalize it
 		for vii, ni := range vote.Indexes {
 			if enabled[ni] {
-				tf := vote.Ratings[vii]
-				votesum += math.Abs(tf) * weight[ni]
+				votesum += math.Abs(vote.Ratings[vii]) * weight[ni]
 			}
 		}
 		if votesum <= 0.0 {
@@ -240,7 +239,7 @@ func (it *InstantRunoffNormalizedRatings) pCount(candidateSums, weight []float64
 			exhaustedBallots++
 			continue
 		}
-		votesum = math.Sqrt(votesum)
+		//votesum = math.Sqrt(votesum)
 		for vii, ni := range vote.Indexes {
 			if enabled[ni] {
 				candidateSums[ni] += (vote.Ratings[vii] * weight[ni]) / votesum
@@ -261,10 +260,11 @@ func aiin(x int, haystack []int) bool {
 	return false
 }
 
-const ADJUSTMENT_RATE = 0.10
+const ADJUSTMENT_RATE = 0.50
 
 // Proportional-Representation multi-seat mode
 func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, int) {
+	// TODO: explain the portion of each winner's vote that comes from 1st rank, 2nd rank, etc. probably a stack of bars.
 	out := new(NameVote)
 	enabled := make([]bool, it.maxNameIndex+1)
 	weight := make([]float64, it.maxNameIndex+1)
@@ -301,7 +301,7 @@ func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, i
 
 			// TODO: archive candidateSums for explain
 			exhaustedBallots = it.pCount(candidateSums, weight, enabled)
-			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats-1)
+			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats+1)
 
 			// find winners, maybe finish, de-weight according to surplus
 			for ci, votes := range candidateSums {
@@ -315,6 +315,9 @@ func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, i
 						*out = append(*out, NameRating{it.Names.IndexToName(ci), votes})
 						if len(winners) >= it.seats {
 							// TODO: append the rest of the field in order
+							if explain != nil {
+								out.PrintHtml(explain)
+							}
 							return out, len(winners)
 						}
 					}
@@ -332,36 +335,48 @@ func (it *InstantRunoffNormalizedRatings) IRNRP(explain io.Writer) (*NameVote, i
 			// but we should reflect the last adjustment we made
 			// TODO: archive candidateSums for explain
 			exhaustedBallots = it.pCount(candidateSums, weight, enabled)
-			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats-1)
+			quota = float64(len(it.votes)-exhaustedBallots) / float64(it.seats+1)
 		}
 
 		if explain != nil {
-			fmt.Fprintf(explain, "<div class=\"p\">%d weight adjustment rounds</div>\n", weightAdjustmentCycleCount)
+			countSum := 0.0
+			for _, v := range candidateSums {
+				if math.IsNaN(v) {
+					continue
+				}
+				countSum += v
+			}
+			fmt.Fprintf(explain, "<div class=\"p\">%d weight adjustment rounds, active vote = %.1f from %d ballots, quota = %.1f, %d exhausted ballots</div>\n", weightAdjustmentCycleCount, countSum, len(it.votes)-exhaustedBallots, quota, exhaustedBallots)
 		}
 
 		// pick loser who doesn't make the cut
-		minci := 0
-		mincount := candidateSums[0]
+		minci := -1
+		mincount := 9e16
 		for ci, cv := range candidateSums {
 			if !enabled[ci] {
 				continue
 			}
-			if cv < mincount {
+			if (minci == -1) || (cv < mincount) {
 				minci = ci
 				mincount = cv
 			}
-		}
-		if explain != nil {
-			fmt.Fprintf(explain, "<div class=\"p\">%s is disabled with %.2f votes</div>", it.Names.IndexToName(minci), mincount)
 		}
 		// TODO: record losers
 		weight[minci] = 0.0
 		enabled[minci] = false
 		numEnabled--
+		if explain != nil {
+			fmt.Fprintf(explain, "<div class=\"p\">%s is disabled with %.2f votes, %d remain, %d winners</div>", it.Names.IndexToName(minci), mincount, numEnabled, len(winners))
+		}
 	}
 
 	if explain != nil {
 		fmt.Fprintf(explain, "<p>internal error in irnr.go</p>")
+		fmt.Fprintf(explain, "<table><tr><th>ci</th><th>name</th><th>sum</th><th>weight</th><th>enabled</th><th>winning</th></tr>\n")
+		for ci, cv := range candidateSums {
+			fmt.Fprintf(explain, "<tr><td>%d</td><td>%s</td><td>%.2f</td><td>%.3f</td><td>%v</td><td>%v</td></tr>\n", ci, it.Names.IndexToName(ci), cv, weight[ci], enabled[ci], ain(ci, winners))
+		}
+		fmt.Fprintf(explain, "</table>\n")
 	}
 	return nil, -1
 }
