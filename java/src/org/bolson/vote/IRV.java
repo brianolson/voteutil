@@ -383,6 +383,30 @@ public class IRV extends NameVotingSystem implements IndexVotable {
 				}
 				sb.append( "</tr>\n" );
 			}
+			StringBuffer exaustedVoteRow = new StringBuffer("<tr>");
+			sb.append("<tr>");
+			double maxActiveVote = 0.0;
+			for ( int r = 0; r < rounds.size(); r++ ) {
+				TallyState[] tv = (TallyState[])rounds.get(r);
+				double av = 0.0;
+				for (TallyState ts : tv) {
+					if (ts.active) {
+						av += ts.fractions;
+					}
+				}
+				if (av > maxActiveVote) {
+					maxActiveVote = av;
+				}
+				sb.append("<td>active votes:</td><td>");
+				ratingFormat.format( av, sb, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
+				sb.append("</td>");
+				exaustedVoteRow.append("<td>exausted votes:</td><td>");
+				ratingFormat.format( maxActiveVote - av, exaustedVoteRow, new java.text.FieldPosition( java.text.NumberFormat.INTEGER_FIELD ) );
+				exaustedVoteRow.append("</td>");
+			}
+			sb.append("</tr>");
+			exaustedVoteRow.append("</tr>");
+			sb.append(exaustedVoteRow);
 		} else {
 			sb.append( "<tr><td>FIXME: implement no-winner-data IRV explain</td></tr>\n" );
 		}
