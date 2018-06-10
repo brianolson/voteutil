@@ -7,6 +7,7 @@ import sys
 import urllib.parse
 
 from irnrp import IRNRP
+from vrr import VRR
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ def resultsToHtml(results, names, out):
 
 
 
-def processFile(algorithm, fin, args, names, nameIndexes):
+def processFile(algorithm, fin, args, names, nameIndexes, rankings=False):
     votes = 0
     comments = 0
     for line in fin:
@@ -47,18 +48,20 @@ def processFile(algorithm, fin, args, names, nameIndexes):
         kvl = urllib.parse.parse_qs(line)
         indexRatingDict = {}
         for name, ratings in kvl.items():
+            if len(ratings) == 0:
+                continue
             ci = nameIndexes.get(name, None)
             if ci is None:
                 ci = len(nameIndexes)
                 nameIndexes[name] = ci
                 names.append(name)
-            if len(ratings) == 0:
-                pass
-            elif len(ratings) == 1:
+            if len(ratings) == 1:
                 indexRatingDict[ci] = float(ratings[0])
             else:
                 # warning, multiple votes for a choice, voting average of them
                 indexRatingDict[ci] = sum(map(float, ratings)) / len(ratings)
+            if rankings:
+                indexRatingDict[ci] = 1 + len(kvl) - indexRatingDict[ci]
         while rcount > 0:
             algorithm.vote(indexRatingDict)
             votes += 1
@@ -73,8 +76,10 @@ def main():
     ap.add_argument('--seats', type=int, default=1, help='how many winners to elect (default 1)')
     ap.add_argument('--nocomment', action='store_true', default=False, help='ignore leading "#" chars on lines')
     ap.add_argument('--enable-repeat', action='store_true', default=False, help='enable repeat syntax "*N " at the start of a line')
+    ap.add_argument('--rankings', action='store_true', default=False, help='treat input numbers as ranking 1st,2nd,3rd,etc')
     ap.add_argument('--html', help='file to write HTML explanation to')
     ap.add_argument('votefile', nargs='*', help='votes as x-www-form-urlencoded query strings one per line, e.g.: name1=9&name2=3&name4=23')
+    ap.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose logging')
     args = ap.parse_args()
 
     if args.html:
@@ -82,19 +87,23 @@ def main():
     else:
         html = None
 
-    logging.basicConfig()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
         
-    algorithm = IRNRP(seats=args.seats)
     nameIndexes = {}
     names = []
+    #algorithm = IRNRP(seats=args.seats)
+    algorithm = VRR(names)
     for fname in args.votefile:
         if fname == '-':
-            votes, comments = processFile(algorithm, sys.stdin, args, names, nameIndexes)
-            logger.info('finished votes from stdin')
+            votes, comments = processFile(algorithm, sys.stdin, args, names, nameIndexes, args.rankings)
+            logger.info('finished %s votes from stdin', votes)
         else:
             with open(fname, 'r') as fin:
-                votes, comments = processFile(algorithm, fin, args, names, nameIndexes)
-            logger.info('finished vote file %s', fname)
+                votes, comments = processFile(algorithm, fin, args, names, nameIndexes, args.rankings)
+            logger.info('finished vote file %s: %s votes', fname, votes)
     algorithm.names = names
     results = algorithm.getResults(html=html)
     if html is not None:
