@@ -60,8 +60,10 @@ def processFile(algorithm, fin, args, names, nameIndexes, rankings=False):
             else:
                 # warning, multiple votes for a choice, voting average of them
                 indexRatingDict[ci] = sum(map(float, ratings)) / len(ratings)
-            if rankings:
-                indexRatingDict[ci] = 1 + len(kvl) - indexRatingDict[ci]
+        if rankings:
+            maxrank = max(indexRatingDict.values()) + 1
+            indexRatingDict = {k:(maxrank - v) for k,v in indexRatingDict.items()}
+            assert min(indexRatingDict.values()) > 0, kvl
         while rcount > 0:
             algorithm.vote(indexRatingDict)
             votes += 1
@@ -78,6 +80,7 @@ def main():
     ap.add_argument('--enable-repeat', action='store_true', default=False, help='enable repeat syntax "*N " at the start of a line')
     ap.add_argument('--rankings', action='store_true', default=False, help='treat input numbers as ranking 1st,2nd,3rd,etc')
     ap.add_argument('--html', help='file to write HTML explanation to')
+    ap.add_argument('-o', '--out', dest='outpath', default=None, help='output text to file or "-" for stdout')
     ap.add_argument('votefile', nargs='*', help='votes as x-www-form-urlencoded query strings one per line, e.g.: name1=9&name2=3&name4=23')
     ap.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose logging')
     args = ap.parse_args()
@@ -91,7 +94,12 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-        
+
+    if args.outpath is None or args.outpath == '-':
+        out = sys.stdout
+    else:
+        out = open(args.outpath, 'wt')
+
     nameIndexes = {}
     names = []
     #algorithm = IRNRP(seats=args.seats)

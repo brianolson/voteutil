@@ -76,22 +76,25 @@ class VRR:
         '''
         self.votecount += 1
         xv = list(indexRatingsDict.items())
-        #logger.debug('vrr vote %r', xv)
         for a, va in enumerate(xv):
-            # vote vs unknown based on rating sign.
-            # unknown has a negative zero rating.
-            if va[1] >= 0:
-                self.inc_vs_unknown(va[0])
-            elif va[1] < 0:
-                self.inc_unknown_vs(va[0])
             for b in range(a + 1, len(xv)):
                 vb = xv[b]
                 if va[1] > vb[1]:
                     self.inc(va[0], vb[0])
                 elif va[1] < vb[1]:
                     self.inc(vb[0], va[0])
-        #logger.debug('vrr vs unknown %r', self.vs_unknown)
-        #logger.debug('vrr avb %r', self.avb)
+                else:
+                    logger.debug('tie rate')
+            # vote vs unknown and unvoted based on rating sign.
+            # unknown has a negative zero rating.
+            if va[1] >= 0:
+                self.inc_vs_unknown(va[0])
+                # Everything is implicitly preferred over everything not voted on this ballot.
+                for b in range(max(self.avb.keys()) + 1):
+                    if b not in indexRatingsDict:
+                        self.inc(va[0], b)
+            elif va[1] < 0:
+                self.inc_unknown_vs(va[0])
 
     def countDefeats(self, a):
         count = 0
@@ -106,6 +109,11 @@ class VRR:
         If `html` is specified, .write() explanation HTML to it.
         '''
         logger.debug('vrr results for %d votes', self.votecount)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug('vrr vs unknown %r', [(self.cname(a), bb) for a,bb in self.vs_unknown.items()])
+            for a in range(max(self.avb.keys()) + 1):
+                aname = self.cname(a)
+                logger.debug('vrr avb %s %r: %r', a, aname, self.avb.get(a))
         defeats = [(self.countDefeats(a), a) for a in range(max(self.avb.keys()) + 1)]
         defeats.sort()
         if html:
