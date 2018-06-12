@@ -65,6 +65,7 @@ public class VRR extends NameVotingSystem implements SummableVotingSystem, Index
 	/**
 	 Record a vote.
 	 Keeps only a summation of the votes, not individual vote data.
+	 @see #voteIndexVoteSet(IndexVoteSet)
 	*/
 	public void voteRating( NameVote[] vote ) {
 		// See also parallel implementation in voteIndexVoteSet()
@@ -141,6 +142,11 @@ public class VRR extends NameVotingSystem implements SummableVotingSystem, Index
 			}
 		}
 	}
+
+	/**
+	 * @see #voteRating(NameVote[])
+	 * @param vote a set of (name,rating) pairs
+	 */
 	public void voteIndexVoteSet(IndexVoteSet vote) {
 		// See also parallel implementation in voteRating()
 		Count[] cs = new Count[vote.index.length];
