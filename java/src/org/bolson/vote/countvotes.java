@@ -68,6 +68,7 @@ public class countvotes {
 		new ShortNameClassName("hist", "org.bolson.vote.Histogram", true, true),
 		new ShortNameClassName("irnr", "org.bolson.vote.IRNR", true, true),
 		new ShortNameClassName("vrr", "org.bolson.vote.VRR", true, true),
+		new ShortNameClassName("vrr2", "org.bolson.vote.VRR2", true, true),
 		new ShortNameClassName("rp", "org.bolson.vote.RankedPairs", false, true),
 		new ShortNameClassName("raw", "org.bolson.vote.Raw", true, true),
 		new ShortNameClassName("irv", "org.bolson.vote.IRV", true, true),

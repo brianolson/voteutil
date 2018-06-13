@@ -27,3 +27,4 @@ Attic
 simulator/results
 python/ve
 data
+__pycache__
