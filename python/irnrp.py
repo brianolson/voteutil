@@ -43,12 +43,15 @@ class IRNRP:
 
     """
 
-    def __init__(self, seats=None):
+    def __init__(self, names=None, seats=None):
         if seats is None or seats <= 1:
             raise ValueError('IRNRP only makes sense for seats > 1')
         self.seats = seats
         self.votes = []
-        self.names = None # self.names[i] = 'name of choice'
+        self.names = names # self.names[i] = 'name of choice'
+
+    def name(self):
+        return "IRNRP"
 
     def nameForChoiceIndex(self, ci):
         if self.names is not None and ci < len(self.names):

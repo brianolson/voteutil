@@ -7,9 +7,12 @@ logger = logging.getLogger(__name__)
 class VRR:
     """Virtual Round Robin
     aka Condorcet's Method
+
+    Single pass method with flexible storage allowing choices to be
+    defined as they come in. Stores only O(C^2) counts for C choices.
     """
 
-    def __init__(self, seats=None, names=None):
+    def __init__(self, names=None, seats=None):
         # avb[n] contains the pairwise counts of n vs all choice indexes
         # less than n.
         # avb[n][0:n] is counts of n favored over lesser index;
@@ -20,6 +23,8 @@ class VRR:
         # list of names
         self.names = names
         self.votecount = 0
+    def name(self):
+        return "VRR"
     def cname(self, a):
         if self.names and a < len(self.names):
             return self.names[a]
@@ -109,6 +114,7 @@ class VRR:
         If `html` is specified, .write() explanation HTML to it.
         '''
         logger.debug('vrr results for %d votes', self.votecount)
+        logger.debug('vrr names %r', self.names)
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug('vrr vs unknown %r', [(self.cname(a), bb) for a,bb in self.vs_unknown.items()])
             for a in range(max(self.avb.keys()) + 1):

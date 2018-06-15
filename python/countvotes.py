@@ -8,6 +8,7 @@ import urllib.parse
 
 from irnrp import IRNRP
 from vrr import VRR
+from vrr2 import VRR2
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def resultsToHtml(results, names, out):
 
 
 
-def processFile(algorithm, fin, args, names, nameIndexes, rankings=False):
+def processFile(algorithms, fin, args, names, nameIndexes, rankings=False):
     votes = 0
     comments = 0
     for line in fin:
@@ -65,9 +66,12 @@ def processFile(algorithm, fin, args, names, nameIndexes, rankings=False):
             indexRatingDict = {k:(maxrank - v) for k,v in indexRatingDict.items()}
             assert min(indexRatingDict.values()) > 0, kvl
         while rcount > 0:
-            algorithm.vote(indexRatingDict)
+            for algorithm in algorithms:
+                algorithm.vote(indexRatingDict)
             votes += 1
             rcount -= 1
+    logger.debug('name indexes %r', nameIndexes)
+    logger.debug('names %r', names)
     return votes, comments
     
 
@@ -103,20 +107,27 @@ def main():
     nameIndexes = {}
     names = []
     #algorithm = IRNRP(seats=args.seats)
-    algorithm = VRR(names)
+    #algorithm = VRR(names)
+    #algorithm = VRR2(names)
+    algorithms = [VRR(names), VRR2(names)]
+    if args.seats > 1:
+        algorithms.append(IRNRP(names, seats=args.seats))
     for fname in args.votefile:
         if fname == '-':
-            votes, comments = processFile(algorithm, sys.stdin, args, names, nameIndexes, args.rankings)
+            votes, comments = processFile(algorithms, sys.stdin, args, names, nameIndexes, args.rankings)
             logger.info('finished %s votes from stdin', votes)
         else:
             with open(fname, 'r') as fin:
-                votes, comments = processFile(algorithm, fin, args, names, nameIndexes, args.rankings)
+                votes, comments = processFile(algorithms, fin, args, names, nameIndexes, args.rankings)
             logger.info('finished vote file %s: %s votes', fname, votes)
-    algorithm.names = names
-    results = algorithm.getResults(html=html)
-    if html is not None:
-        resultsToHtml(results, names, html)
-        html.close()
+    #algorithm.names = names
+    for algorithm in algorithms:
+        if html:
+            html.write('<h2>{}</h2>\n'.format(algorithm.name()))
+        results = algorithm.getResults(html=html)
+        if html is not None:
+            resultsToHtml(results, names, html)
+    html.close()
 
 
 if __name__ == '__main__':
