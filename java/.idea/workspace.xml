@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="59a9ef64-ffd9-49a9-ba3e-b5ae000b84ea" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/src/org/bolson/vote/VRR2.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/bolson/vote/countvotes.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/bolson/vote/countvotes.java" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/target/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -49,7 +47,7 @@
       <file leaf-file-name="VRR2.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/org/bolson/vote/VRR2.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1658">
+            <state relative-caret-position="1598">
               <caret line="200" column="29" selection-start-line="200" selection-start-column="29" selection-end-line="200" selection-end-column="29" />
               <folding>
                 <element signature="e#1006#1007#0" expanded="true" />
@@ -493,7 +491,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/org/bolson/vote/VRR2.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1658">
+        <state relative-caret-position="1598">
           <caret line="200" column="29" selection-start-line="200" selection-start-column="29" selection-end-line="200" selection-end-column="29" />
           <folding>
             <element signature="e#1006#1007#0" expanded="true" />

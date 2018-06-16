@@ -10,7 +10,7 @@ import "os"
 import "runtime/pprof"
 import "strings"
 import "strconv"
-import "bitbucket.org/bodhisnarkva/voteutil/go/voteutil"
+import "github.com/brianolson/voteutil/go/voteutil"
 
 // from countvotes.c
 const usage = `
@@ -151,6 +151,7 @@ type FileVoteSource struct {
 	rawReader      io.Reader
 	bReader        *bufio.Reader
 	commentHandler func(line string)
+	rankings       bool
 }
 
 func OpenFileVoteSource(path string) (*FileVoteSource, error) {
@@ -158,7 +159,7 @@ func OpenFileVoteSource(path string) (*FileVoteSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FileVoteSource{rawin, bufio.NewReader(rawin), nil}, nil
+	return &FileVoteSource{rawin, bufio.NewReader(rawin), nil, false}, nil
 }
 
 func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
@@ -187,7 +188,14 @@ func (it *FileVoteSource) GetVote() (*voteutil.NameVote, error) {
 		if line[0] == '\r' || line[0] == '\n' {
 			continue
 		}
-		return voteutil.UrlToNameVote(line)
+		vote, err := voteutil.UrlToNameVote(line)
+		if err != nil {
+			return vote, err
+		}
+		if it.rankings {
+			vote.ConvertRankingsToRatings()
+		}
+		return vote, nil
 	}
 	return nil, nil
 }
@@ -265,9 +273,10 @@ func main() {
 		"cpuprofile":  1,
 		"seats":       1,
 		"verbose":     0,
+		"rankings":    0,
+		"full-html":   0, // TODO: unused, implement
 		/*
 			   TODO: implement
-			"full-html":    0,
 			"no-full-html": 0,
 			"no-html-head": 0,
 			"dump":         0,
@@ -289,6 +298,7 @@ func main() {
 	}
 
 	_, verbose := args["verbose"]
+	_, rankings := args["rankings"]
 
 	outNames := GetArgs(args, []string{"o", "out"})
 
@@ -391,6 +401,7 @@ func main() {
 			os.Stdin,
 			bufio.NewReader(os.Stdin),
 			nil,
+			rankings,
 		}
 		numVotes, err := election.VoteAll(vs)
 		if err != nil {
@@ -408,6 +419,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", path, err)
 			break
 		}
+		vs.rankings = rankings
 		numVotes, err := election.VoteAll(vs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s: error reading votes: %s\n", path, err)

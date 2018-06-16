@@ -14,11 +14,19 @@ type VRR struct {
 
 	// TODO: explain what WinningVotesMode means, algorithmically
 	WinningVotesMode bool
+
 	// TODO: explain what MarginsMode means, algorithmically
-	MarginsMode      bool
+	MarginsMode bool
+
 	// counts[3] points to an array of length 6: [3 beats 0, 3 beats 1, 3 beats 2, 0 beats 3, 1 beats 3, 2 beats 3]
 	counts [][]int
-	total  int
+
+	// [(i*2)+0] = i > unknnown
+	// [(i*2)+1] = unknnown > i
+	vsUnknown []int
+
+	// how many votes were cast
+	total int
 }
 
 // TODO: implement encoding/json.Marshaler and Unmarshaler so that intermediate VRR state can be suspended and restored
@@ -28,6 +36,13 @@ func NewVRR() *VRR {
 	x.WinningVotesMode = true
 	x.MarginsMode = false
 	return x
+}
+
+func (it *VRR) incrementVsUnknown(winner int) {
+	it.vsUnknown[(winner*2)+0]++
+}
+func (it *VRR) incrementUnknownVs(loser int) {
+	it.vsUnknown[(loser*2)+1]++
 }
 
 func (it *VRR) increment(winner, loser int) {
@@ -51,8 +66,20 @@ func (it *VRR) get(winner, loser int) int {
 
 func (it *VRR) ensure(maxindex int) {
 	// maxindex := len(it.Names.Names) - 1
+	for len(it.vsUnknown) <= (maxindex * 2) {
+		it.vsUnknown = append(it.vsUnknown, 0, 0)
+	}
 	for len(it.counts) <= maxindex {
-		it.counts = append(it.counts, make([]int, len(it.counts)*2))
+		a := len(it.counts)
+		it.counts = append(it.counts, make([]int, a*2))
+		// fill in from vsUnknown
+		for b := 0; b < a; b++ {
+			// a is a new choice, previously unknown
+			// a > b
+			it.counts[a][b] = it.vsUnknown[(b*2)+1]
+			// b > a
+			it.counts[a][a+b] = it.vsUnknown[(b*2)+0]
+		}
 	}
 }
 
@@ -90,6 +117,32 @@ func (it *VRR) Vote(vote NameVote) {
 				it.increment(vb.Index, va.Index)
 			}
 		}
+		// vote va vs all known choices not in this ballot
+		for j := range it.counts {
+			found := false
+			for _, vx := range voti {
+				if j == vx.Index {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// vote i vs j which is not in this vote
+				if va.Rating >= 0 {
+					it.increment(va.Index, j)
+				} else {
+					it.increment(j, va.Index)
+				}
+			}
+		}
+		// vote versus unknown choice which is proxy for a
+		// choice not encountered yet in the ballots process
+		// so far.
+		if va.Rating >= 0 {
+			it.vsUnknown[(va.Index*2)+0]++
+		} else {
+			it.vsUnknown[(va.Index*2)+1]++
+		}
 	}
 	it.total++
 }
@@ -116,6 +169,8 @@ func (it *VRR) VoteIndexes(vote IndexVote) {
 				it.increment(vote.Indexes[j], index)
 			}
 		}
+		// TODO: vote against known choices not in this vote
+		// TODO: vote against proxy-for-future-unknowns choice
 	}
 	it.total++
 }

@@ -130,6 +130,7 @@ func multiSeat2SeatOneVote(t *testing.T, em MultiSeat) {
 }
 
 func multiSeat2SeatInner(t *testing.T, em MultiSeat, votes string) {
+	t.Parallel()
 	em.SetSeats(2)
 
 	va := stringToNameVotes(votes)
@@ -144,8 +145,10 @@ func multiSeat2SeatInner(t *testing.T, em MultiSeat, votes string) {
 	if len(*results) < 2 {
 		t.Fatal("short results", results)
 	}
-	ExpectString(t, (*results)[0].Name, "a")
-	ExpectString(t, (*results)[1].Name, "b")
+	xr := []string{(*results)[0].Name, (*results)[1].Name}
+	sort.Strings(xr)
+	ExpectString(t, xr[0], "a")
+	ExpectString(t, xr[1], "b")
 	ExpectInt(t, numWinners, 2)
 }
 
@@ -168,6 +171,7 @@ func multiSeat3SeatB(t *testing.T, em MultiSeat) {
 }
 
 func multiSeat3SeatInner(t *testing.T, em MultiSeat, votes []NameVote) {
+	t.Parallel()
 	em.SetSeats(3)
 
 	for _, nv := range votes {

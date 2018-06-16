@@ -1,6 +1,13 @@
 #!/usr/bin/python
 #
 # Utility to read ranked choice vote outputs as used around San Francisco and other places and convert them to name=value& records.
+#
+# usage:
+# rcvToNameEq.py -m master.txt -b ballot.txt -o votes.nameq
+#
+# or if master and ballot files contain multiple contests, '%s' in the
+# output name will be replaced with the name of the contest. e.g.
+# -o votes_%s.nameq
 
 import logging
 import sys
@@ -112,6 +119,9 @@ def readBallot(f):
 def masterAndBallotsToNameEq(master, ballots, outpattern):
   ma = Master()
   ma.load(master)
+  if (len(ma.contests) > 1) and ('%s' not in outpattern):
+    sys.stderr.write('files contain multiple contests ({!r}) so output file pattern needs "%s" in it to substitute contest name into (output pattern was {!r}\n'.format([x.name for x in ma.contests.values()], outpattern))
+    sys.exit(1)
   outpaths = {contest:outpattern.replace('%s', mr.name) for contest,mr in ma.contests.items()}
   dupcheck = set()
   for op in outpaths.values():

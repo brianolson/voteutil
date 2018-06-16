@@ -4,6 +4,7 @@ import argparse
 import logging
 import re
 import sys
+import time
 import urllib.parse
 
 from irnrp import IRNRP
@@ -73,11 +74,12 @@ def processFile(algorithms, fin, args, names, nameIndexes, rankings=False):
     logger.debug('name indexes %r', nameIndexes)
     logger.debug('names %r', names)
     return votes, comments
-    
+
 
 REPEAT_RE = re.compile(r'\*\s*(\d+)\s+(.*)')
 
 def main():
+    start = time.time()
     ap = argparse.ArgumentParser()
     ap.add_argument('--seats', type=int, default=1, help='how many winners to elect (default 1)')
     ap.add_argument('--nocomment', action='store_true', default=False, help='ignore leading "#" chars on lines')
@@ -113,13 +115,16 @@ def main():
     if args.seats > 1:
         algorithms.append(IRNRP(names, seats=args.seats))
     for fname in args.votefile:
+        fstart = time.time()
         if fname == '-':
             votes, comments = processFile(algorithms, sys.stdin, args, names, nameIndexes, args.rankings)
-            logger.info('finished %s votes from stdin', votes)
+            dt = fstart - time.time()
+            logger.info('finished %s votes from stdin in %0.2f seconds', votes, dt)
         else:
             with open(fname, 'r') as fin:
                 votes, comments = processFile(algorithms, fin, args, names, nameIndexes, args.rankings)
-            logger.info('finished vote file %s: %s votes', fname, votes)
+            dt = fstart - time.time()
+            logger.info('finished vote file %s: %s votes in %0.2f seconds', fname, votes, dt)
     #algorithm.names = names
     for algorithm in algorithms:
         if html:
@@ -128,8 +133,8 @@ def main():
         if html is not None:
             resultsToHtml(results, names, html)
     html.close()
+    logger.debug('done in %02f seconds', time.time() - start)
 
 
 if __name__ == '__main__':
     main()
-

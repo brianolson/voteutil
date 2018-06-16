@@ -4,17 +4,18 @@ import "testing"
 
 func ExpectString(t *testing.T, actual string, expected string) {
 	if actual != expected {
-		t.Errorf("expected %v\n, got %v\n", expected, actual)
+		t.Errorf("expected %#v, got %#v", expected, actual)
 	}
 }
 
 func ExpectInt(t *testing.T, actual int, expected int) {
 	if actual != expected {
-		t.Errorf("expected %v\n, got %v\n", expected, actual)
+		t.Errorf("expected %#v, got %#v", expected, actual)
 	}
 }
 
 func BasicEM(t *testing.T, em ElectionMethod) {
+	t.Parallel()
 	em.Vote(NameVote{{"foo", 1.0}, {"bar", 0.5}})
 	result, winners := em.GetResult()
 	ExpectInt(t, winners, 1)
@@ -27,6 +28,7 @@ func BasicEM(t *testing.T, em ElectionMethod) {
 }
 
 func RankTie(t *testing.T, em ElectionMethod) {
+	t.Parallel()
 	em.Vote(NameVote{{"foo", 1.0}, {"bar", 0.5}, {"baz", 0.1}})
 	em.Vote(NameVote{{"foo", 0.5}, {"bar", 1.0}, {"baz", 0.1}})
 	em.Vote(NameVote{{"foo", 0.5}, {"bar", 1.0}, {"baz", 0.1}})

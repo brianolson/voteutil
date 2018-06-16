@@ -101,6 +101,13 @@ func (it *NameVote) Prepend(name string, rating float64) *NameVote {
 	return &tout
 }
 
+// Changes ratings in place
+func (it *NameVote) ConvertRankingsToRatings() {
+	for _, nr := range *it {
+		nr.Rating = 1 + float64(len(*it)) - nr.Rating
+	}
+}
+
 // Map from names to indexes.
 // The reverse should be kept as an array of string.
 type NameMap struct {
