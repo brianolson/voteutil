@@ -145,13 +145,20 @@ func (nm *NameMap) NameVoteToIndexVote(it NameVote) *IndexVote {
 	return out
 }
 
-func urlParseQuery(q string) (map[string]string, error) {
+// Return pairs [name1, value1, name2, value2, ...]
+func urlParseQuery(q string) ([]string, error) {
 	keystart := 0
 	valstart := -1
 	var key string
 	var val string
 	var err error = nil
-	out := make(map[string]string)
+	partcount := 1
+	for _, ch := range q {
+		if ch == '&' {
+			partcount += 1
+		}
+	}
+	out := make([]string, 0, partcount)
 	for bytei, ch := range q {
 		switch ch {
 		case '=':
@@ -171,7 +178,7 @@ func urlParseQuery(q string) (map[string]string, error) {
 				if err != nil {
 					return nil, err
 				}
-				out[key] = val
+				out = append(out, key, val)
 				valstart = -1
 				keystart = bytei + 1
 			}
@@ -188,7 +195,7 @@ func urlParseQuery(q string) (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		out[key] = val
+		out = append(out, key, val)
 	}
 	return out, err
 }
@@ -196,14 +203,15 @@ func urlParseQuery(q string) (map[string]string, error) {
 // Parse url-query formatted vote.
 // choice+one=1&choice+2=2&...
 func UrlToNameVote(vote string) (*NameVote, error) {
-	//vals, err := url.ParseQuery(vote)
 	vals, err := urlParseQuery(vote)
 	if err != nil {
 		return nil, err
 	}
 	out := new(NameVote)
-	for name, slist := range vals {
-		rating, err := strconv.ParseFloat(slist, 64)
+	for i := 0; i < len(vals); i += 2 {
+		name := vals[i]
+		value := vals[i+1]
+		rating, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return nil, err
 		}

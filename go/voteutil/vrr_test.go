@@ -33,6 +33,17 @@ func vrrInnerCheck(t *testing.T, em *VRR, a, b, expected int) {
 		t.Errorf("vrr[%d > %d] = %d but expected %d", a, b, v, expected)
 	}
 }
+
+func vrrIdCheck(t *testing.T, em *VRR, name string, id int) {
+	actual, ok := em.Names.Indexes[name]
+	if !ok {
+		t.Errorf("vrr[%#v] unknown choice!", name)
+	}
+	if actual != id {
+		t.Errorf("vrr[%#v] id=%d but wanted %d", name, actual, id)
+	}
+}
+
 func TestVRRAB(t *testing.T) {
 	t.Parallel()
 	em := new(VRR)
@@ -70,9 +81,13 @@ func TestVRRABCD(t *testing.T) {
 	t.Parallel()
 	em := new(VRR)
 	voteString(t, em, "a=9&b=8")
+	vrrIdCheck(t, em, "a", 0)
+	vrrIdCheck(t, em, "b", 1)
 	voteString(t, em, "b=9&a=8")
 	voteString(t, em, "c=9")
+	vrrIdCheck(t, em, "c", 2)
 	voteString(t, em, "d=9")
+	vrrIdCheck(t, em, "d", 3)
 	voteString(t, em, "a=9")
 	vrrInnerCheck(t, em, 0, 1, 2) // a > b
 	vrrInnerCheck(t, em, 1, 0, 1) // b > a
