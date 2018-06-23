@@ -33,8 +33,26 @@ func tUrlToNameVote(t *testing.T, v string) *NameVote {
 }
 
 func TestUrlToNameVote(t *testing.T) {
+	t.Parallel()
 	nvEq(t, tUrlToNameVote(t, "a=1"), NameVote([]NameRating{{"a", 1}}))
 	nvEq(t, tUrlToNameVote(t, "LONDON+BREED=1&JANE+KIM=2&MARK+LENO=3"), NameVote([]NameRating{{"LONDON BREED", 1}, {"JANE KIM", 2}, {"MARK LENO", 3}}))
+}
+
+func assertFloat64(t *testing.T, actual, expected float64) bool {
+	if actual != expected {
+		t.Errorf("expected %f got %f", expected, actual)
+		return false
+	}
+	return true
+}
+
+func TestConvertRankingsToRatings(t *testing.T) {
+	t.Parallel()
+	nv := tUrlToNameVote(t, "LONDON+BREED=1&JANE+KIM=2&MARK+LENO=3")
+	nv.ConvertRankingsToRatings()
+	assertFloat64(t, (*nv)[0].Rating, 3)
+	assertFloat64(t, (*nv)[1].Rating, 2)
+	assertFloat64(t, (*nv)[2].Rating, 1)
 }
 
 func tUrlNameVoteRoundTrip(t *testing.T, v string) {
@@ -54,6 +72,7 @@ func tUrlNameVoteRoundTrip(t *testing.T, v string) {
 }
 
 func TestUrlNameVoteRoundTrip(t *testing.T) {
+	t.Parallel()
 	tUrlNameVoteRoundTrip(t, "a=1")
 	tUrlNameVoteRoundTrip(t, "ANGELA+ALIOTO=1&JANE+KIM=2&LONDON+BREED=3")
 	tUrlNameVoteRoundTrip(t, "ANGELA+ALIOTO=1&JANE+KIM=2&MARK+LENO=3")
