@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type NameRating struct {
@@ -218,6 +219,14 @@ func UrlToNameVote(vote string) (*NameVote, error) {
 		*out = append(*out, NameRating{name, rating})
 	}
 	return out, nil
+}
+
+func NameVoteToUrl(vote NameVote) string {
+	parts := make([]string, len(vote))
+	for i, nv := range vote {
+		parts[i] = fmt.Sprintf("%s=%g", url.QueryEscape(nv.Name), nv.Rating)
+	}
+	return strings.Join(parts, "&")
 }
 
 type ElectionMethod interface {
