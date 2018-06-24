@@ -88,7 +88,7 @@ func TestVRRABCD(t *testing.T) {
 	vrrIdCheck(t, em, "c", 2)
 	voteString(t, em, "d=9")
 	vrrIdCheck(t, em, "d", 3)
-	voteString(t, em, "a=9")
+	voteString(t, em, "a=1")
 	vrrInnerCheck(t, em, 0, 1, 2) // a > b
 	vrrInnerCheck(t, em, 1, 0, 1) // b > a
 	vrrInnerCheck(t, em, 2, 0, 1) // c > a

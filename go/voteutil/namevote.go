@@ -104,7 +104,13 @@ func (it *NameVote) Prepend(name string, rating float64) *NameVote {
 
 // Changes ratings in place
 func (it *NameVote) ConvertRankingsToRatings() {
-	offset := 1 + float64(len(*it))
+	maxRank := (*it)[0].Rating
+	for _, nr := range *it {
+		if nr.Rating > maxRank {
+			maxRank = nr.Rating
+		}
+	}
+	offset := maxRank + 1
 	for i, nr := range *it {
 		(*it)[i].Rating = offset - nr.Rating
 	}

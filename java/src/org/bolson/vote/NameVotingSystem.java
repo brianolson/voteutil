@@ -144,9 +144,15 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	 * Override this if it needs to be more efficient.
 	 */
 	public void voteRanking( NameVote[] vote ) {
+		float maxRanking = vote[0].rating;
+		for (int i = 0; i < vote.length; ++i) {
+			if (vote[i].rating > maxRanking) {
+				maxRanking = vote[i].rating;
+			}
+		}
 		NameVote[] out = new NameVote[vote.length];
 		for (int i = 0; i < vote.length; ++i) {
-			out[i] = new NameVote(vote[i].name, vote.length + 1 - vote[i].rating);
+			out[i] = new NameVote(vote[i].name, maxRanking + 1 - vote[i].rating);
 		}
 		voteRating(out);
 	}
