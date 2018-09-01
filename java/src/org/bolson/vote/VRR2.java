@@ -106,11 +106,18 @@ public class VRR2 extends NameVotingSystem {
         int[] nameIndexes = new int[vote.length];
         for (int i = 0; i < vote.length; i++) {
             nameIndexes[i] = names.index(vote[i].name);
+			for (int j = 0; j < voteLength; j++) {
+				if (nameIndexes[j] == nameIndexes[i]) {
+					nameIndexes[i] = -1;
+				}
+			}
         }
         for (int i = 0; i < vote.length; i++) {
             int a = nameIndexes[i];
+			if (a == -1) continue;
             for (int j = i + 1; j < vote.length; j++) {
                 int b = nameIndexes[j];
+				if (b == -1) continue;
                 inc(a, b);
             }
 
