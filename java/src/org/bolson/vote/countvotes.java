@@ -64,11 +64,12 @@ public class countvotes {
 	public static final String[] enableClassNames = {
 		"org.bolson.vote.Histogram", "org.bolson.vote.IRNR", "org.bolson.vote.VRR", "org.bolson.vote.RankedPairs", "org.bolson.vote.Raw", "org.bolson.vote.IRV", "org.bolson.vote.STV"
 	};
+	// short name, class name, default enabled, test enabled
 	public static final ShortNameClassName[] methodNames = {
 		new ShortNameClassName("hist", "org.bolson.vote.Histogram", true, true),
 		new ShortNameClassName("irnr", "org.bolson.vote.IRNR", true, true),
 		new ShortNameClassName("vrr", "org.bolson.vote.VRR", true, true),
-		new ShortNameClassName("vrr2", "org.bolson.vote.VRR2", true, true),
+		new ShortNameClassName("vrr2", "org.bolson.vote.VRR2", false, false),
 		new ShortNameClassName("rp", "org.bolson.vote.RankedPairs", false, true),
 		new ShortNameClassName("raw", "org.bolson.vote.Raw", true, true),
 		new ShortNameClassName("irv", "org.bolson.vote.IRV", true, true),
@@ -80,13 +81,13 @@ public class countvotes {
 	public static final int MODE_WS_NAMEQ = 2;
 	public static final int MODE_GTEQ_SPEC = 3;
 	public static final int MODE_CSV = 4;
-	
+
 	public static final int OUT_FULL_HTML = 1;
 	public static final int OUT_PART_HTML = 2;
 	public static final int OUT_TEXT = 3;
 	public static final int OUT_SHORT = 4;
 	public static final int OUT_TEST = 5;
-	
+
 	public static final boolean isHtml(int outmode) {
 		return (outmode == OUT_FULL_HTML) || (outmode == OUT_PART_HTML);
 	}
@@ -107,7 +108,7 @@ public class countvotes {
 		boolean printTime = false;
 		boolean rankings = false;
 		Pattern specRepeatCountRe = null;
-		
+
 		Histogram histInstance = null;
 		NameVotingSystem firstWinner = null;
 
@@ -143,6 +144,7 @@ public class countvotes {
 			} else if ( argv[i].equals("--disable-all") ) {
 				countClasses = new Vector();
 			} else if ( argv[i].equals("--enable-all") ) {
+				countClasses = new Vector();
 				for ( int j = 0; j < methodNames.length; j++ ) {
 					countClasses.add( methodNames[j].className );
 				}
@@ -428,7 +430,7 @@ public class countvotes {
 			System.err.println(dt + " seconds");
 		}
 	}
-	
+
 	protected static final String[] gmiPrefixes = {
 		"", "", "org.bolson.vote.", "org.bolson.vote."
 	};
