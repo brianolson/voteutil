@@ -13,12 +13,12 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	/** If true, save or spew extra info while running.
 		Defaults to false, can be enabled by a "debug" option to init. */
 	protected boolean debug = false;
-	
+
 	/** If debug, then log stuff here. */
 	protected StringBuffer debugLog = null;
-	
+
 	/**
-	 If debug, return debugLog.toString(), else null. 
+	 If debug, return debugLog.toString(), else null.
 	 This is different than htmlExplain.
 	 htmlExplain() should always be human readable, possibly arcane, but basically understandable by anyone with high school math.
 	 getDebug() probably only makes sense to someone following along in the source code.
@@ -75,14 +75,14 @@ public abstract class NameVotingSystem implements ElectionMethod {
 		}
 		return 0;
 	}
-	
+
 	/**
 	Vote an ordering specified by a string.
 	Names are separated by '>' or '='.
 	Name at the left of the list are preferred to names further right in the less when separated by '>'
 	and considered equivalend when separated by '='.
 	White space surrounding the separator is discarded. White space internal to a name is preserved.
-	"Ralph Nader > Al Gore > George Bush" might translate to 
+	"Ralph Nader > Al Gore > George Bush" might translate to
 	{ ("Ralph Nader",2.0), ("Al Gore",1.0), ("George Bush",0.0) }
 	and then be passed to VoteRating(NameVote[])
 	@see #voteRating(NameVote[])
@@ -126,7 +126,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 		s = null;
 		voteRating( nv );
 	}
-	
+
 	/**
 	Vote a set of ratings.
 	Keys of the map should be strings (choice names) and values should be of a numeric type.
@@ -136,10 +136,10 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	@param vote a set of (name,rating) pairs
 	*/
 	public abstract void voteRating( NameVote[] vote );
-	
+
 	/**
 	 * Recast a rankings vote (1st, 2nd, 3rd, ...) as a ratings vote.
-	 * Each ranking becomes rating (numchoices + 1 - ranking)  
+	 * Each ranking becomes rating (numchoices + 1 - ranking)
 	 * Generates a lot of garbage, creating new array and element objects.
 	 * Override this if it needs to be more efficient.
 	 */
@@ -156,7 +156,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 		}
 		voteRating(out);
 	}
-	
+
 	/**
 	@return A sorted array of (name,rating) pairs.
 	 This is the total ordering of all choices, not just the elected winner(s).
@@ -171,12 +171,12 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	@return same StringBuffer passed in, with HTML summary of voting system state appended.
 	*/
 	public abstract StringBuffer htmlSummary( StringBuffer sb );
-	
+
 	/**
 	@return name of this voting system (may be modified by settings from init)
 	*/
 	public abstract String name();
-	
+
 	/**
 	Get HTML summary of voting system state.
 	Returns toString() of a new StringBuffer passed to htmlSummary(StringBuffer)
@@ -208,7 +208,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	public void setExplainVerbosity(int level) {
 		explainVerbosity = level;
 	}
-	
+
 	/**
 	 @return verbosity level, 0..10000
 	 @see #setExplainVerbosity(int)
@@ -230,7 +230,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	public StringBuffer htmlExplain( StringBuffer sb ) {
 		return htmlSummary( sb );
 	}
-	
+
 	/**
 	Get HTML explaination of how the election worked.
 	Typically show intermediate rounds or other counting state progress.
@@ -241,7 +241,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	public String htmlExplain() {
 		return (htmlExplain( new StringBuffer() )).toString();
 	}
-	
+
 	/**
 	 Common storage of a vote-part applicable to all children of NameVotingSystem.
 	 */
@@ -255,7 +255,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 			name = nin;
 			rating = rin;
 		}
-		
+
 		/**
 		 When used with java.util.Arrays.sort on a NameVote[], results in highest rating first, with ties broken by name sort order.
 		 */
@@ -285,7 +285,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 
 	/**
 	 <p>More compact representation for methods that need to store copies of all votes.</p>
-	 
+
 	 <p>Unlike the common usage of NameVote[], this class contains arrays because JVMs
 	 handle primitive-arrays much better than Object arrays.<br />
 	 {int;float;}[N] takes a lot more space than {int[N];float[N];}</p>
@@ -305,7 +305,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 			index = new int[size];
 			rating = new float[size];
 		}
-		
+
 		/**
 		Allocates nothing, internal arrays are null.
 		Probably follow up with readUrlEncoded or manual external initialization.
@@ -314,8 +314,8 @@ public abstract class NameVotingSystem implements ElectionMethod {
 			index = null;
 			rating = null;
 		}
-		
-		/** Parse a index=value&amp;index=value url query type string into an IndexVoteSet. 
+
+		/** Parse a index=value&amp;index=value url query type string into an IndexVoteSet.
 		All 'index' parts must parse with Integer.parseInt() and all 'value' parts must parse with Float.parseFloat().
 		@param s the url query type string with candidate names and ratings */
 		public void readUrlEncoded( String s ) throws NumberFormatException {
@@ -379,7 +379,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 			return ((Comparable)b).compareTo( a );
 		}
 	}
-	
+
 	/**
 	Convert a list of names separated by '>' or '='.
 	e.g. "Name One>Name Two=Name Three>Name Four"
@@ -436,7 +436,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 		}
 		return toret;
 	}
-	
+
 	/**
 	Convert Name=Rating pairs in a string to an array of NameVote.
 	@param cd String like "Name One=9	Name Two=3	Name Three=-9"
@@ -454,7 +454,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 				return null;
 			}
 			if ( trimWhitespace ) {
-				ab[0] = ab[0].trim(); 
+				ab[0] = ab[0].trim();
 			}
 			if ( ab.length == 1 || ab[1] == null || ab[1].length() == 0 ) {
 				toret[v] = new NameVote( ab[0], Float.NaN );
@@ -481,7 +481,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 	public static void sort( NameVote[] they ) {
 		java.util.Arrays.sort( they );
 	}
-	
+
 	/** Reads tab separated name=rating vote per line. */
 	public void readVotes( java.io.Reader r ) throws java.io.IOException {
 		java.io.BufferedReader br;
@@ -495,7 +495,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 			voteRating( nameEqStrToVoteArray( line ));
 		}
 	}
-	
+
 	/** Use this for making simple subclass main() to run a vote of that type.
 		(new Sub()).defaultMain( argv[] );
 	*/
@@ -536,7 +536,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 				growth += 2;
 			} else if ( src[i] == '=' ) {
 				growth += 2;
-			} 
+			}
 		}
 		if ( growth == 0 ) {
 			return s;
@@ -612,7 +612,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 		}
 		return new String( ar );
 	}
-	/** Parse a name=value&amp;name=value url query type string into a NameVote[]. 
+	/** Parse a name=value&amp;name=value url query type string into a NameVote[].
 		@param s the url query type string with candidate names and ratings
 		@return an array of NameVote with candidate names and ratings */
 	public static NameVote[] fromUrlEncoded( String s ) {
@@ -642,6 +642,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 				String prename;
 				prename = s.substring( pos, eq );
 				name = depercentHexify( prename );
+				name = name.replace('+', ' ');
 				if ( eq + 1 == amp ) {
 					value = Float.NaN;
 				} else {
@@ -725,7 +726,7 @@ public abstract class NameVotingSystem implements ElectionMethod {
 		}
 		out.println("</TABLE>");
 	}
-	
+
 	/**
 	Print full results.
 	Prints each VotingSystem's html summary.
@@ -762,10 +763,10 @@ public abstract class NameVotingSystem implements ElectionMethod {
 			out.flush();
 		}
 	}
-	
+
 	/* HashMap<String,Class> mapping short election method implementation names to their Class objects. */
 	static private final HashMap implRegistry = new HashMap();
-	
+
 	/**
 	 Register an implementatino of NameVotingSystem so that it can be found from getImplForName and getImplNames.
 	 Use a short name with no spaces suitable for being a command-line argument.
