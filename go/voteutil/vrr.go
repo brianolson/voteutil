@@ -27,6 +27,9 @@ type VRR struct {
 
 	// how many votes were cast
 	total int
+
+	// super noisy HtmlExplaination
+	debug bool
 }
 
 // TODO: implement encoding/json.Marshaler and Unmarshaler so that intermediate VRR state can be suspended and restored
@@ -169,8 +172,31 @@ func (it *VRR) VoteIndexes(vote IndexVote) {
 				it.increment(vote.Indexes[j], index)
 			}
 		}
-		// TODO: vote against known choices not in this vote
-		// TODO: vote against proxy-for-future-unknowns choice
+		// vote i against all known choices not in this ballot
+		for j := range it.counts {
+			found := false
+			for _, vx := range vote.Indexes {
+				if j == vx {
+					found = true
+					break
+				}
+			}
+			if !found {
+				if ri >= 0 {
+					it.increment(index, j)
+				} else {
+					it.increment(j, index)
+				}
+			}
+		}
+		// vote versus unknown choice which is proxy for a
+		// choice not encountered yet in the ballots process
+		// so far.
+		if ri >= 0 {
+			it.vsUnknown[(index*2)+0]++
+		} else {
+			it.vsUnknown[(index*2)+1]++
+		}
 	}
 	it.total++
 }
@@ -330,6 +356,9 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 	for i, def := range defeats {
 		if def == 0 {
 			// we have a winner
+			if explain != nil && it.debug {
+				fmt.Fprintf(explain, "<p>simple winner, defeats=%v<p>", defeats)
+			}
 			return it.makeWinners(defeats)
 		}
 		if def < mindefeat {
