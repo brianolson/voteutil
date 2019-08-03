@@ -65,7 +65,7 @@ func (av *ApprovalVote) HtmlExplaination() (scores *NameVote, numWinners int, ht
 	exout := strings.Builder{}
 	exout.WriteString("<table><tr><th>Name</th><th>Votes</th></tr>")
 	for _, nv := range *scores {
-		fmt.Fprintf(&exout, "<tr><td>%s</td><td>%1.3f</td></tr>", nv.Name, nv.Rating)
+		fmt.Fprintf(&exout, "<tr><td>%s</td><td>%.0f</td></tr>", nv.Name, nv.Rating)
 	}
 	for _, name := range av.Names.Names {
 		found := false
