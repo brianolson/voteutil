@@ -513,6 +513,18 @@ func (it *VRR) HtmlExplaination() (scores *NameVote, numWinners int, html string
 		parts = append(parts, "</tr>")
 	}
 	parts = append(parts, "</table>")
+	winner := (*results)[0]
+	yni := it.Names.NameToIndex(winner.Name)
+	const maxExplain = 5
+	for x, nv := range (*results)[1:] {
+		if x >= maxExplain {
+			break
+		}
+		xni := it.Names.NameToIndex(nv.Name)
+		count := it.get(yni, xni)
+		revcount := it.get(xni, yni)
+		parts = append(parts, fmt.Sprintf("<div class=\"vrrexpl\"><span class=\"vrren\">%d</span> votes prefer <span class=\"vrrename\">%s</span> over <span class=\"vrrename\">%s</span>. <span class=\"vrren\">%d</span> had the reverse preference.</div>", count, winner.Name, nv.Name, revcount))
+	}
 	return results, numWinners, strings.Join(parts, "")
 }
 
