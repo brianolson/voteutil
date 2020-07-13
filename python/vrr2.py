@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 def dictinc(d, k, inc=1):
     d[k] = d.get(k, 0) + inc
-    
+
 
 class VRR2:
     """Virtual Round Robin
@@ -82,7 +82,14 @@ class VRR2:
                         html.write('<td></td>')
                         continue
                     b = db[1]
-                    html.write('<td>{}</td>'.format(counts.get((a,b),0)))
+                    avb = counts.get((a,b),0)
+                    bva = counts.get((b,a),0)
+                    style = ''
+                    if avb > bva:
+                        style = ' bgcolor="#bfb"'
+                    elif bva > avb:
+                        style = ' bgcolor="#fbb"'
+                    html.write('<td{}>{}</td>'.format(style, avb))
                 html.write('</tr>\n')
             html.write('</table>\n')
         return [(a, -d) for d,a in defeats]

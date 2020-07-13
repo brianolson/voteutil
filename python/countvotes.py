@@ -130,10 +130,11 @@ def main():
         if html:
             html.write('<h2>{}</h2>\n'.format(algorithm.name()))
         results = algorithm.getResults(html=html)
-        if html is not None:
-            resultsToHtml(results, names, html)
-    html.close()
-    logger.debug('done in %02f seconds', time.time() - start)
+        # if html is not None:
+        #     resultsToHtml(results, names, html)
+    if html:
+        html.close()
+    logger.debug('done in %0.2f seconds', time.time() - start)
 
 
 if __name__ == '__main__':

@@ -53,7 +53,7 @@ def nbresenham(seats, populations, start_alloc=0):
     #
     # Option 1: processes each pass through populations to assign to always in static initial population (descending) order.
     #
-    # Right now I prefer Option 2 below. -- bolson 2018-09-02
+    # NOTE: Right now I prefer Option 2 below. -- bolson 2018-09-02
     #
     # TODO: this probably does the wrong thing for start_alloc>0
     popIndexes = [(pop,i) for i,pop in enumerate(populations)]

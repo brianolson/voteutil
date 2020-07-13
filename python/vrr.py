@@ -135,7 +135,14 @@ class VRR:
                         html.write('<td></td>')
                         continue
                     b = db[1]
-                    html.write('<td>{}</td>'.format(self.get(a,b)))
+                    avb = self.get(a,b)
+                    bva = self.get(b,a)
+                    style = ''
+                    if avb > bva:
+                        style = ' bgcolor="#bfb"'
+                    elif bva > avb:
+                        style = ' bgcolor="#fbb"'
+                    html.write('<td{}>{}</td>'.format(style, avb))
                 html.write('</tr>\n')
             html.write('</table>\n')
         return [(a, -d) for d,a in defeats]

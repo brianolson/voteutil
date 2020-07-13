@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="59a9ef64-ffd9-49a9-ba3e-b5ae000b84ea" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/../go/voteutil/namevote.go" beforeDir="false" afterPath="$PROJECT_DIR$/../go/voteutil/namevote.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../go/voteutil/vrr_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/../go/voteutil/vrr_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/org/bolson/vote/NameVotingSystem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/org/bolson/vote/NameVotingSystem.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../python/rcvToNameEq.py" beforeDir="false" afterPath="$PROJECT_DIR$/../python/rcvToNameEq.py" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/target/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -324,7 +320,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="25" width="3840" height="2135" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info anchor="right" id="Palette" order="3" />
       <window_info anchor="bottom" id="TODO" order="6" />
