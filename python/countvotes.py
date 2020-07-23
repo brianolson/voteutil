@@ -8,6 +8,7 @@ import time
 import urllib.parse
 
 from irnrp import IRNRP
+from irv import IRV
 from vrr import VRR
 from vrr2 import VRR2
 
@@ -85,36 +86,47 @@ def main():
     ap.add_argument('--nocomment', action='store_true', default=False, help='ignore leading "#" chars on lines')
     ap.add_argument('--enable-repeat', action='store_true', default=False, help='enable repeat syntax "*N " at the start of a line')
     ap.add_argument('--rankings', action='store_true', default=False, help='treat input numbers as ranking 1st,2nd,3rd,etc')
-    ap.add_argument('--html', help='file to write HTML explanation to')
+    #ap.add_argument('--html', help='file to write HTML explanation to')
     ap.add_argument('-o', '--out', dest='outpath', default=None, help='output text to file or "-" for stdout')
+    ap.add_argument('--full-html', action='store_true', default=False)
+    ap.add_argument('--enable-all', action='store_true', default=False)
+    ap.add_argument('--explain', action='store_true', default=False)
+    ap.add_argument('-i', action='append')
     ap.add_argument('votefile', nargs='*', help='votes as x-www-form-urlencoded query strings one per line, e.g.: name1=9&name2=3&name4=23')
     ap.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose logging')
     args = ap.parse_args()
 
-    if args.html:
-        html = open(args.html, 'w')
-    else:
-        html = None
+    # if args.html:
+    #     html = open(args.html, 'w')
+    # else:
+    #     html = None
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
 
+    if args.full_html:
+        logger.warning('TODO implement --full-html')
+    if args.enable_all:
+        logger.warning('TODO implement --enable-all')
+    if args.explain:
+        logger.warning('TODO implement --explain')
+
     if args.outpath is None or args.outpath == '-':
-        out = sys.stdout
+        html = sys.stdout
     else:
-        out = open(args.outpath, 'wt')
+        html = open(args.outpath, 'wt')
 
     nameIndexes = {}
     names = []
     #algorithm = IRNRP(seats=args.seats)
     #algorithm = VRR(names)
     #algorithm = VRR2(names)
-    algorithms = [VRR(names), VRR2(names)]
+    algorithms = [VRR(names), VRR2(names), IRV(names)]
     if args.seats > 1:
         algorithms.append(IRNRP(names, seats=args.seats))
-    for fname in args.votefile:
+    for fname in args.votefile + args.i:
         fstart = time.time()
         if fname == '-':
             votes, comments = processFile(algorithms, sys.stdin, args, names, nameIndexes, args.rankings)

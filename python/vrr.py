@@ -95,15 +95,20 @@ class VRR:
             if va[1] >= 0:
                 self.inc_vs_unknown(va[0])
                 # Everything is implicitly preferred over everything not voted on this ballot.
-                for b in range(max(self.avb.keys()) + 1):
-                    if b not in indexRatingsDict:
-                        self.inc(va[0], b)
+                ak = self.avb.keys()
+                if ak:
+                    for b in range(max(ak) + 1):
+                        if b not in indexRatingsDict:
+                            self.inc(va[0], b)
             elif va[1] < 0:
                 self.inc_unknown_vs(va[0])
 
     def countDefeats(self, a):
+        ak = self.avb.keys()
+        if not ak:
+            return 0
         count = 0
-        for b in range(max(self.avb.keys()) + 1):
+        for b in range(max(ak) + 1):
             if b == a:
                 continue
             if self.get(a, b) < self.get(b, a):
