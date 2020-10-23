@@ -30,6 +30,8 @@ type VRR struct {
 
 	// super noisy HtmlExplaination
 	debug bool
+
+	CycleDetected bool
 }
 
 // TODO: implement encoding/json.Marshaler and Unmarshaler so that intermediate VRR state can be suspended and restored
@@ -367,6 +369,7 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		}
 	}
 
+	it.CycleDetected = true
 	blockedDefeats := []int{}
 	// find the active set of anything that defeats the thing with the least defeats
 
@@ -395,7 +398,6 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 		if len(activeset) == 1 {
 			// winner
 			defeats[mini] = 0
-			//return it.makeWinners(defeats)
 			break
 		}
 		if explain != nil {
@@ -541,9 +543,10 @@ func (it *VRR) ShortName() string {
 // ElectionMethod interface
 func (it *VRR) Name() string {
 	out := "Virtual Round Robin"
+	/* no special name for default
 	if it.WinningVotesMode {
 		out = out + " (winning votes mode)"
-	}
+	}*/
 	if it.MarginsMode {
 		out = out + " (margins mode)"
 	}

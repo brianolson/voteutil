@@ -1,6 +1,7 @@
 package voteutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -68,7 +69,15 @@ func (it *NameVote) Len() int {
 	return len(*it)
 }
 func (it *NameVote) Less(i, j int) bool {
-	return (*it)[i].Rating > (*it)[j].Rating
+	a := (*it)[i].Rating > (*it)[j].Rating
+	if a {
+		return true
+	}
+	if (*it)[i].Rating == (*it)[j].Rating {
+		c := strings.Compare((*it)[i].Name, (*it)[j].Name)
+		return c < 0
+	}
+	return false
 }
 func (it *NameVote) Swap(i, j int) {
 	t := (*it)[i]
@@ -114,6 +123,18 @@ func (it *NameVote) ConvertRankingsToRatings() {
 	for i, nr := range *it {
 		(*it)[i].Rating = offset - nr.Rating
 	}
+}
+
+func (it *NameVote) String() string {
+	m := make(map[string]float64, len(*it))
+	for _, nr := range *it {
+		m[nr.Name] = nr.Rating
+	}
+	mb, err := json.Marshal(m)
+	if err != nil {
+		return err.Error()
+	}
+	return string(mb)
 }
 
 // Map from names to indexes.

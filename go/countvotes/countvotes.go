@@ -261,20 +261,21 @@ func main() {
 	var err error
 
 	argnums := map[string]int{
-		"o":           1,
-		"out":         1,
-		"test":        0,
-		"i":           1,
-		"enable":      1,
-		"disable":     1,
-		"explain":     0,
-		"enable-all":  0,
-		"disable-all": 0,
-		"cpuprofile":  1,
-		"seats":       1,
-		"verbose":     0,
-		"rankings":    0,
-		"full-html":   0, // TODO: unused, implement
+		"o":            1,
+		"out":          1,
+		"test":         0,
+		"i":            1,
+		"enable":       1,
+		"disable":      1,
+		"explain":      0,
+		"enable-all":   0,
+		"disable-all":  0,
+		"cpuprofile":   1,
+		"seats":        1,
+		"verbose":      0,
+		"rankings":     0,
+		"full-html":    0, // TODO: unused, implement
+		"no-full-html": 0, // TODO: unused, implement
 		/*
 			   TODO: implement
 			"no-full-html": 0,
@@ -442,7 +443,7 @@ func main() {
 			result, winners = em.GetResult()
 		}
 		if testMode {
-			fmt.Fprintf(outw, "%s: ", em.ShortName())
+			fmt.Fprintf(outw, "%s: ", em.Name())
 			if result != nil {
 				for i, res := range *result {
 					if i > 0 {
