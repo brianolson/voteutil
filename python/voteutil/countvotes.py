@@ -5,12 +5,12 @@ import logging
 import re
 import sys
 import time
-import urllib.parse
 
 from irnrp import IRNRP
 from irv import IRV
 from vrr import VRR
 from vrr2 import VRR2
+from count import processFile
 
 logger = logging.getLogger(__name__)
 
@@ -29,54 +29,6 @@ def resultsToHtml(results, names, out):
     out.write('</table>\n')
 
 
-
-def processFile(algorithms, fin, args, names, nameIndexes, rankings=False):
-    votes = 0
-    comments = 0
-    for line in fin:
-        if not line:
-            continue
-        line = line.strip()
-        if not line:
-            continue
-        if line[0] == '#' and not args.nocomment:
-            comments += 1
-            continue
-        if line[0] == '*' and args.enable_repeat:
-            m = REPEAT_RE.match(line)
-            rcount = int(m.group(1))
-            line = m.group(2)
-        else:
-            rcount = 1
-        kvl = urllib.parse.parse_qs(line)
-        indexRatingDict = {}
-        for name, ratings in kvl.items():
-            if len(ratings) == 0:
-                continue
-            ci = nameIndexes.get(name, None)
-            if ci is None:
-                ci = len(nameIndexes)
-                nameIndexes[name] = ci
-                names.append(name)
-            if len(ratings) == 1:
-                indexRatingDict[ci] = float(ratings[0])
-            else:
-                # warning, multiple votes for a choice, voting average of them
-                indexRatingDict[ci] = sum(map(float, ratings)) / len(ratings)
-        if rankings:
-            maxrank = max(indexRatingDict.values()) + 1
-            indexRatingDict = {k:(maxrank - v) for k,v in indexRatingDict.items()}
-            assert min(indexRatingDict.values()) > 0, kvl
-        while rcount > 0:
-            for algorithm in algorithms:
-                algorithm.vote(indexRatingDict)
-            votes += 1
-            rcount -= 1
-    logger.debug('name indexes %r', nameIndexes)
-    logger.debug('names %r', names)
-    return votes, comments
-
-
 REPEAT_RE = re.compile(r'\*\s*(\d+)\s+(.*)')
 
 def main():
@@ -91,7 +43,7 @@ def main():
     ap.add_argument('--full-html', action='store_true', default=False)
     ap.add_argument('--enable-all', action='store_true', default=False)
     ap.add_argument('--explain', action='store_true', default=False)
-    ap.add_argument('-i', action='append')
+    ap.add_argument('-i', action='append', default=[])
     ap.add_argument('votefile', nargs='*', help='votes as x-www-form-urlencoded query strings one per line, e.g.: name1=9&name2=3&name4=23')
     ap.add_argument('-v', '--verbose', action='store_true', default=False, help='verbose logging')
     args = ap.parse_args()

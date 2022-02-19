@@ -92,4 +92,4 @@ class VRR2:
                     html.write('<td{}>{}</td>'.format(style, avb))
                 html.write('</tr>\n')
             html.write('</table>\n')
-        return [(a, -d) for d,a in defeats]
+        return [(self.cname(a), -d) for d,a in defeats]

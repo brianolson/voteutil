@@ -4,6 +4,7 @@
 
 import csv
 import logging
+import os
 
 import openpyxl
 
@@ -16,6 +17,13 @@ def wb_sheet_out(wb, sheetname, outname):
         for row in sheet.iter_rows(values_only=True):
             writer.writerow(row)
 
+def newerthan(a, b):
+    '''return True if a (source) is newer than b (dest)
+    Like `make`, also True if b does not exist
+    '''
+    if not os.path.exists(b):
+        return True
+    return os.path.getmtime(a) > os.path.getmtime(b)
 
 def xlsxtocsv(pathin, outdir=''):
     wb = openpyxl.load_workbook(pathin)
@@ -31,13 +39,15 @@ def xlsxtocsv(pathin, outdir=''):
         outroot = rootname
     if len(wb.sheetnames) == 1:
         outname = outroot + '.csv'
-        logger.info('%s -> %s', pathin, outname)
-        wb_sheet_out(wb, wb.sheetnames[0], outname)
+        if newerthan(pathin, outname):
+            logger.info('%s -> %s', pathin, outname)
+            wb_sheet_out(wb, wb.sheetnames[0], outname)
         return
     for sn in wb.sheetnames:
         outname = outroot + '_' + sn + '.csv'
-        logger.info('%s[%s] -> %s', pathin, sn, outname)
-        wb_sheet_out(wb, sn, outname)
+        if newerthan(pathin, outname):
+            logger.info('%s[%s] -> %s', pathin, sn, outname)
+            wb_sheet_out(wb, sn, outname)
 
 
 def main():

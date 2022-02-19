@@ -63,7 +63,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
                 winners += list(reversed(losers))
                 if html:
                     html.write(self.html(rounds))
-                return [(self.cname(i), count) for i, count in winners]
+                return [(self.cname(i), count) for count,i in winners]
             dq.add(loser[1])
             losers.append(loser)
     def html(self, rounds):
