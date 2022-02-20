@@ -3,10 +3,10 @@
 import random
 import sys
 
-az = [chr(x) for x in xrange(ord('a'),ord('z')+1)]
+az = [chr(x) for x in range(ord('a'),ord('z')+1)]
 
 def randname(length=6):
-    return ''.join([random.choice(az) for _ in xrange(length)])
+    return ''.join([random.choice(az) for _ in range(length)])
 
 def randneqvote(names, bias=None, joiner='&'):
     if bias is None:
@@ -26,16 +26,16 @@ def main():
     args = ap.parse_args()
 
     if args.indexnames:
-        names = [str(x) for x in xrange(args.numnames)]
+        names = [str(x) for x in range(args.numnames)]
     else:
-        names = [randname(args.namelen) for _ in xrange(args.numnames)]
+        names = [randname(args.namelen) for _ in range(args.numnames)]
 
     bias = {k:1.0 for k in names}
     if not args.nobias:
         bias[names[1]] = 1.2
         bias[names[3]] = 1.4
 
-    for _ in xrange(args.num):
+    for _ in range(args.num):
         sys.stdout.write(randneqvote(names, bias, args.joiner) + '\n')
 
 

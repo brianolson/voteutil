@@ -46,16 +46,17 @@ class Impl(object):
 
 impls = [
     Impl('c', "../c/countvotes", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
-    Impl('java', "java -jar ../java/vote.jar", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
+    #Impl('java', "java -jar ../java/vote.jar", ["hist", "irnr", "vrr", "rp", "raw", "irv", "stv"]),
     Impl('go', "../go/countvotes/countvotes", ["irnr", "vrr", "raw"]),
+    Impl('py', "../python/countvotes.py", ["irnr", "vrr", "raw"]),
 ]
 
 
 def test_correctness(args):
     numChoices = random.randint(2,10)
     numVotes = random.randint(10,100000)
-    names = [randname() for _ in xrange(numChoices)]
-    votelines = [randneqvote(names) + '\n' for _ in xrange(numVotes)]
+    names = [randname() for _ in range(numChoices)]
+    votelines = [randneqvote(names) + '\n' for _ in range(numVotes)]
     votedata = ''.join(votelines)
 
     # results[method][impl name] = 'results'
@@ -63,12 +64,14 @@ def test_correctness(args):
 
     for imp in impls:
         try:
-            cmd = imp.cmd + ' --test'
-            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            outd, errd = p.communicate(votedata)
+            cmd = [imp.cmd, '--test']
+            logger.debug('run: %s', ' '.join(map(repr,cmd)))
+            p = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            outd, errd = p.communicate(votedata.encode())
         except:
             logger.error('failed running %r', cmd, exc_info=True)
             return 1
+        outd = outd.decode()
         for line in outd.splitlines():
             line = line.strip()
             ab = line.split(':')
@@ -85,10 +88,10 @@ def test_correctness(args):
             #methods.add(methodName)
 
     failcount = 0
-    for methodName, ires in results.iteritems():
+    for methodName, ires in results.items():
         lastImpl = None
         lastResult = None
-        for implName, result in ires.iteritems():
+        for implName, result in ires.items():
             if lastResult is not None:
                 if lastResult != result:
                     logger.error('%s: (%s %s) != (%s %s)', methodName, lastImpl, lastResult, implName, result)
@@ -100,15 +103,15 @@ def test_correctness(args):
     if failcount > 0:
         fname = args.err_prefix + time.strftime('%Y%m%d_%H%M%S')
         logger.error('writing problem votes to %r', fname)
-        with open(fname, 'wb') as fout:
+        with open(fname, 'wt') as fout:
             fout.write(votedata)
 
     return failcount
-                    
+
 
 def test_perf(args, numChoices, numVotes, out):
-    names = [randname() for _ in xrange(numChoices)]
-    votelines = [randneqvote(names) + '\n' for _ in xrange(numVotes)]
+    names = [randname() for _ in range(numChoices)]
+    votelines = [randneqvote(names) + '\n' for _ in range(numVotes)]
     votedata = ''.join(votelines)
 
     # results[method][impl name] = time
@@ -136,9 +139,9 @@ def test_perf(args, numChoices, numVotes, out):
                     return
 
     out.write('<table border="1">')
-    for methodName, mr in results.iteritems():
+    for methodName, mr in results.items():
         ri = 0
-        for implName, dt in mr.iteritems():
+        for implName, dt in mr.items():
             if ri == 0:
                 out.write('<tr><td rowspan="{}">{}</td>'.format(len(mr), methodName))
             else:
@@ -148,7 +151,6 @@ def test_perf(args, numChoices, numVotes, out):
     out.write('</table>\n')
 
 def main():
-    logging.basicConfig(level=logging.INFO)
     ap = argparse.ArgumentParser()
     ap.add_argument('-n', dest='runs', default=1, type=int)
     ap.add_argument('--perf', default=False, action='store_true', help='Test speed, not correctness.')
@@ -156,10 +158,16 @@ def main():
     ap.add_argument('--both', default=False, action='store_true')
     ap.add_argument('--maxbad', type=int, default=1)
     ap.add_argument('--err-prefix', default='errfneq')
+    ap.add_argument('--verbose', default=False, action='store_true')
     args = ap.parse_args()
 
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+
     if args.check or args.both:
-        for _ in xrange(args.runs):
+        for _ in range(args.runs):
             failcount = test_correctness(args)
             if failcount > 0:
                 break

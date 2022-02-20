@@ -17,12 +17,13 @@ class VRR2:
     Process them once we know what choices we have.
     Stores O(C*V) data for C choices and V votes.
     """
+    short_name = "vrr2"
     def __init__(self, names=None):
         self.votes = []
         self.names = names
         self.choices = set()
     def name(self):
-        return "VRR2"
+        return "Virtual Round Robin (alt impl)"
     def cname(self, a):
         if self.names and a < len(self.names):
             return self.names[a]
