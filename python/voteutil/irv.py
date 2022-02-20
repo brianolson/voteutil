@@ -10,12 +10,15 @@ class IRV:
     """Instant Runoff Voting
 IRV is a fundamentally flawed algorithm, do not use to decide anything, included for comparison.
 """
+    short_name = "irv"
     def __init__(self, names=None):
         self.votes = []
         self.names = names
         self.choices = set()
     def name(self):
-        return "IRV"
+        return "Instant Runoff Vote"
+#    def short_name(self):
+#        return "irv"
     def cname(self, a):
         if self.names and a < len(self.names):
             return self.names[a]
@@ -31,6 +34,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
         '''Return ordered array of tuples [(name, votes), ...]
         If `html` is specified, .write() explanation HTML to it.
         '''
+        logger.debug("Instant Runoff Vote considered harmful. Do not use.")
         if html:
             rounds = []
         losers = []
@@ -69,7 +73,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
     def html(self, rounds):
         #return table string
         lastround = rounds[-1]
-        logger.debug('irv html lr.w=%r lr.l=%r', lastround.winners, lastround.losers)
+        #logger.debug('irv html lr.w=%r lr.l=%r', lastround.winners, lastround.losers)
         winners = list(lastround.winners) + list(reversed(lastround.losers))
         #logger.debug('irv html winners %r', winners)
         #names = [self.cname(i) for count,i in winners]

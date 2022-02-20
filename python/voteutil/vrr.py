@@ -11,6 +11,7 @@ class VRR:
     Single pass method with flexible storage allowing choices to be
     defined as they come in. Stores only O(C^2) counts for C choices.
     """
+    short_name = "vrr"
 
     def __init__(self, names=None, seats=None):
         # avb[n] contains the pairwise counts of n vs all choice indexes
@@ -24,7 +25,7 @@ class VRR:
         self.names = names
         self.votecount = 0
     def name(self):
-        return "VRR"
+        return "Virtual Round Robin"
     def cname(self, a):
         if self.names and a < len(self.names):
             return self.names[a]
