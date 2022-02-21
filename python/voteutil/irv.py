@@ -44,11 +44,13 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
             counts = {}
             exhausted = 0
             overvote = 0
+            active = 0
             for vote in self.votes:
                 top = None
                 tr = None
                 isExhausted = True
                 isTopTie = False
+                tieset = []
                 for index, rating in vote.items():
                     if index in dq:
                         continue
@@ -57,31 +59,36 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
                         tr = rating
                         top = index
                         isTopTie = False
+                        tieset.clear()
                     elif rating == tr:
+                        tieset.append(index)
                         isTopTie = True
+                if isExhausted:
+                    exhausted += 1
+                    continue
                 if isTopTie:
+                    logger.debug('tie %s[%d] == %s[%d] == %s', self.cname(top), top, self.cname(tieset[0]), tieset[0], rating)
                     if self.strictOvervote:
-                        # overvote; vote goes away forever
+                        # strict overvote; vote goes away forever
                         vote.clear()
                         top = None
                         overvote += 1
                         continue
                     else:
-                        # TODO: split vote
-                        pass
-                if isExhausted:
-                    exhausted += 1
-                    continue
+                        # TODO: split vote or
+                        # temporarily skip vote
+                        continue
                 if top is None:
                     continue
                 counts[top] = counts.get(top, 0) + 1
+                active += 1
             winners = sorted([(count, index) for index,count in counts.items()], reverse=True)
             thresh = (len(self.votes)-exhausted-overvote) / 2
             logger.debug('irv counts %r', counts)
             logger.debug('irv intermediate winners %r thresh=%f losers=%r', winners, thresh, losers)
             loser = winners[-1]
             if html:
-                rounds.append(irvRound(counts, list(winners), list(losers), exhausted, overvote))
+                rounds.append(irvRound(counts, list(winners), list(losers), exhausted, overvote, active))
             if winners[0][0] > thresh:
                 # Done
                 winners += list(reversed(losers))
@@ -118,14 +125,19 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
         for r in rounds:
             out += '<td>{}</td>'.format(r.overvote)
         out += '</tr>'
+        out += '<tr><th>active</th>'
+        for r in rounds:
+            out += '<td>{}</td>'.format(r.active)
+        out += '</tr>'
         out += '</table>'
         return out
 
 
 class irvRound:
-    def __init__(self, counts, winners, losers, exhausted, overvote):
+    def __init__(self, counts, winners, losers, exhausted, overvote, active):
         self.counts = counts
         self.winners = winners
         self.losers = losers
         self.exhausted = exhausted
         self.overvote = overvote
+        self.active = active

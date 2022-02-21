@@ -17,6 +17,7 @@ setup(
         [
             'countvotes = voteutil.countvotes:main',
             'xlsxtocsv = voteutil.xlsxtocsv:main',
+            'rcvmatters = voteutil.rcvmatters:main',
         ]
     },
     extras_require={

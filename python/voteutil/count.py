@@ -1,10 +1,13 @@
 import logging
+import re
 import urllib.parse
 
 logger = logging.getLogger(__name__)
 
 
-def processFile(algorithms, fin, args=None, names=None, nameIndexes=None, rankings=False):
+write_in_pat = re.compile(r'^write.?in.?$', re.IGNORECASE)
+
+def processFile(algorithms, fin, args=None, names=None, nameIndexes=None, rankings=False, voteEmptyLines=True, eraseWriteIn=True):
     '''algorithms: list/tuple of VRR, IRV, etc
     fin: file like object of url encoded lines name=value&...
     args: args.nocomment, args.enable_repeat
@@ -28,6 +31,9 @@ def processFile(algorithms, fin, args=None, names=None, nameIndexes=None, rankin
             continue
         line = line.strip()
         if not line:
+            if voteEmptyLines:
+                for algorithm in algorithms:
+                    algorithm.vote({})
             continue
         if line[0] == '#' and not nocomment:
             comments += 1
@@ -43,6 +49,8 @@ def processFile(algorithms, fin, args=None, names=None, nameIndexes=None, rankin
         for name, ratings in kvl.items():
             if len(ratings) == 0:
                 continue
+            if eraseWriteIn and write_in_pat.match(name):
+                continue
             ci = nameIndexes.get(name, None)
             if ci is None:
                 ci = len(nameIndexes)
@@ -53,6 +61,12 @@ def processFile(algorithms, fin, args=None, names=None, nameIndexes=None, rankin
             else:
                 # warning, multiple votes for a choice, voting average of them
                 indexRatingDict[ci] = sum(map(float, ratings)) / len(ratings)
+        if not indexRatingDict:
+            # could have been filtered to nothing
+            if voteEmptyLines:
+                for algorithm in algorithms:
+                    algorithm.vote({})
+            continue
         if rankings:
             maxrank = max(indexRatingDict.values()) + 1
             indexRatingDict = {k:(maxrank - v) for k,v in indexRatingDict.items()}
