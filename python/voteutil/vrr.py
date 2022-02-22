@@ -119,6 +119,10 @@ class VRR:
         '''Return ordered array of tuples [(name, votes), ...]
         If `html` is specified, .write() explanation HTML to it.
         '''
+        if not self.avb:
+            if html:
+                html.write('<p>no votes</p>')
+            return []
         logger.debug('vrr results for %d votes', self.votecount)
         logger.debug('vrr names %r', self.names)
         if logger.isEnabledFor(logging.DEBUG):

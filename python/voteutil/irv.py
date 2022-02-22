@@ -40,6 +40,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
             rounds = []
         losers = []
         dq = set()
+        tiecount = 0
         while True:
             counts = {}
             exhausted = 0
@@ -60,6 +61,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
                         top = index
                         isTopTie = False
                         tieset.clear()
+                        tieset.append(index)
                     elif rating == tr:
                         tieset.append(index)
                         isTopTie = True
@@ -67,7 +69,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
                     exhausted += 1
                     continue
                 if isTopTie:
-                    logger.debug('tie %s[%d] == %s[%d] == %s', self.cname(top), top, self.cname(tieset[0]), tieset[0], rating)
+                    logger.debug('tie rating=%s %r', tr, sorted([self.cname(x) for x in tieset]))
                     if self.strictOvervote:
                         # strict overvote; vote goes away forever
                         vote.clear()

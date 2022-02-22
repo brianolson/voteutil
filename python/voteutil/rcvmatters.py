@@ -41,7 +41,7 @@ def testFile(fname):
             html.write('<h1>{}</h1>\n'.format(alg.name()))
             xr = alg.getResults(html)
             if prevr is not None:
-                if prevr[0][0] != xr[0][0]:
+                if (len(prevr) == len(xr)) and (prevr[0][0] != xr[0][0]):
                     if not fail:
                         print(preva, prevr)
                         print(alg.name(), xr)
