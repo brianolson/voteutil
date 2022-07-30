@@ -23,6 +23,8 @@ class PickOne:
         String names will have been mapped to a dense range of ingeters starting at 0.
         votes shall be treated as immutable and may not be changed by an election algorithm.
         '''
+        if not indexRatingsDict:
+            return
         maxr = None
         maxi = None
         for i, r in indexRatingsDict.items():

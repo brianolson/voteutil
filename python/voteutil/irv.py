@@ -11,10 +11,11 @@ class IRV:
 IRV is a fundamentally flawed algorithm, do not use to decide anything, included for comparison.
 """
     short_name = "irv"
-    def __init__(self, names=None):
+    def __init__(self, names=None, strictOvervote=True):
         self.votes = []
         self.names = names
         self.choices = set()
+        self.strictOvervote = strictOvervote
     def name(self):
         return "Instant Runoff Vote"
 #    def short_name(self):
@@ -28,7 +29,7 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
         String names will have been mapped to a dense range of ingeters starting at 0.
         votes shall be treated as immutable and may not be changed by an election algorithm.
         '''
-        self.votes.append(indexRatingsDict)
+        self.votes.append(dict(indexRatingsDict))
         self.choices.update(indexRatingsDict.keys())
     def getResults(self, html=None):
         '''Return ordered array of tuples [(name, votes), ...]
@@ -39,29 +40,57 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
             rounds = []
         losers = []
         dq = set()
+        tiecount = 0
         while True:
             counts = {}
-            wasted = 0
+            exhausted = 0
+            overvote = 0
+            active = 0
             for vote in self.votes:
                 top = None
                 tr = None
+                isExhausted = True
+                isTopTie = False
+                tieset = []
                 for index, rating in vote.items():
                     if index in dq:
                         continue
+                    isExhausted = False
                     if tr is None or rating > tr:
                         tr = rating
                         top = index
+                        isTopTie = False
+                        tieset.clear()
+                        tieset.append(index)
+                    elif rating == tr:
+                        tieset.append(index)
+                        isTopTie = True
+                if isExhausted:
+                    exhausted += 1
+                    continue
+                if isTopTie:
+                    logger.debug('tie rating=%s %r', tr, sorted([self.cname(x) for x in tieset]))
+                    if self.strictOvervote:
+                        # strict overvote; vote goes away forever
+                        vote.clear()
+                        top = None
+                        overvote += 1
+                        continue
+                    else:
+                        # TODO: split vote or
+                        # temporarily skip vote
+                        continue
                 if top is None:
-                    wasted += 1
                     continue
                 counts[top] = counts.get(top, 0) + 1
+                active += 1
             winners = sorted([(count, index) for index,count in counts.items()], reverse=True)
-            thresh = (len(self.votes)-wasted) / 2
+            thresh = (len(self.votes)-exhausted-overvote) / 2
             logger.debug('irv counts %r', counts)
             logger.debug('irv intermediate winners %r thresh=%f losers=%r', winners, thresh, losers)
             loser = winners[-1]
             if html:
-                rounds.append(irvRound(counts, list(winners), list(losers), wasted))
+                rounds.append(irvRound(counts, list(winners), list(losers), exhausted, overvote, active))
             if winners[0][0] > thresh:
                 # Done
                 winners += list(reversed(losers))
@@ -90,13 +119,27 @@ IRV is a fundamentally flawed algorithm, do not use to decide anything, included
                 else:
                     out += '<td>{}</td>'.format(rc)
             out += '</tr>'
+        out += '<tr><th>exhausted</th>'
+        for r in rounds:
+            out += '<td>{}</td>'.format(r.exhausted)
+        out += '</tr>'
+        out += '<tr><th>overvote</th>'
+        for r in rounds:
+            out += '<td>{}</td>'.format(r.overvote)
+        out += '</tr>'
+        out += '<tr><th>active</th>'
+        for r in rounds:
+            out += '<td>{}</td>'.format(r.active)
+        out += '</tr>'
         out += '</table>'
         return out
 
 
 class irvRound:
-    def __init__(self, counts, winners, losers, wasted):
+    def __init__(self, counts, winners, losers, exhausted, overvote, active):
         self.counts = counts
         self.winners = winners
         self.losers = losers
-        self.wasted = wasted
+        self.exhausted = exhausted
+        self.overvote = overvote
+        self.active = active
