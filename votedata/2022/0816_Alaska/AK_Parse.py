@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
+#
+# Alaska 2022 PRIMARY ELECTION – AUGUST 16, 2022
+# https://www.elections.alaska.gov/election-results/e/?id=22prim
+# https://www.elections.alaska.gov/results/22PRIM/CVR_Export_20220908084311.zip
+# 6512608 bytes
+# shasum -a 256
+# 3d9ea12a0fa12064028057e02ad855ad63d349ccfb3b031afcdeb2eebfd1beab  CVR_Export_20220908084311.zip
 
 import json
 import urllib.parse
