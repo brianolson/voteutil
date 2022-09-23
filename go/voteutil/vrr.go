@@ -486,6 +486,9 @@ func (it *VRR) GetResultExplain(explain io.Writer) (*NameVote, int) {
 
 // ElectionMethod interface
 func (it *VRR) HtmlExplaination() (scores *NameVote, numWinners int, html string) {
+	if len(it.counts) == 0 {
+		return nil, 0, "<p>no votes yet</p>"
+	}
 	resultExplain := new(bytes.Buffer)
 	results, numWinners := it.GetResultExplain(resultExplain)
 	parts := []string{resultExplain.String(), "<table border=\"0\"><tr><td colspan=\"2\"></td>"}
