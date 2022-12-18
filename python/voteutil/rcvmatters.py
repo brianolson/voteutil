@@ -37,8 +37,9 @@ def testFile(fname):
         preva = None
         html = io.StringIO()
         fail = False
+        html.write('<h1>{}</h1>\n'.format(fname.replace('.nameq', '')))
         for alg in algorithms:
-            html.write('<h1>{}</h1>\n'.format(alg.name()))
+            html.write('<h2>{}</h2>\n'.format(alg.name()))
             xr = alg.getResults(html)
             if prevr is not None:
                 if (len(prevr) == len(xr)) and (prevr[0][0] != xr[0][0]):
