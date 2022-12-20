@@ -42,7 +42,7 @@ class VoteProcessor:
         for line in fin:
             lineno += 1
             try:
-                voteCount, commentCount = self.processLine(line)
+                voteCount, commentCount = self.processLine(line, lineno)
                 votes += voteCount
                 comments += commentCount
             except Exception as e:
@@ -50,7 +50,7 @@ class VoteProcessor:
         logger.debug('name indexes %r', self.nameIndexes)
         logger.debug('names %r', self.names)
         return votes, comments
-    def processLine(self, line):
+    def processLine(self, line, lineno):
         votes = 0
         comments = 0
         if not line:
@@ -71,6 +71,18 @@ class VoteProcessor:
         else:
             rcount = 1
         kvl = urllib.parse.parse_qs(line)
+        maxrank = None
+        if self.rankings:
+            for name, rankings in kvl.items():
+                if len(rankings) == 0:
+                    continue
+                mr = max(map(int,rankings))
+                if maxrank is None:
+                    maxrank = mr
+                else:
+                    maxrank = max(mr, maxrank)
+            if maxrank is not None:
+                maxrank += 1
         indexRatingDict = {}
         for name, ratings in kvl.items():
             if len(ratings) == 0:
@@ -83,9 +95,15 @@ class VoteProcessor:
                 self.nameIndexes[name] = ci
                 self.names.append(name)
             if len(ratings) == 1:
-                indexRatingDict[ci] = float(ratings[0])
+                if self.rankings:
+                    indexRatingDict[ci] = maxrank - float(ratings[0])
+                else:
+                    indexRatingDict[ci] = float(ratings[0])
+            elif self.rankings:
+                logger.warning(':%d multiple votes for choice %r, voting highest rank', lineno, name)
+                indexRatingDict[ci] = maxrank - float(min(ratings[0]))
             else:
-                logger.warning(':%d multiple votes for a choice, voting average of them', lineno)
+                logger.warning(':%d multiple votes for choice %r, voting average of them', lineno, name)
                 indexRatingDict[ci] = sum(map(float, ratings)) / len(ratings)
         if not indexRatingDict:
             # could have been filtered to nothing
@@ -94,8 +112,6 @@ class VoteProcessor:
                     algorithm.vote({})
             return votes, comments
         if self.rankings:
-            maxrank = max(indexRatingDict.values()) + 1
-            indexRatingDict = {k:(maxrank - v) for k,v in indexRatingDict.items()}
             assert min(indexRatingDict.values()) > 0, kvl
         while rcount > 0:
             for algorithm in self.algorithms:
