@@ -100,7 +100,8 @@ class VoteProcessor:
                 else:
                     indexRatingDict[ci] = float(ratings[0])
             elif self.rankings:
-                logger.warning(':%d multiple votes for choice %r, voting highest rank', lineno, name)
+                # this is so common we need to usually ignore it, but we should gather stats on it to measure how people actually use RCV ballots
+                logger.debug(':%d multiple votes for choice %r, voting highest rank', lineno, name)
                 indexRatingDict[ci] = maxrank - float(min(ratings[0]))
             else:
                 logger.warning(':%d multiple votes for choice %r, voting average of them', lineno, name)

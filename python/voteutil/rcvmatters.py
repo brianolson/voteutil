@@ -24,6 +24,11 @@ from voteutil.count import processFile
 
 logger = logging.getLogger(__name__)
 
+def outname(fname):
+    if fname.endswith('.nameq'):
+        return fname[:-6] + '.html'
+    return fname + '.html'
+
 def testFile(fname):
         names = []
         nameIndexes = {}
@@ -51,9 +56,9 @@ def testFile(fname):
             prevr = xr
             preva = alg.name()
         if fail or True:
-            outname = fname + '.html'
-            print(outname)
-            with open(outname, 'wt') as fout:
+            outpath = outname(fname)
+            print(outpath)
+            with open(outpath, 'wt') as fout:
                 fout.write(html.getvalue())
         return not fail
 

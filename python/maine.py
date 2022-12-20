@@ -44,11 +44,17 @@ def csvToNameq(fin, fout):
             continue
         fout.write(urllib.parse.urlencode(ne) + '\n')
 
+def outname(path):
+    if path.endswith('.csv'):
+        return path[:-4] + '.nameq'
+    return path + '.nameq'
+
 def main():
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument('csvpaths', nargs='*')
     ap.add_argument('-o', '--out')
+    ap.add_argument('--each', default=False, action='store_true', help='each *.csv becomes a *.nameq')
     ap.add_argument('--verbose', default=False, action='store_true')
     args = ap.parse_args()
     if args.verbose:
@@ -62,8 +68,15 @@ def main():
         csvToNameq(sys.stdin, out)
         return 0
     for path in args.csvpaths:
-        with open(path, 'rt') as fin:
-            csvToNameq(fin, out)
+        if args.each:
+            outpath = outname(path)
+            logger.debug('%s -> %s', path, outpath)
+            with open(outpath, 'wt') as fout:
+                with open(path, 'rt') as fin:
+                    csvToNameq(fin, fout)
+        else:
+            with open(path, 'rt') as fin:
+                csvToNameq(fin, out)
     return 0
 
 if __name__ == '__main__':
