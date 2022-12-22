@@ -55,6 +55,7 @@ def main():
     ap.add_argument('csvpaths', nargs='*')
     ap.add_argument('-o', '--out')
     ap.add_argument('--each', default=False, action='store_true', help='each *.csv becomes a *.nameq')
+    ap.add_argument('--encoding', default='utf-8')
     ap.add_argument('--verbose', default=False, action='store_true')
     args = ap.parse_args()
     if args.verbose:
@@ -71,11 +72,14 @@ def main():
         if args.each:
             outpath = outname(path)
             logger.debug('%s -> %s', path, outpath)
-            with open(outpath, 'wt') as fout:
-                with open(path, 'rt') as fin:
-                    csvToNameq(fin, fout)
+            try:
+                with open(outpath, 'wt') as fout:
+                    with open(path, 'rt', encoding=args.encoding) as fin:
+                        csvToNameq(fin, fout)
+            except Exception as e:
+                logger.error('%s: %s', path, e, exc_info=True)
         else:
-            with open(path, 'rt') as fin:
+            with open(path, 'rt', encoding=args.encoding) as fin:
                 csvToNameq(fin, out)
     return 0
 
