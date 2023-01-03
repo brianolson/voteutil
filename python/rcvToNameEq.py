@@ -9,6 +9,8 @@
 # output name will be replaced with the name of the contest. e.g.
 # -o votes_%s.nameq
 
+import fileinput
+import glob
 import logging
 import sys
 import urllib
@@ -116,7 +118,7 @@ def readBallot(f):
         undervote = charTruth(line[44])
         yield RcvBallot(contest, voter_id, serial, tally_type, precinct, rank, candidate, overvote, undervote)
 
-def masterAndBallotsToNameEq(master, ballots, outpattern, ignoreUnknown=False):
+def masterAndBallotsToNameEq(master, ballotstream, outpattern, ignoreUnknown=False):
     ma = Master()
     ma.load(master)
     if (len(ma.contests) > 1) and ('%s' not in outpattern):
@@ -132,7 +134,7 @@ def masterAndBallotsToNameEq(master, ballots, outpattern, ignoreUnknown=False):
     outfs = {contest:open(outpath, 'wt') for contest, outpath in outpaths.items()}
     voteParts = {}
     partCount = 0
-    for ballotPart in readBallot(open(ballots, 'r')):
+    for ballotPart in readBallot(ballotstream):
         vpkey = (ballotPart.contest, ballotPart.voter_id)
         parts = voteParts.get(vpkey)
         if parts is None:
@@ -157,14 +159,15 @@ def masterAndBallotsToNameEq(master, ballots, outpattern, ignoreUnknown=False):
 
 def main():
     # TODO: port to argparse; optparse is depricated
-    import optparse
-    argp = optparse.OptionParser()
-    argp.add_option('--master', '-m', dest='master', default=None)
-    argp.add_option('--ballots', '-b', dest='ballots', default=None)
-    argp.add_option('--out', '-o', dest='outname', default=None)
-    argp.add_option('-v', '--verbose', action='store_true', default=False)
-    argp.add_option('--ignore-unknown', action='store_true', default=False)
-    (options, args) = argp.parse_args()
+    import argparse
+    argp = argparse.ArgumentParser()
+    argp.add_argument('--master', '-m', dest='master', default=None)
+    argp.add_argument('--ballots', '-b', dest='ballots', default=None)
+    argp.add_argument('--ballotglob')
+    argp.add_argument('--out', '-o', dest='outname', default=None)
+    argp.add_argument('-v', '--verbose', action='store_true', default=False)
+    argp.add_argument('--ignore-unknown', action='store_true', default=False)
+    options = argp.parse_args()
 
     if options.verbose:
         logging.basicConfig(level=logging.DEBUG)
@@ -172,7 +175,11 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     logger.debug('wat')
-    masterAndBallotsToNameEq(options.master, options.ballots, options.outname, options.ignore_unknown)
+    if options.ballotglob:
+        ballotstream = fileinput.input(files=glob.glob(options.ballotglob))
+    else:
+        ballotstream = open(options.ballots, 'rt')
+    masterAndBallotsToNameEq(options.master, ballotstream, options.outname, options.ignore_unknown)
     logger.debug('foo')
     return
 
