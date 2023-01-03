@@ -38,7 +38,7 @@ def testFile(fname):
         votes, comments = processFile(algorithms, fin, args=None, names=names, nameIndexes=nameIndexes, rankings=True)
     if votes == 0:
         print('{} empty'.format(fname))
-        return None, None
+        return None, None, votes
     prevr = None
     preva = None
     html = io.StringIO()
@@ -71,7 +71,7 @@ def testFile(fname):
         print(outpath)
         with open(outpath, 'wt') as fout:
             fout.write(html.getvalue())
-    return (not fail, hasNonPickOne)
+    return (not fail, hasNonPickOne, votes)
 
 def main():
     import argparse
@@ -96,17 +96,19 @@ def main():
                 if fname.endswith('.nameq'):
                     paths.append(os.path.join(dirpath, fname))
 
+    totalvotes = 0
     for fname in paths:
         print(fname)
-        ok, hasNonPickOne = testFile(fname)
+        ok, hasNonPickOne, filevotes = testFile(fname)
         if ok is None:
             continue
+        totalvotes += filevotes
         count += 1
         if hasNonPickOne:
             failcount += 1
         elif not ok:
             p1count += 1
-    print(f'Done. {count} elections, {p1count} p1-different, {failcount} alg-different')
+    print(f'Done. {count} elections, {totalvotes} votes, {p1count} p1-different, {failcount} alg-different')
 
 if __name__ == '__main__':
     main()

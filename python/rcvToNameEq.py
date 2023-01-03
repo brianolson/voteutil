@@ -116,7 +116,7 @@ def readBallot(f):
         undervote = charTruth(line[44])
         yield RcvBallot(contest, voter_id, serial, tally_type, precinct, rank, candidate, overvote, undervote)
 
-def masterAndBallotsToNameEq(master, ballots, outpattern):
+def masterAndBallotsToNameEq(master, ballots, outpattern, ignoreUnknown=False):
     ma = Master()
     ma.load(master)
     if (len(ma.contests) > 1) and ('%s' not in outpattern):
@@ -139,6 +139,8 @@ def masterAndBallotsToNameEq(master, ballots, outpattern):
             parts = {}
             voteParts[vpkey] = parts
         crec = ma.candidates.get(ballotPart.candidate)
+        if not crec and ignoreUnknown:
+            continue
         cname = (crec and crec.name) or 'None'
         parts[cname] = ballotPart.rank
         partCount += 1
@@ -161,6 +163,7 @@ def main():
     argp.add_option('--ballots', '-b', dest='ballots', default=None)
     argp.add_option('--out', '-o', dest='outname', default=None)
     argp.add_option('-v', '--verbose', action='store_true', default=False)
+    argp.add_option('--ignore-unknown', action='store_true', default=False)
     (options, args) = argp.parse_args()
 
     if options.verbose:
@@ -169,7 +172,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     logger.debug('wat')
-    masterAndBallotsToNameEq(options.master, options.ballots, options.outname)
+    masterAndBallotsToNameEq(options.master, options.ballots, options.outname, options.ignore_unknown)
     logger.debug('foo')
     return
 

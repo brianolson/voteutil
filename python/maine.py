@@ -12,11 +12,18 @@ logger = logging.getLogger(__name__)
 def headerRowToColumnRanks(header):
     colranks = {}
     for col, v in enumerate(header):
+        lv = v.lower()
         if '1st Choice' in v:
             colranks[col] = 1
         elif '2nd Choice' in v:
             colranks[col] = 2
         elif '3rd Choice' in v:
+            colranks[col] = 3
+        elif '1st choice' in lv:
+            colranks[col] = 1
+        elif '2nd choice' in lv:
+            colranks[col] = 2
+        elif '3rd choice' in lv:
             colranks[col] = 3
     if len(colranks) < 3:
         raise Exception('failed to find rank columns in header {!r}'.format(header))

@@ -67,6 +67,7 @@ def wnameq(contestId, line):
     if fout is None:
         cont = rcvContests[contestId]
         path = cont['Description'] + '.nameq'
+        path = urllib.parse.quote_plus(path)
         fout = open(path, 'wt')
         nameqouts[contestId] = fout
     fout.write(line)
@@ -76,6 +77,7 @@ def wrawcont(contestId, rec):
     if fout is None:
         cont = rcvContests[contestId]
         path = cont['Description'] + '.json'
+        path = urllib.parse.quote_plus(path)
         fout = open(path, 'wt')
         rawouts[contestId] = fout
     fout.write(json.dumps(rec) + '\n')
