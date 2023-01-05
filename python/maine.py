@@ -4,33 +4,42 @@
 
 import csv
 import logging
+import re
 import sys
 import urllib.parse
 
 logger = logging.getLogger(__name__)
 
+choiceKeys = [
+    ('1st Choice', 1),
+    ('2nd Choice', 2),
+    ('3rd Choice', 3),
+    ('1st choice', 1),
+    ('2nd choice', 2),
+    ('3rd choice', 3),
+]
+
+for i in range(1,99):
+    choiceKeys.append(('Choice {}'.format(i), i))
+
 def headerRowToColumnRanks(header):
     colranks = {}
     for col, v in enumerate(header):
         lv = v.lower()
-        if '1st Choice' in v:
-            colranks[col] = 1
-        elif '2nd Choice' in v:
-            colranks[col] = 2
-        elif '3rd Choice' in v:
-            colranks[col] = 3
-        elif '1st choice' in lv:
-            colranks[col] = 1
-        elif '2nd choice' in lv:
-            colranks[col] = 2
-        elif '3rd choice' in lv:
-            colranks[col] = 3
+        for ck, cv in choiceKeys:
+            if ck in v:
+                colranks[col] = cv
+                break
     if len(colranks) < 3:
         raise Exception('failed to find rank columns in header {!r}'.format(header))
     return colranks
 
 
-def csvToNameq(fin, fout):
+cnd1 = re.compile(r'\s+\(CND\d+\)')
+def nameJunkTrimCnd1(name):
+    return cnd1.sub('', name)
+
+def csvToNameq(fin, fout, args):
     reader = csv.reader(fin)
     header = None
     colranks = None
@@ -46,10 +55,14 @@ def csvToNameq(fin, fout):
                 continue
             if name == 'overvote':
                 continue
+            if args.name_junk_trim_cnd1:
+                name = nameJunkTrimCnd1(name)
+            name = name.strip()
             ne.append( (name, rank) )
         if not ne:
-            continue
-        fout.write(urllib.parse.urlencode(ne) + '\n')
+            fout.write('\n')
+        else:
+            fout.write(urllib.parse.urlencode(ne) + '\n')
 
 def outname(path):
     if path.endswith('.csv'):
@@ -63,6 +76,7 @@ def main():
     ap.add_argument('-o', '--out')
     ap.add_argument('--each', default=False, action='store_true', help='each *.csv becomes a *.nameq')
     ap.add_argument('--encoding', default='utf-8')
+    ap.add_argument('--name-junk-trim-cnd1', default=False, action='store_true')
     ap.add_argument('--verbose', default=False, action='store_true')
     args = ap.parse_args()
     if args.verbose:
@@ -82,12 +96,13 @@ def main():
             try:
                 with open(outpath, 'wt') as fout:
                     with open(path, 'rt', encoding=args.encoding) as fin:
-                        csvToNameq(fin, fout)
+                        csvToNameq(fin, fout, args)
             except Exception as e:
                 logger.error('%s: %s', path, e, exc_info=True)
         else:
+            logger.debug('%s -> %s', path, args.out)
             with open(path, 'rt', encoding=args.encoding) as fin:
-                csvToNameq(fin, out)
+                csvToNameq(fin, out, args)
     return 0
 
 if __name__ == '__main__':
