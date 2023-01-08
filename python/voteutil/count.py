@@ -33,6 +33,17 @@ class VoteProcessor:
         self.rankings = rankings
         self.voteEmptyLines = voteEmptyLines
         self.eraseWriteIn = eraseWriteIn
+        # stats:
+        self.blank = 0 # empty vote
+        self.pickOne = 0 # only one candidate marked
+        self.pickOneMany = 0 # only one candidate marked, and more than once
+        self.reVote = 0 # same candidate voted more than once, but not alone
+
+    def statsDict(self):
+        out = {}
+        for an in ('blank', 'pickOne', 'pickOneMany', 'reVote'):
+            out[an] = getattr(self, an)
+        return out
 
     def processFile(self, fin):
         "fin is a file-like object or other iterable over lines"
@@ -54,9 +65,11 @@ class VoteProcessor:
         votes = 0
         comments = 0
         if not line:
+            self.blank += 1
             return votes, comments
         line = line.strip()
         if not line:
+            self.blank += 1
             if self.voteEmptyLines:
                 for algorithm in self.algorithms:
                     algorithm.vote({})
@@ -84,6 +97,7 @@ class VoteProcessor:
             if maxrank is not None:
                 maxrank += 1
         indexRatingDict = {}
+        reVote = False
         for name, ratings in kvl.items():
             if len(ratings) == 0:
                 continue
@@ -102,6 +116,7 @@ class VoteProcessor:
             elif self.rankings:
                 # this is so common we need to usually ignore it, but we should gather stats on it to measure how people actually use RCV ballots
                 logger.debug(':%d multiple votes for choice %r, voting highest rank', lineno, name)
+                reVote = True
                 indexRatingDict[ci] = maxrank - float(min(ratings[0]))
             else:
                 logger.warning(':%d multiple votes for choice %r, voting average of them', lineno, name)
@@ -112,6 +127,14 @@ class VoteProcessor:
                 for algorithm in self.algorithms:
                     algorithm.vote({})
             return votes, comments
+        if reVote:
+            if len(indexRatingDict) == 1:
+                self.pickOneMany += 1
+            else:
+                self.reVote += 1
+        else:
+            if len(indexRatingDict) == 1:
+                self.pickOne += 1
         if self.rankings:
             assert min(indexRatingDict.values()) > 0, kvl
         while rcount > 0:
