@@ -93,6 +93,7 @@ def newerthan(a, b):
 # }
 def testFile(args, fname, force=False):
     fdir, fbasename = os.path.split(fname)
+    rootname = fbasename.replace('.nameq', '')
     statpath = os.path.join(fdir, '.' + fbasename + '.stats.json')
     if (not force) and (not newerthan(fname, statpath)):
         with open(statpath, 'rt') as fin:
@@ -120,13 +121,15 @@ def testFile(args, fname, force=False):
     # rcvDisagree: two rcv algorithms disagree with each other
     rcvDisagree = False
     disagrees = []
-    html.write('<h1>{}</h1>\n'.format(fname.replace('.nameq', '')))
+    html.write('<h1>{}</h1>\n'.format(rootname))
+    html.write('\n<div class="results">\n')
     for alg in algorithms:
         html.write('<h2>{}</h2>\n'.format(alg.name()))
         xr = alg.getResults(html)
         algname = alg.name()
         for pn, pr in prevr.items():
             if (len(pr) == len(xr)) and (pr[0][0] != xr[0][0]):
+                # accumulate disagreements to put at the end
                 disagreeHtml = f'\n<div class="votealgconflict"><i>{pn}</i> winner <b>{pr[0][0]}</b> != <i>{algname}</i> winner <b>{xr[0][0]}</b></div>\n'
                 disagrees.append(disagreeHtml)
                 if (algname == 'Pick One') or (pn == 'Pick One'):
@@ -137,14 +140,31 @@ def testFile(args, fname, force=False):
                     print(alg.name(), xr)
                     print('{}: {} {} != {} {}'.format(fname, pn, pr[0][0], alg.name(), xr[0][0]))
         prevr[algname] = xr
-    for dh in disagrees:
-        html.write(dh)
+    html.write('\n</div><!-- end results -->\n')
+    if disagrees:
+        html.write('\n<div class="disagrees">\n')
+        for dh in disagrees:
+            html.write(dh)
+        html.write('\n</div><!-- end disagrees -->\n')
     if htmlOn(args, rcvDisagree):
         # write html report to file
         outpath = outname(fname)
         print(outpath)
         with open(outpath, 'wt') as fout:
+            fout.write('''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>{title}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+'''.format(title=rootname))
+            # TODO: also write inner fragment to separate file for other composition?
             fout.write(html.getvalue())
+            fout.write('''</body>
+</html>
+''')
     if hasNonPickOne:
         stats['hasNonPickOne'] = hasNonPickOne
     if rcvDisagree:
@@ -162,6 +182,7 @@ def main():
     ap.add_argument('-v', '--verbose', default=False, action='store_true')
     ap.add_argument('--html', default=None, help='--html=on/off/x "--html" is "on"')
     ap.add_argument('--report', help='path to write html report to')
+    ap.add_argument('--summary', help='summary fragment html path')
     ap.add_argument('--recount', default=False, action='store_true', help='recount all .nameq even if stats cache exists')
     args = ap.parse_args()
 
@@ -199,6 +220,15 @@ def main():
     logger.debug('statsum %r', statsum)
     if args.report:
         with open(args.report, 'wt') as fout:
+            fout.write('''<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RCV Election Analysis</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+''')
             fout.write('<h1>Contests</h1>')
             fout.write('<table><tr><th>tags:</th></tr><tr><th>!PO</th><td>If only the top-rank choice was voted, the pick-one winner would be different than the RCV winner</td></tr><tr><th>!RCV</th><td>The Ranked Choice Vote winner differs depending on the RCV algorithm used</td></tr></table>')
             fout.write('<table>')
@@ -236,6 +266,10 @@ def main():
                 nrevote = fstats['reVote']
                 fout.write(f'<tr><td><a href="{fnameh}">{fnamer}</a></td><td>{tags}</td><td>{nvotes}</td><td>{npickOne}</td><td>{npickOneMany}</td><td>{nrevote}</td><td>{nblank}</td></tr>')
             fout.write('</table>')
+            fout.write('</body></html>\n')
+    if args.summary:
+        with open(args.summary, 'wt') as fout:
+            fout.write(f'<div class="vsum">{count} files, {statsum["votes"]} votes</div><div class="vsum">{statsum.get("rcvDisagree",0)} had RCV algorithm disagreement</div><div class="vsum">{statsum.get("hasNonPickOne",0)} had RCV outcome different than just voting for first choice</div>')
     dt = time.time() - start
     print(f'Done. {count} elections, {statsum["votes"]} votes, {statsum["hasNonPickOne"]} p1-different, {statsum["rcvDisagree"]} alg-different; # ({dt:.2f} seconds)')
 
