@@ -89,8 +89,8 @@ class VRR:
                     self.inc(va[0], vb[0])
                 elif va[1] < vb[1]:
                     self.inc(vb[0], va[0])
-                else:
-                    logger.debug('tie rate')
+                # else:
+                #     logger.debug('tie rate')
             # vote vs unknown and unvoted based on rating sign.
             # unknown has a negative zero rating.
             if va[1] >= 0:
@@ -104,7 +104,7 @@ class VRR:
             elif va[1] < 0:
                 self.inc_unknown_vs(va[0])
 
-    def countDefeats(self, a):
+    def countDefeats(self, a, blockedDefeats=None):
         ak = self.avb.keys()
         if not ak:
             return 0
@@ -113,8 +113,69 @@ class VRR:
             if b == a:
                 continue
             if self.get(a, b) < self.get(b, a):
-                count += 1
+                if (blockedDefeats is None) or ((b,a) not in blockedDefeats):
+                    count += 1
         return count
+    def disableWeakestDefeats(self, defeats, blockedDefeats, explainNotes):
+        # maybe tweak contents of defeats and blockedDefeats
+        # return True if done, False for another loop
+        activeset = {defeats[0][1]}
+        activeGrew = True
+        while activeGrew:
+            activeGrew = False
+            for j in list(activeset):
+                for i in range(0,len(self.names)):
+                    if i in activeset:
+                        continue
+                    if (i,j) in blockedDefeats:
+                        continue
+                    ivj = self.get(i,j)
+                    jvi = self.get(j,i)
+                    if ivj > jvi:
+                        activeset.add(i)
+                        activeGrew = True
+        if len(activeset) == 1:
+            # winner
+            logger.debug('activeset 1 %r', [self.cname(x) for x in activeset])
+            return True
+        minstrength = self.votecount
+        mins = []
+        activelist = sorted(activeset)
+        for i, a in enumerate(activelist):
+            for b in activelist[i+1:]:
+                avb = self.get(a,b)
+                bva = self.get(b,a)
+                if avb > bva:
+                    hi = a
+                    lo = b
+                    vhi = avb
+                    vlo = bva
+                else:
+                    hi = b
+                    lo = a
+                    vhi = bva
+                    vlo = avb
+                if (hi,lo) in blockedDefeats:
+                    continue
+                # "winning votes" mode
+                strength = vhi
+                # TODO: "margins" mode
+                # strength = vhi - vlo
+                if strength < minstrength:
+                    minstrength = strength
+                    mins = [(hi,lo)]
+                elif strength == minstrength:
+                    mins.append((hi,lo))
+        if len(mins) == len(activeset):
+            # N-way tie, give up.
+            names = [self.cname(x) for x in activeset]
+            explainNotes.append('<div class="ep">{} are all tied!</div>'.format(', '.join(names)))
+            return True
+        for hi,lo in mins:
+            explainNotes.append('<div class="ep">{} {} > {} {}; ignored as weakest defeat</div>'.format(self.cname(hi), self.get(hi,lo), self.cname(lo), self.get(lo,hi)))
+            blockedDefeats.add((hi,lo))
+        return False
+
     def getResults(self, html=None):
         '''Return ordered array of tuples [(name, votes), ...]
         If `html` is specified, .write() explanation HTML to it.
@@ -130,8 +191,22 @@ class VRR:
             for a in range(max(self.avb.keys()) + 1):
                 aname = self.cname(a)
                 logger.debug('vrr avb %s %r: %r', a, aname, self.avb.get(a))
-        defeats = [(self.countDefeats(a), a) for a in range(max(self.avb.keys()) + 1)]
-        defeats.sort()
+        blockedDefeats = set()
+        explainNotes = []
+        while True:
+            defeats = [(self.countDefeats(a, blockedDefeats), a) for a in range(max(self.avb.keys()) + 1)]
+            defeats.sort()
+            logger.debug('defeats %r', defeats)
+            if defeats[0][0] == 0:
+                if len(defeats) > 1:
+                    if defeats[1][0] != 0:
+                        break # we have a winner
+                else:
+                    break # we have a winner
+            # find weakest defeat and disable it
+            if self.disableWeakestDefeats(defeats, blockedDefeats, explainNotes):
+                break
+            logger.debug('blocked defeats %r', blockedDefeats)
         if html:
             html.write('<table border="1">\n<tr><td></td>')
             for i in range(len(defeats)):
@@ -155,4 +230,6 @@ class VRR:
                     html.write('<td{}>{}</td>'.format(style, avb))
                 html.write('</tr>\n')
             html.write('</table>\n')
+            for en in explainNotes:
+                html.write(en)
         return [(self.cname(a), -d) for d,a in defeats]

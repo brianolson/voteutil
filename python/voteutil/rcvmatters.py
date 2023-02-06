@@ -271,7 +271,7 @@ def main():
         with open(args.summary, 'wt') as fout:
             fout.write(f'<div class="vsum">{count} files, {statsum["votes"]} votes</div><div class="vsum">{statsum.get("rcvDisagree",0)} had RCV algorithm disagreement</div><div class="vsum">{statsum.get("hasNonPickOne",0)} had RCV outcome different than just voting for first choice</div>')
     dt = time.time() - start
-    print(f'Done. {count} elections, {statsum["votes"]} votes, {statsum["hasNonPickOne"]} p1-different, {statsum["rcvDisagree"]} alg-different; # ({dt:.2f} seconds)')
+    print(f'Done. {count} elections, {statsum["votes"]} votes, {statsum.get("hasNonPickOne",0)} p1-different, {statsum.get("rcvDisagree",0)} alg-different; # ({dt:.2f} seconds)')
 
 
 if __name__ == '__main__':

@@ -58,24 +58,95 @@ class VRR2:
                             dictinc(counts, (a,b))
                         else:
                             dictinc(counts, (b,a))
-        defeats = {}
+        blockedDefeats = set()
         choices = list(self.choices)
-        for i, a in enumerate(choices):
-            for j in range(i+1, len(choices)):
-                b = choices[j]
-                avb = counts.get( (a,b), 0)
-                bva = counts.get( (b,a), 0)
-                if avb > bva:
-                    dictinc(defeats, b)
-                elif bva > avb:
-                    dictinc(defeats, a)
-        defeats = sorted([(defeats.get(k,0),k) for k in choices])
+        explainNotes = [] # add to html at end
+        while True:
+            defeats = {}
+            for i, a in enumerate(choices):
+                for j in range(i+1, len(choices)):
+                    b = choices[j]
+                    avb = counts.get( (a,b), 0)
+                    bva = counts.get( (b,a), 0)
+                    if avb > bva:
+                        if (a,b) not in blockedDefeats:
+                            dictinc(defeats, b)
+                    elif bva > avb:
+                        if (b,a) not in blockedDefeats:
+                            dictinc(defeats, a)
+            defeats = sorted([(defeats.get(k,0),k) for k in choices])
+            if defeats[0][0] == 0:
+                if len(defeats) > 1:
+                    if defeats[1][0] != 0:
+                        break # we have a winner
+                else:
+                    break # we have a winner
+            # find weakest defeat and disable it
+            activeset = {defeats[0][1]}
+            activeGrew = True
+            while activeGrew:
+                activeGrew = False
+                for j in list(activeset):
+                    for i in range(0,len(self.names)):
+                        if i in activeset:
+                            continue
+                        if (i,j) in blockedDefeats:
+                            continue
+                        ivj = counts.get((i,j),0)
+                        jvi = counts.get((j,i),0)
+                        if ivj > jvi:
+                            activeset.add(i)
+                            activeGrew = True
+            if len(activeset) == 1:
+                # winner
+                defeats[0][0] = 0
+                break
+            minstrength = len(self.votes)
+            mins = []
+            activelist = sorted(activeset)
+            for i, a in enumerate(activelist):
+                for b in activelist[i+1:]:
+                    avb = counts.get((a,b), 0)
+                    bva = counts.get((b,a), 0)
+                    if avb > bva:
+                        hi = a
+                        lo = b
+                        vhi = avb
+                        vlo = bva
+                    else:
+                        hi = b
+                        lo = a
+                        vhi = bva
+                        vlo = avb
+                    if (hi,lo) in blockedDefeats:
+                        continue
+                    # "winning votes" mode
+                    strength = vhi
+                    # TODO: "margins" mode
+                    # strength = vhi - vlo
+                    if strength < minstrength:
+                        minstrength = strength
+                        mins = [(hi,lo)]
+                    elif strength == minstrength:
+                        mins.append((hi,lo))
+            if len(mins) == len(activeset):
+                # N-way tie, give up.
+                names = [self.cname(x) for x in activeset]
+                explainNotes.append('<div class="ep">{} are all tied!</div>'.format(', '.join(names)))
+                break
+            for hi,lo in mins:
+                if html:
+                    explainNotes.append('<div class="ep">{} {} > {} {}; ignored as weakest defeat</div>'.format(self.cname(hi), counts.get((hi,lo), 0), self.cname(lo), counts.get((lo,hi),0)))
+                blockedDefeats.add((hi,lo))
+            # end `while True` cycle resolution loop
+
         if html:
             html.write('<table border="1">\n<tr><td></td>')
             for i in range(len(defeats)):
                 html.write('<th>{}</th>'.format(i+1))
             html.write('</tr>\n')
             for i, da in enumerate(defeats):
+                defeatCount = da[0]
                 a = da[1]
                 html.write('<tr><th>({}) {}</th>'.format(i+1, self.cname(a)))
                 for j, db in enumerate(defeats):
@@ -93,4 +164,6 @@ class VRR2:
                     html.write('<td{}>{}</td>'.format(style, avb))
                 html.write('</tr>\n')
             html.write('</table>\n')
+            for en in explainNotes:
+                html.write(en)
         return [(self.cname(a), -d) for d,a in defeats]

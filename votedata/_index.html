@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>RCV Election Data</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <h1>RCV Election Data</h1>
+  <p>Data from as many sources as I could find of <a href="https://bolson.org/voting/rcv_offices.html">elections officials running RCV elections</a> who publish "cast vote record" election data.<p>
+  <p>Votes have been converted from a variety of formats to files with one vote per line with the vote as <tt>application/x-www-form-urlencoded</tt>, e.g.:</p>
+  <div style="padding-left:3em;font-family:monospace;font-size:110%">Alice+Springs=1&amp;Bob+Howard=2&amp;Carol+Singer=3</div>
+  <h2>Analysis</h2>
+  {{ summary|safe }}
+  <p><a href="report.html">Counts and statistics for all RCV elections</a></p>
+  <h2>Data</h2>
+  <table>
+    {% for item in dataArchives %}
+    <tr><td><a href="{{ item.url }}">{{ item.fname }}</a></td><td>{{ item.size }}</td></tr>{% endfor %}</table>
+  <h2>How to cite</h2>
+  <p>Brian Olson "RCV Election Data" https://bolson.org/voting/votedata/</p>
+</body>
+</html>
