@@ -18,6 +18,9 @@ def niceSize(b):
     return f'{b}B'
 
 archives = glob.glob("archives/votedata*.tar.gz")
+archives.sort(reverse=True)
+if len(archives) > 5:
+    archives = archives[:5]
 dataArchives = []
 for apath in archives:
     item = {

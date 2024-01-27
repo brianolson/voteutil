@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Processing the NYC 2021-06-22 Primary Election RCV contests
-# https://www.vote.nyc/page/election-results-summary-2021
+# Processing the NYC 2023-06-27 Primary Election RCV contests
 #
-# commands to run:
-# curl -L -O https://www.vote.nyc/sites/default/files/pdf/election_results/2021/20210622Primary%20Election/cvr/PE2021_CVR_Final.zip
-# shasum -a 256 PE2021_CVR_Final.zip
-# f4becbe827da4c1002552919840fbc50040407a257817a64bf39fed652087472  PE2021_CVR_Final.zip
-# unzip PE2021_CVR_Final.zip
-# python3 ../../../python/voteutil/xlsxtocsv.py PE2021_CVR_Final/*.xlsx
-# (cd PE2021_CVR_Final && python3 ../boenyc2021.py)
+# setup:
+# curl -L -O https://www.vote.nyc/sites/default/files/pdf/election_results/2023/20230627Primary%20Election/cvr/2023P_CVR_Final.zip
+# unzip 2023P_CVR_Final.zip
+# ~/src/ve/bin/python3 /home/bolson/src/voteutil/python/voteutil/xlsxtocsv.py *xlsx
+# ~/src/ve/bin/python3 boenyc2023.py
 
 import glob
 import csv
@@ -100,7 +97,8 @@ print(sorted(races.keys()))
 
 
 namesById = {}
-with open('2021P_CandidacyID_To_Name.csv') as fin:
+namefile = glob.glob("*_CandidacyID_To_Name.csv")[0]
+with open(namefile, 'rt') as fin:
     reader = csv.reader(fin)
     header = reader.__next__()
     # CandidacyID,DefaultBallotName
@@ -120,7 +118,7 @@ len(namesById)
 
 
 datafiles = set(files)
-datafiles.remove('2021P_CandidacyID_To_Name.csv')
+datafiles.remove(namefile)
 
 
 # In[12]:
